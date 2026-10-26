@@ -1,0 +1,816 @@
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase, isSupabaseConfigured } from "../services/supabase";
+import { UserProfile, UserEntitlement } from "../types";
+import { loadUserProfile, saveUserProfile, clearUserCache } from "../services/storage.ts";
+import { StorageManager } from "../services/storage/StorageManager";
+import { SyncEngine } from "../services/syncEngine";
+import { SubscriptionManager } from "../services/billing/SubscriptionManager";
+import { NotificationService } from "../services/notificationService";
+
+interface AuthContextType {
+  user: UserProfile | null;
+  supabaseUser: User | null;
+  session: Session | null;
+  entitlement: UserEntitlement;
+  isPro: boolean;
+  loading: boolean;
+  isConfigured: boolean;
+  isRecoveryMode: boolean;
+  setIsRecoveryMode: (val: boolean) => void;
+  oauthErrorMessage: string | null;
+  clearOauthError: () => void;
+  refreshEntitlement: () => Promise<void>;
+  signInWithEmail: (email: string, pass: string) => Promise<{ error?: string; isUnconfirmedEmail?: boolean }>;
+  signUpWithEmail: (email: string, pass: string, name?: string) => Promise<{ error?: string; requiresVerification?: boolean; message?: string }>;
+  resendVerificationEmail: (email: string) => Promise<{ error?: string; success?: boolean }>;
+  signInWithGoogle: () => Promise<{ error?: string }>;
+  signOut: () => Promise<void>;
+  signOutAllDevices: () => Promise<{ error?: string }>;
+  reauthenticate: (password: string) => Promise<{ error?: string }>;
+  updateName: (newName: string) => Promise<{ error?: string }>;
+  updateProfilePicture: (avatarUrl: string) => Promise<{ error?: string }>;
+  changeEmail: (newEmail: string, currentPassword?: string) => Promise<{ error?: string; requiresVerification?: boolean }>;
+  changePassword: (newPass: string, currentPassword?: string) => Promise<{ error?: string }>;
+  resetPassword: (email?: string) => Promise<{ error?: string }>;
+  deleteAccount: (currentPassword?: string) => Promise<{ error?: string }>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(() => loadUserProfile());
+  const [entitlement, setEntitlement] = useState<UserEntitlement>(() => SubscriptionManager.getEntitlement());
+  const [loading, setLoading] = useState(true);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [oauthErrorMessage, setOauthErrorMessage] = useState<string | null>(null);
+
+  const clearOauthError = () => setOauthErrorMessage(null);
+
+  // Subscribe to SubscriptionManager real-time entitlement changes
+  useEffect(() => {
+    const unsub = SubscriptionManager.subscribe((newEntitlement) => {
+      setEntitlement(newEntitlement);
+      setUser((prev) => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          plan: newEntitlement.tier,
+          storageLimitMB: newEntitlement.isPro ? 10000 : 500,
+          entitlement: newEntitlement,
+        };
+        saveUserProfile(updated);
+        return updated;
+      });
+    });
+    return unsub;
+  }, []);
+
+  const refreshEntitlement = async () => {
+    const userId = supabaseUser?.id || user?.id || "guest";
+    const ent = await SubscriptionManager.syncEntitlementsFromServer(userId);
+    setEntitlement(ent);
+  };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      // Fallback local mode session management
+      setLoading(false);
+      return;
+    }
+
+    // 1. Callback Handler: Exchange OAuth code for session when returning from provider
+    const processAuthCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthError = urlParams.get("error");
+      const oauthErrorDescription = urlParams.get("error_description");
+      const code = urlParams.get("code");
+      const hash = window.location.hash;
+
+      // Also inspect hash fragment for errors (e.g. #error=access_denied&error_description=...)
+      let hashError: string | null = null;
+      let hashErrorDescription: string | null = null;
+      if (hash && hash.includes("error=")) {
+        const hashParams = new URLSearchParams(hash.replace(/^#\/?/, ""));
+        hashError = hashParams.get("error");
+        hashErrorDescription = hashParams.get("error_description");
+      }
+
+      if (oauthError || hashError) {
+        const reportedErr = oauthErrorDescription || hashErrorDescription || oauthError || hashError || "OAuth rejected";
+        console.error(`[AuthContext] OAuth provider returned error: ${reportedErr}`);
+        setOauthErrorMessage(
+          "Google sign-in could not be completed. Google security restricts automated or embedded browsers. Please sign in using your email and password."
+        );
+      }
+
+      if (code) {
+        console.log("[AuthContext] Exchanging OAuth code for session via exchangeCodeForSession...");
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error("[AuthContext] Code exchange error:", error.message);
+            setOauthErrorMessage("OAuth code exchange failed: " + error.message);
+          } else if (data?.session) {
+            console.log("[AuthContext] Session created for user:", data.session.user.email);
+            setSession(data.session);
+            setSupabaseUser(data.session.user);
+            syncProfile(data.session.user);
+            SyncEngine.setCurrentUserId(data.session.user.id);
+            setOauthErrorMessage(null);
+
+            // If running inside a popup window, notify parent opener and close self
+            if (window.opener && window.opener !== window) {
+              try {
+                window.opener.postMessage(
+                  { type: "OAUTH_AUTH_SUCCESS", session: data.session },
+                  "*"
+                );
+              } catch (e) {
+                console.warn("[AuthContext] Failed to postMessage to popup opener:", e);
+              }
+              window.close();
+              return;
+            }
+          }
+        } catch (err) {
+          console.error("[AuthContext] Exception during code exchange:", err);
+          setOauthErrorMessage("OAuth code exchange failed. Please sign in with email.");
+        } finally {
+          // Clean up URL query param so code is not reused
+          const cleanPath = window.location.pathname === "/auth/callback" ? "/" : window.location.pathname;
+          window.history.replaceState({}, document.title, cleanPath);
+        }
+      } else if (hash && hash.includes("access_token")) {
+        // Handle hash fragment authentication
+        const { data } = await supabase.auth.getSession();
+        if (data?.session) {
+          setSession(data.session);
+          setSupabaseUser(data.session.user);
+          syncProfile(data.session.user);
+          SyncEngine.setCurrentUserId(data.session.user.id);
+          setOauthErrorMessage(null);
+
+          if (window.opener && window.opener !== window) {
+            try {
+              window.opener.postMessage(
+                { type: "OAUTH_AUTH_SUCCESS", session: data.session },
+                "*"
+              );
+            } catch (e) {
+              console.warn("[AuthContext] Failed to postMessage to popup opener:", e);
+            }
+            window.close();
+            return;
+          }
+        }
+        const cleanPath = window.location.pathname === "/auth/callback" ? "/" : window.location.pathname;
+        window.history.replaceState({}, document.title, cleanPath);
+      }
+    };
+
+    processAuthCallback();
+
+    // 2. Fetch current active session
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setSupabaseUser(session?.user ?? null);
+        if (session?.user) {
+          syncProfile(session.user);
+          SyncEngine.setCurrentUserId(session.user.id);
+        } else {
+          SyncEngine.setCurrentUserId("guest");
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.warn("[AuthContext] getSession warning:", err);
+        SyncEngine.setCurrentUserId("guest");
+        setLoading(false);
+      });
+
+    // 3. Listen to persistent Auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log(`[AuthContext] onAuthStateChange event: ${_event}`);
+      setSession(session);
+      setSupabaseUser(session?.user ?? null);
+      if (_event === "PASSWORD_RECOVERY") {
+        setIsRecoveryMode(true);
+      }
+      if (session?.user) {
+        syncProfile(session.user);
+        SyncEngine.setCurrentUserId(session.user.id);
+      } else if (_event === "SIGNED_OUT") {
+        // Logged out
+        SyncEngine.setCurrentUserId("guest");
+        const guestUser = loadUserProfile();
+        const loggedOutUser = { ...guestUser, isLoggedIn: false };
+        setUser(loggedOutUser);
+        saveUserProfile(loggedOutUser);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const syncProfile = async (sbUser: User) => {
+    const name =
+      sbUser.user_metadata?.full_name ||
+      sbUser.user_metadata?.name ||
+      sbUser.email?.split("@")[0] ||
+      "User";
+    const avatarUrl =
+      sbUser.user_metadata?.avatar_url ||
+      sbUser.user_metadata?.picture ||
+      undefined;
+
+    // Fetch authoritative server-verified entitlement
+    const userEntitlement = await SubscriptionManager.syncEntitlementsFromServer(sbUser.id);
+
+    const updatedProfile: UserProfile = {
+      id: sbUser.id,
+      name,
+      email: sbUser.email || "",
+      avatarUrl,
+      isLoggedIn: true,
+      plan: userEntitlement.tier,
+      storageLimitMB: (userEntitlement.isPro || userEntitlement.isFounder) ? 10000 : 500,
+      createdAt: sbUser.created_at,
+      emailConfirmedAt: sbUser.email_confirmed_at,
+      provider: sbUser.app_metadata?.provider || "email",
+      entitlement: userEntitlement,
+    };
+    setUser(updatedProfile);
+    saveUserProfile(updatedProfile);
+  };
+
+  const signInWithEmail = async (
+    email: string,
+    pass: string
+  ): Promise<{ error?: string; isUnconfirmedEmail?: boolean }> => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return { error: "Please enter a valid email address." };
+    }
+    if (!pass) {
+      return { error: "Please enter your account password." };
+    }
+
+    if (!isSupabaseConfigured) {
+      // Demo authentication simulation with server-authoritative entitlement
+      const localId = `user_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
+      const currentEnt = await SubscriptionManager.syncEntitlementsFromServer(localId);
+      const mockUser: UserProfile = {
+        id: localId,
+        name: cleanEmail.split("@")[0],
+        email: cleanEmail,
+        isLoggedIn: true,
+        plan: currentEnt.tier,
+        storageLimitMB: currentEnt.isPro || currentEnt.isFounder ? 10000 : 500,
+        createdAt: new Date().toISOString(),
+        provider: "email",
+        entitlement: currentEnt,
+      };
+      setUser(mockUser);
+      saveUserProfile(mockUser);
+      SyncEngine.setCurrentUserId(mockUser.id);
+      NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
+      return {};
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password: pass,
+    });
+    if (error) {
+      console.error("[AuthContext] signInWithPassword error:", error.message);
+      const isUnconfirmed = error.message.toLowerCase().includes("email not confirmed");
+      return {
+        error: isUnconfirmed
+          ? "Your email address has not been confirmed yet. Please verify your email with the confirmation link sent to your inbox."
+          : error.message,
+        isUnconfirmedEmail: isUnconfirmed,
+      };
+    }
+    if (data?.session?.user) {
+      syncProfile(data.session.user);
+      SyncEngine.setCurrentUserId(data.session.user.id);
+      NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
+    }
+    return {};
+  };
+
+  const signUpWithEmail = async (
+    email: string,
+    pass: string,
+    name?: string
+  ): Promise<{ error?: string; requiresVerification?: boolean; message?: string }> => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return { error: "Please enter a valid email address." };
+    }
+    if (!pass || pass.length < 6) {
+      return { error: "Password must be at least 6 characters long." };
+    }
+
+    if (!isSupabaseConfigured) {
+      const localId = `user_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
+      const currentEnt = await SubscriptionManager.syncEntitlementsFromServer(localId);
+      const mockUser: UserProfile = {
+        id: localId,
+        name: name || cleanEmail.split("@")[0],
+        email: cleanEmail,
+        isLoggedIn: true,
+        plan: currentEnt.tier,
+        storageLimitMB: currentEnt.isPro || currentEnt.isFounder ? 10000 : 500,
+        createdAt: new Date().toISOString(),
+        provider: "email",
+        entitlement: currentEnt,
+      };
+      setUser(mockUser);
+      saveUserProfile(mockUser);
+      SyncEngine.setCurrentUserId(mockUser.id);
+      return { message: "Account created and logged in." };
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password: pass,
+      options: {
+        data: {
+          full_name: name || cleanEmail.split("@")[0],
+        },
+        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : "https://snapfind.ai.studio/",
+      },
+    });
+
+    if (error) {
+      console.warn("[AuthContext] signUp error:", error);
+      const msg = error.message || "";
+      const lower = msg.toLowerCase();
+
+      // Check for security cooldown with exact seconds (e.g. "For security purposes, you can only request this after 38 seconds.")
+      const secondsMatch = msg.match(/after (\d+) seconds/i);
+      if (secondsMatch) {
+        return {
+          error: `For security purposes, please wait ${secondsMatch[1]} seconds before requesting another verification email.`,
+        };
+      }
+
+      if (error.code === "over_email_send_rate_limit" || lower.includes("email rate limit exceeded") || lower.includes("rate limit")) {
+        return {
+          error: "The email verification delivery limit has been reached on the email service. If you already created an account, please sign in. If you need a new confirmation email, please try again shortly.",
+        };
+      }
+
+      if (lower.includes("user already registered") || lower.includes("already registered") || lower.includes("already exists")) {
+        return {
+          error: "An account with this email address already exists. Please sign in instead.",
+        };
+      }
+
+      if (lower.includes("password should be at least")) {
+        return {
+          error: "Password must be at least 6 characters long.",
+        };
+      }
+
+      return { error: msg };
+    }
+
+    if (data?.user && !data?.session) {
+      if (data.user.identities && data.user.identities.length === 0) {
+        return {
+          error: "An account with this email address already exists. Please sign in instead.",
+        };
+      }
+      return {
+        requiresVerification: true,
+        message: "Registration successful! A verification link has been sent to your email. Please check your inbox and verify your email before logging in.",
+      };
+    }
+
+    if (data?.session?.user) {
+      syncProfile(data.session.user);
+      SyncEngine.setCurrentUserId(data.session.user.id);
+      NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
+    }
+
+    return { message: "Account created successfully." };
+  };
+
+  const resendVerificationEmail = async (
+    email: string
+  ): Promise<{ error?: string; success?: boolean }> => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return { error: "Please enter a valid email address to resend confirmation." };
+    }
+    if (!isSupabaseConfigured) {
+      return { success: true };
+    }
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: cleanEmail,
+      options: {
+        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : "https://snapfind.ai.studio/",
+      },
+    });
+    if (error) {
+      const msg = error.message || "";
+      const secondsMatch = msg.match(/after (\d+) seconds/i);
+      if (secondsMatch) {
+        return { error: `For security purposes, please wait ${secondsMatch[1]} seconds before requesting another email.` };
+      }
+      if (msg.toLowerCase().includes("rate limit")) {
+        return { error: "Email delivery rate limit reached. Please wait a moment before requesting another verification link." };
+      }
+      return { error: msg };
+    }
+    return { success: true };
+  };
+
+  const signInWithGoogle = async (): Promise<{ error?: string }> => {
+    if (!isSupabaseConfigured) {
+      const googleUser: UserProfile = {
+        id: `google_${Date.now()}`,
+        name: "Google Account User",
+        email: "user.google@gmail.com",
+        avatarUrl: undefined,
+        isLoggedIn: true,
+        plan: "Pro",
+        storageLimitMB: 5000,
+        createdAt: new Date().toISOString(),
+        provider: "google",
+      };
+      setUser(googleUser);
+      saveUserProfile(googleUser);
+      SyncEngine.setCurrentUserId(googleUser.id);
+      return {};
+    }
+
+    try {
+      // Determine canonical redirect URL (guarantee production domain in production)
+      const isProduction =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "snapfind.ai.studio" ||
+          window.location.origin.includes("snapfind.ai.studio"));
+
+      const canonicalOrigin = isProduction
+        ? "https://snapfind.ai.studio"
+        : (typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "https://snapfind.ai.studio");
+
+      const redirectTo = `${canonicalOrigin}/`;
+
+      console.log(`[AuthContext] Initiating Google Sign-In with redirectTo: ${redirectTo}`);
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: "select_account",
+            access_type: "offline",
+          },
+        },
+      });
+
+      if (error) {
+        console.error("[AuthContext] Supabase Google OAuth error:", error.message);
+        return { error: error.message };
+      }
+
+      return {};
+    } catch (err: any) {
+      console.error("[AuthContext] Supabase Google Auth exception:", err);
+      return { error: err?.message || "Google authentication failed" };
+    }
+  };
+
+  const signOut = async () => {
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut().catch((err) => console.warn("[AuthContext] signOut error:", err));
+    }
+    SubscriptionManager.resetToFree();
+    SyncEngine.setCurrentUserId("guest");
+    clearUserCache();
+    const guestUser: UserProfile = {
+      id: "guest",
+      name: "Sign In",
+      email: "",
+      avatarUrl: "",
+      isLoggedIn: false,
+      plan: "Free",
+      storageLimitMB: 500,
+    };
+    setUser(guestUser);
+    saveUserProfile(guestUser);
+  };
+
+  const signOutAllDevices = async (): Promise<{ error?: string }> => {
+    try {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.auth.signOut({ scope: "global" });
+        if (error) {
+          console.error("[AuthContext] Sign out global error:", error.message);
+          return { error: error.message };
+        }
+      }
+      SubscriptionManager.resetToFree();
+      SyncEngine.setCurrentUserId("guest");
+      clearUserCache();
+      const guestUser: UserProfile = {
+        id: "guest",
+        name: "Sign In",
+        email: "",
+        avatarUrl: "",
+        isLoggedIn: false,
+        plan: "Free",
+        storageLimitMB: 500,
+      };
+      setUser(guestUser);
+      saveUserProfile(guestUser);
+      return {};
+    } catch (err: any) {
+      return { error: err?.message || "Failed to sign out from all devices" };
+    }
+  };
+
+  // Re-authentication helper for sensitive operations
+  const reauthenticate = async (password: string): Promise<{ error?: string }> => {
+    if (!isSupabaseConfigured) return {};
+    const email = supabaseUser?.email || user?.email;
+    if (!email) return { error: "No active user email found" };
+    if (!password) return { error: "Current password is required for verification" };
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      return { error: "Current password verification failed: " + error.message };
+    }
+    return {};
+  };
+
+  const updateName = async (newName: string): Promise<{ error?: string }> => {
+    const cleanName = newName.trim();
+    if (!cleanName) return { error: "Name cannot be empty" };
+
+    if (isSupabaseConfigured && supabaseUser) {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { full_name: cleanName },
+      });
+      if (error) return { error: error.message };
+
+      try {
+        await supabase.from("profiles").upsert({
+          id: supabaseUser.id,
+          name: cleanName,
+          email: supabaseUser.email,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn("[AuthContext] Profile update error:", e);
+      }
+
+      if (data?.user) {
+        syncProfile(data.user);
+      }
+    }
+
+    if (user) {
+      const updated = { ...user, name: cleanName };
+      setUser(updated);
+      saveUserProfile(updated);
+    }
+    NotificationService.notifyProfileUpdated("Updated account display name");
+    return {};
+  };
+
+  const updateProfilePicture = async (avatarUrl: string): Promise<{ error?: string }> => {
+    const cleanAvatar = avatarUrl.trim();
+    if (isSupabaseConfigured && supabaseUser) {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { avatar_url: cleanAvatar, picture: cleanAvatar },
+      });
+      if (error) return { error: error.message };
+
+      try {
+        await supabase.from("profiles").upsert({
+          id: supabaseUser.id,
+          avatar_url: cleanAvatar,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn("[AuthContext] Profile avatar update error:", e);
+      }
+
+      if (data?.user) {
+        syncProfile(data.user);
+      }
+    }
+
+    if (user) {
+      const updated = { ...user, avatarUrl: cleanAvatar };
+      setUser(updated);
+      saveUserProfile(updated);
+    }
+    NotificationService.notifyProfileUpdated("Updated profile photo avatar");
+    return {};
+  };
+
+  const changeEmail = async (
+    newEmail: string,
+    currentPassword?: string
+  ): Promise<{ error?: string; requiresVerification?: boolean }> => {
+    const cleanEmail = newEmail.trim();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return { error: "Please enter a valid email address." };
+    }
+
+    if (currentPassword && isSupabaseConfigured) {
+      const reauthRes = await reauthenticate(currentPassword);
+      if (reauthRes.error) return reauthRes;
+    }
+
+    if (isSupabaseConfigured && supabaseUser) {
+      const { error } = await supabase.auth.updateUser(
+        { email: cleanEmail },
+        { emailRedirectTo: `${window.location.origin}/` }
+      );
+      if (error) return { error: error.message };
+
+      try {
+        await supabase.from("profiles").upsert({
+          id: supabaseUser.id,
+          email: cleanEmail,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn("[AuthContext] Profile email sync error:", e);
+      }
+
+      return { requiresVerification: true };
+    }
+
+    if (user) {
+      const oldEmail = user.email;
+      const updated = { ...user, email: cleanEmail };
+      setUser(updated);
+      saveUserProfile(updated);
+      NotificationService.notifyEmailChanged(cleanEmail, oldEmail);
+    }
+    return { requiresVerification: false };
+  };
+
+  const changePassword = async (
+    newPass: string,
+    currentPassword?: string
+  ): Promise<{ error?: string }> => {
+    if (!newPass || newPass.length < 6) {
+      return { error: "Password must be at least 6 characters long." };
+    }
+
+    if (currentPassword && isSupabaseConfigured) {
+      const reauthRes = await reauthenticate(currentPassword);
+      if (reauthRes.error) return reauthRes;
+    }
+
+    const targetEmail = user?.email || supabaseUser?.email;
+
+    if (!isSupabaseConfigured) {
+      NotificationService.notifyPasswordChanged(targetEmail);
+      return {};
+    }
+
+    if (!session) {
+      return { error: "You must have an active logged-in session to change your password." };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) return { error: error.message };
+    NotificationService.notifyPasswordChanged(targetEmail);
+    return {};
+  };
+
+  const resetPassword = async (emailToUse?: string): Promise<{ error?: string }> => {
+    const targetEmail = (emailToUse || user?.email || supabaseUser?.email || "").trim();
+    if (!targetEmail) {
+      return { error: "Email address is required to send password reset link." };
+    }
+
+    NotificationService.notifyAccountRecovery(targetEmail);
+
+    if (!isSupabaseConfigured) {
+      return {};
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : "https://snapfind.ai.studio/",
+    });
+
+    if (error) {
+      const msg = error.message || "";
+      const secondsMatch = msg.match(/after (\d+) seconds/i);
+      if (secondsMatch) {
+        return { error: `For security purposes, please wait ${secondsMatch[1]} seconds before requesting another password reset email.` };
+      }
+      if (msg.toLowerCase().includes("rate limit")) {
+        return { error: "Email delivery rate limit reached. Please wait a moment before requesting another reset link." };
+      }
+      return { error: msg };
+    }
+    return {};
+  };
+
+  const deleteAccount = async (currentPassword?: string): Promise<{ error?: string }> => {
+    try {
+      if (currentPassword && isSupabaseConfigured) {
+        const reauthRes = await reauthenticate(currentPassword);
+        if (reauthRes.error) return reauthRes;
+      }
+
+      if (isSupabaseConfigured && supabaseUser) {
+        const uid = supabaseUser.id;
+        await supabase.from("screenshots").delete().eq("user_id", uid);
+        await supabase.from("search_history").delete().eq("user_id", uid);
+        await supabase.from("settings").delete().eq("user_id", uid);
+        await supabase.from("profiles").delete().eq("id", uid);
+        await supabase.auth.signOut();
+      }
+
+      const provider = StorageManager.getProvider();
+      await provider.clearAllData();
+      localStorage.clear();
+
+      const loggedOutUser: UserProfile = {
+        id: "guest",
+        name: "Guest User",
+        email: "guest@snapfind.ai",
+        isLoggedIn: false,
+        plan: "Free",
+        storageLimitMB: 500,
+      };
+      setUser(loggedOutUser);
+      saveUserProfile(loggedOutUser);
+
+      SyncEngine.setCurrentUserId("guest");
+
+      return {};
+    } catch (err: any) {
+      console.error("[AuthContext] Delete account error:", err);
+      return { error: err?.message || "Failed to delete account" };
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        supabaseUser,
+        session,
+        entitlement,
+        isPro: Boolean(entitlement?.isPro),
+        loading,
+        isConfigured: isSupabaseConfigured,
+        isRecoveryMode,
+        setIsRecoveryMode,
+        oauthErrorMessage,
+        clearOauthError,
+        refreshEntitlement,
+        signInWithEmail,
+        signUpWithEmail,
+        resendVerificationEmail,
+        signInWithGoogle,
+        signOut,
+        signOutAllDevices,
+        reauthenticate,
+        updateName,
+        updateProfilePicture,
+        changeEmail,
+        changePassword,
+        resetPassword,
+        deleteAccount,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
+

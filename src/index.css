@@ -1,0 +1,388 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* SnapFind AI - Official Darkened Cyber Teal & Forest Slate Palette:
+       - Deep Forest Slate: #1A2220 — main page background
+       - Cyber Teal (Darkened): #0A383A — landing page background
+       - Cyber Teal Brand Accent: #116466 — brand accents, active states, and highlights
+       - Soft Mint: #D1E8E2 — subtle highlights and light accent surfaces
+       - Charcoal Card: #16202C — cards, sidebars, modals, and search panels
+       - Frost White: #F1F5F9 — primary text
+       - Shadow Gray: #273548 — borders and dividers
+       - Warm Beige: #D9B08C — optional, restrained secondary highlights
+    */
+    --sf-bg-from: #18211E;
+    --sf-bg-to: #0A3638;
+    --sf-landing-bg: #0A383A;
+    --sf-onyx: #141B19;
+    --sf-cyber-teal: #116466;
+    --sf-cyber-teal-dark: #0A383A;
+    --sf-cyber-teal-hover: #157F81;
+    --sf-cyber-teal-light: #208E90;
+    --sf-soft-mint: #D1E8E2;
+    --sf-charcoal: #16202C;
+    --sf-charcoal-elevated: #1D2A3A;
+    --sf-charcoal-hover: #233346;
+    --sf-frost-white: #F1F5F9;
+    --sf-shadow-gray: #273548;
+    --sf-shadow-gray-light: #334155;
+    --sf-warm-beige: #D9B08C;
+    --sf-danger: #EF4444;
+
+    /* Semantic Structure */
+    --sf-bg: #1A2220;
+    --sf-surface: #16202C;
+    --sf-surface-elevated: #1D2A3A;
+    --sf-surface-hover: #233346;
+    --sf-border: #273548;
+    --sf-border-hover: #334155;
+
+    --sf-primary: #116466;
+    --sf-primary-hover: #157F81;
+    --sf-ai: #116466;
+    --sf-ai-hover: #157F81;
+    --sf-attention: #D9B08C;
+    --sf-highlight: #D1E8E2;
+    --sf-danger: #EF4444;
+
+    --sf-text: #F1F5F9;
+    --sf-text-secondary: #94A3B8;
+    --sf-text-mint: #D1E8E2;
+    --sf-text-muted: #64748B;
+    --sf-text-disabled: #475569;
+
+    /* Interface Accent Tone Variables */
+    --accent-primary: #116466;
+    --accent-hover: #157F81;
+    --accent-soft: rgba(17, 100, 102, 0.18);
+    --accent-border: #273548;
+    --accent-glow: rgba(17, 100, 102, 0.35);
+    --accent-text: #D1E8E2;
+    --accent-ring: rgba(17, 100, 102, 0.50);
+    --accent-badge-bg: rgba(17, 100, 102, 0.28);
+    --accent-badge-text: #D1E8E2;
+    --accent-beige: #D9B08C;
+    --accent-mint: #D1E8E2;
+
+    /* Semantic Compatibility */
+    --bg-obsidian: #141B19;
+    --bg-secondary: #16202C;
+    --bg-elevated: #1D2A3A;
+    --bg-hover: #233346;
+    --border-subtle: #273548;
+
+    --color-electric-blue: #116466;
+    --color-neon-violet: #D1E8E2;
+    --color-attention-orange: #D9B08C;
+
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    --text-disabled: #475569;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 1024px) {
+    html,
+    body {
+      overflow: hidden;
+    }
+  }
+
+  body {
+    background-color: #1A2220;
+    background: linear-gradient(135deg, #18211E 0%, #0A3638 100%) fixed;
+    background-size: cover;
+    color: #F1F5F9;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  /* Surfaces */
+  .bg-onyx {
+    background-color: #141B19;
+  }
+  .bg-obsidian {
+    background-color: #141B19;
+  }
+  .bg-page-gradient {
+    background: linear-gradient(135deg, #18211E 0%, #0A3638 100%);
+  }
+  .bg-landing-dark {
+    background: linear-gradient(160deg, #062122 0%, #0A383A 50%, #041617 100%);
+  }
+  .bg-charcoal {
+    background-color: #16202C;
+  }
+  .bg-surface-secondary {
+    background-color: #16202C;
+  }
+  .bg-surface-elevated {
+    background-color: #1D2A3A;
+  }
+  .bg-surface-hover {
+    background-color: #233346;
+  }
+
+  /* Borders */
+  .border-shadow-gray {
+    border-color: #273548;
+  }
+  .border-subtle {
+    border-color: #273548;
+  }
+
+  /* Layered Charcoal Panels & Cards with restrained Cyber Teal illumination */
+  .glass-panel {
+    background: rgba(30, 41, 59, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(51, 65, 85, 0.90);
+  }
+
+  .glass-card {
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.85);
+  }
+
+  .glass-card-hover {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-card-hover:hover {
+    background-color: rgba(36, 51, 71, 0.95);
+    border-color: #116466;
+    box-shadow: 0 0 24px -6px rgba(17, 100, 102, 0.35);
+    transform: translateY(-2px);
+  }
+
+  /* Futuristic Blueprint Grid in Subtle Teal */
+  .blueprint-grid {
+    background-image: radial-gradient(rgba(17, 100, 102, 0.15) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .blueprint-border {
+    position: relative;
+    border: 1px solid rgba(51, 65, 85, 0.95);
+  }
+
+  .blueprint-reticle {
+    position: relative;
+  }
+  .blueprint-reticle::before,
+  .blueprint-reticle::after {
+    content: "+";
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1;
+    color: rgba(209, 232, 226, 0.45);
+    pointer-events: none;
+  }
+  .blueprint-reticle::before {
+    top: -5px;
+    left: -4px;
+  }
+  .blueprint-reticle::after {
+    bottom: -5px;
+    right: -4px;
+  }
+
+  /* Cyber Teal Illumination */
+  .teal-glow {
+    box-shadow: 0 0 24px -4px rgba(17, 100, 102, 0.35);
+  }
+
+  .teal-glow-sm {
+    box-shadow: 0 0 12px -2px rgba(17, 100, 102, 0.25);
+  }
+
+  .teal-glow-intense {
+    box-shadow: 0 0 35px -2px rgba(17, 100, 102, 0.50);
+  }
+
+  /* Brand Gradients */
+  .bg-ai-gradient {
+    background: linear-gradient(135deg, #116466 0%, #157F81 100%);
+  }
+
+  .text-ai-gradient {
+    color: #D1E8E2;
+  }
+
+  .text-speed-gradient {
+    color: #D1E8E2;
+  }
+
+  /* Cyber Teal Button System */
+  .btn-primary {
+    background-color: #116466;
+    color: #F1F5F9;
+    border: 1px solid rgba(17, 100, 102, 0.85);
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .btn-primary:hover {
+    background-color: #157F81;
+    box-shadow: 0 0 18px rgba(17, 100, 102, 0.40);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+
+  .btn-mint {
+    background-color: #D1E8E2;
+    color: #2C3531;
+    border-radius: 10px;
+    font-weight: 700;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .btn-mint:hover {
+    background-color: #E2F2EE;
+    box-shadow: 0 0 16px rgba(209, 232, 226, 0.35);
+  }
+
+  .btn-secondary {
+    background-color: #1E293B;
+    color: #F1F5F9;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .btn-secondary:hover {
+    background-color: #243347;
+    border-color: #116466;
+    color: #D1E8E2;
+  }
+
+  .btn-ai-premium {
+    background-color: #116466;
+    color: #F1F5F9;
+    border: 1px solid #157F81;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .btn-ai-premium:hover {
+    background-color: #157F81;
+    box-shadow: 0 0 20px rgba(17, 100, 102, 0.45);
+  }
+
+  .btn-attention {
+    background-color: #D9B08C;
+    color: #2C3531;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .btn-attention:hover {
+    background-color: #E5C2A2;
+    box-shadow: 0 0 18px rgba(217, 176, 140, 0.35);
+  }
+
+  .btn-danger {
+    background-color: #EF4444;
+    color: #F1F5F9;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .btn-danger:hover {
+    background-color: #DC2626;
+  }
+
+  /* Focused Search Input */
+  .search-glow-focused {
+    border-color: #116466;
+    box-shadow: 0 0 0 1px #116466, 0 0 18px rgba(17, 100, 102, 0.28);
+  }
+}
+
+/* Subtle Shimmer for Skeleton Loaders */
+@keyframes shimmerEffect {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-loading {
+  background: linear-gradient(90deg, #1E293B 25%, #243347 50%, #1E293B 75%);
+  background-size: 200% 100%;
+  animation: shimmerEffect 1.8s infinite;
+}
+
+/* Clean Dark Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2C3531;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Dynamic Accent Theme Utility Classes */
+.bg-accent-primary {
+  background-color: var(--accent-primary);
+}
+.bg-accent-hover:hover {
+  background-color: var(--accent-hover);
+}
+.bg-accent-soft {
+  background-color: var(--accent-soft);
+}
+.text-accent-primary {
+  color: var(--accent-primary);
+}
+.text-accent-muted {
+  color: var(--accent-text);
+}
+.border-accent {
+  border-color: var(--accent-border);
+}
+.ring-accent {
+  --tw-ring-color: var(--accent-ring);
+}

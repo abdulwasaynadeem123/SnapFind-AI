@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /gallery
+Disallow: /search
+Disallow: /settings
+Disallow: /account
+Disallow: /collections
+Disallow: /timeline
+Disallow: /favorites
+Disallow: /trash
+
+Sitemap: https://snapfind.ai.studio/sitemap.xml
