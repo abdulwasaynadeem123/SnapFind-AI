@@ -11,11 +11,12 @@ import { analyzeScreenshotImage } from "./api";
 import { determinePrimaryTitle, printPipelineDebuggingReport } from "./pipelineAudit";
 import { processingQueue } from "./processingQueue";
 import { searchEngine } from "./searchEngine";
-import { computeImageSha256 } from "../utils/hashUtils";
+import { computeImageSha256, computePerceptualHash } from "../utils/hashUtils";
 import { checkDuplicateScreenshot, handleDuplicateIndexing } from "./duplicateDetector";
 import { SubscriptionManager } from "./billing/SubscriptionManager";
 import { optimizeImageForPipeline } from "../utils/imageOptimizer";
 import { decodeQrFromImage, extractWebsitesFromText } from "../utils/qrDetector";
+import { extractStructuredEntitiesFromText } from "../utils/ocrPreprocessing";
 
 export type IndexingStep =
   | "Preparing..."
@@ -24,6 +25,26 @@ export type IndexingStep =
   | "AI Analysis..."
   | "Saving..."
   | "Completed";
+
+export type IndexingStatusType = "idle" | "scanning" | "paused" | "completed" | "error";
+
+export interface PersistedIndexingState {
+  status: IndexingStatusType;
+  totalImages: number;
+  indexedImages: number;
+  pendingImages: number;
+  failedImages: number;
+  skippedImages: number;
+  duplicatesSkipped: number;
+  currentStep: IndexingStep;
+  currentBatchIndex: number;
+  totalBatches: number;
+  currentItemName?: string;
+  percent: number;
+  lastUpdated: string;
+  error?: string;
+  pausedAtIndex?: number;
+}
 
 export interface CandidateImage {
   id: string;
@@ -50,6 +71,8 @@ export interface IndexingProgressEvent {
   newCount: number;
   modifiedCount: number;
   skippedCount: number;
+  duplicatesCount?: number;
+  failedCount?: number;
   currentItemName?: string;
   statusText: string;
   percent: number;
@@ -61,6 +84,8 @@ export interface IndexingResult {
   newIndexed: number;
   modifiedUpdated: number;
   skippedCount: number;
+  duplicatesSkipped?: number;
+  failedCount?: number;
   lastScanTimestamp: string;
   items: ScreenshotItem[];
   error?: string;
@@ -69,6 +94,8 @@ export interface IndexingResult {
 const STORAGE_KEYS = {
   LAST_SCAN_TIMESTAMP: "snapfind_last_scan_timestamp",
   INDEXED_IMAGE_IDS: "snapfind_indexed_image_ids",
+  INDEXING_STATE: "snapfind_indexing_state",
+  CACHED_CANDIDATES: "snapfind_cached_candidates",
 };
 
 /**
@@ -93,10 +120,58 @@ function parseTimestampMillis(input?: string | number): number {
  */
 class IncrementalIndexingEngine {
   private isScanning: boolean = false;
+  private isPaused: boolean = false;
   private cancelRequested: boolean = false;
+  private cachedCandidates: CandidateImage[] = [];
+  private currentProgressCallback?: (event: IndexingProgressEvent) => void;
 
   private cachedLastScanTimestamp: string | null = null;
   private cachedIndexedIds: Set<string> | null = null;
+
+  /**
+   * Get the persisted indexing state from localStorage
+   */
+  public getPersistedState(): PersistedIndexingState {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.INDEXING_STATE);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+    return {
+      status: "idle",
+      totalImages: 0,
+      indexedImages: 0,
+      pendingImages: 0,
+      failedImages: 0,
+      skippedImages: 0,
+      duplicatesSkipped: 0,
+      currentStep: "Preparing...",
+      currentBatchIndex: 0,
+      totalBatches: 0,
+      percent: 0,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Save and broadcast the indexing state
+   */
+  public savePersistedState(partial: Partial<PersistedIndexingState>): PersistedIndexingState {
+    const current = this.getPersistedState();
+    const updated: PersistedIndexingState = {
+      ...current,
+      ...partial,
+      lastUpdated: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(STORAGE_KEYS.INDEXING_STATE, JSON.stringify(updated));
+    } catch {}
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("snapfind_indexing_updated", { detail: updated }));
+    }
+    return updated;
+  }
 
   /**
    * Get the last scan timestamp ISO string or epoch ms
@@ -198,11 +273,54 @@ class IncrementalIndexingEngine {
   }
 
   /**
+   * Pause the active indexing run
+   */
+  public pauseScan(): void {
+    if (this.isScanning) {
+      this.isPaused = true;
+      this.savePersistedState({
+        status: "paused",
+      });
+    }
+  }
+
+  /**
+   * Resume paused indexing run
+   */
+  public async resumeScan(
+    candidates?: CandidateImage[],
+    onProgress?: (event: IndexingProgressEvent) => void
+  ): Promise<IndexingResult> {
+    this.isPaused = false;
+    const toRun = candidates || this.cachedCandidates;
+    const state = this.getPersistedState();
+    return this.runIncrementalScan(toRun, onProgress || this.currentProgressCallback, state.pausedAtIndex || 0);
+  }
+
+  /**
+   * Retry failed or incomplete indexing jobs
+   */
+  public async retryFailed(
+    candidates?: CandidateImage[],
+    onProgress?: (event: IndexingProgressEvent) => void
+  ): Promise<IndexingResult> {
+    const toRun = candidates || this.cachedCandidates;
+    this.isPaused = false;
+    this.cancelRequested = false;
+    return this.runIncrementalScan(toRun, onProgress || this.currentProgressCallback, 0);
+  }
+
+  /**
    * Request cancellation of ongoing scan
    */
   public cancelScan(): void {
     if (this.isScanning) {
       this.cancelRequested = true;
+      this.isPaused = false;
+      this.savePersistedState({
+        status: "idle",
+        percent: 0,
+      });
     }
   }
 
@@ -211,7 +329,8 @@ class IncrementalIndexingEngine {
    */
   public async runIncrementalScan(
     candidates: CandidateImage[],
-    onProgress?: (event: IndexingProgressEvent) => void
+    onProgress?: (event: IndexingProgressEvent) => void,
+    startIndex: number = 0
   ): Promise<IndexingResult> {
     if (this.isScanning) {
       return {
@@ -226,7 +345,10 @@ class IncrementalIndexingEngine {
       };
     }
 
+    this.cachedCandidates = candidates;
+    this.currentProgressCallback = onProgress;
     this.isScanning = true;
+    this.isPaused = false;
     this.cancelRequested = false;
 
     const scanStartTimeIso = new Date().toISOString();
@@ -274,6 +396,16 @@ class IncrementalIndexingEngine {
     if (totalToProcess === 0) {
       this.setLastScanTimestamp(scanStartTimeIso);
       this.isScanning = false;
+      this.savePersistedState({
+        status: "completed",
+        totalImages: candidates.length,
+        indexedImages: 0,
+        pendingImages: 0,
+        skippedImages: skippedCount,
+        percent: 100,
+        currentStep: "Completed",
+        currentItemName: undefined,
+      });
 
       if (onProgress) {
         onProgress({
@@ -301,16 +433,45 @@ class IncrementalIndexingEngine {
       };
     }
 
-    let processedCount = 0;
+    let processedCount = startIndex;
     let newlyIndexedCount = 0;
     let modifiedUpdatedCount = 0;
     const existingScreenshots = loadStoredScreenshots();
     const updatedScreenshotsMap = new Map<string, ScreenshotItem>();
     existingScreenshots.forEach((item) => updatedScreenshotsMap.set(item.id, item));
 
-    for (let i = 0; i < totalToProcess; i++) {
+    for (let i = startIndex; i < totalToProcess; i++) {
+      if (this.isPaused) {
+        this.isScanning = false;
+        this.savePersistedState({
+          status: "paused",
+          totalImages: candidates.length,
+          indexedImages: newlyIndexedCount,
+          pendingImages: totalToProcess - i,
+          skippedImages: skippedCount,
+          pausedAtIndex: i,
+          percent: Math.round((i / totalToProcess) * 100),
+          currentStep: "Scanning...",
+        });
+        return {
+          success: true,
+          totalScanned: processedCount,
+          newIndexed: newlyIndexedCount,
+          modifiedUpdated: modifiedUpdatedCount,
+          skippedCount,
+          lastScanTimestamp: this.getLastScanTimestamp(),
+          items: Array.from(updatedScreenshotsMap.values()),
+          error: "Scan paused by user",
+        };
+      }
+
       if (this.cancelRequested) {
         this.isScanning = false;
+        this.savePersistedState({
+          status: "idle",
+          percent: 0,
+          pausedAtIndex: 0,
+        });
         return {
           success: false,
           totalScanned: processedCount,
@@ -348,15 +509,18 @@ class IncrementalIndexingEngine {
 
       const base64Data = await this.imageToBase64(candidate);
 
-      // Compute SHA-256 hash
+      // Compute SHA-256 hash & Perceptual Hash (dHash)
       const imgHash = await computeImageSha256(base64Data || candidate.image_uri || candidate.imageUrl || fileName);
+      const pHash = await computePerceptualHash(base64Data || candidate.image_uri || candidate.imageUrl || "");
 
-      // Multi-factor duplicate check across hash, dimensions, OCR, Gemini summary, file size, and creation time
+      // Multi-factor duplicate check across SHA-256, pHash, dimensions, OCR, summary, file size, and creation time
       const duplicateResult = handleDuplicateIndexing(
         {
           id: candidate.id,
           hash: imgHash,
           sha256Hash: imgHash,
+          perceptualHash: pHash,
+          pHash,
           fileSize: candidate.file_size || (candidate.fileSizeKB ? candidate.fileSizeKB * 1024 : undefined),
           fileSizeKB: candidate.fileSizeKB,
           creationTime: candidate.date_modified || candidate.dateModified,
@@ -449,6 +613,8 @@ class IncrementalIndexingEngine {
       let aiEntities: string[] = [];
       let aiKeywords: string[] = [];
       let aiObjects: string[] = [];
+      let aiColors: string[] = [];
+      let aiSourceApp: string = "";
       let visualFeatures: any = undefined;
 
       const aiTask = async () => {
@@ -490,6 +656,8 @@ class IncrementalIndexingEngine {
         aiEntities = Array.isArray(analysis.keyEntities) ? analysis.keyEntities : [];
         aiKeywords = Array.isArray(analysis.keywords) ? analysis.keywords : [];
         aiObjects = Array.isArray(analysis.objects) ? analysis.objects : [];
+        aiColors = Array.isArray((analysis as any).colors) ? (analysis as any).colors : [];
+        aiSourceApp = (analysis as any).source_app || (analysis as any).sourceApp || "";
         visualFeatures = (analysis as any).visual_features || (analysis as any).visualFeatures;
       }
 
@@ -617,6 +785,13 @@ class IncrementalIndexingEngine {
             }
           : undefined,
         visual_features: visualFeatures,
+        colors: aiColors.length > 0 ? aiColors : undefined,
+        source_app: aiSourceApp || undefined,
+        sourceApp: aiSourceApp || undefined,
+        perceptual_hash: pHash,
+        perceptualHash: pHash,
+        pHash,
+        extractedEntities: extractStructuredEntitiesFromText(ocrText),
       });
 
       // Requirement 9: Print Debugging Report
@@ -633,20 +808,41 @@ class IncrementalIndexingEngine {
 
       processedCount++;
 
-      // Save batch every 5 items or at the end to maximize write throughput
-      if (processedCount % 5 === 0 || processedCount === totalToProcess) {
-        const currentList = Array.from(updatedScreenshotsMap.values());
+      // Controlled batching: persist batch every 3 items or at the end to keep UI responsive
+      if (processedCount % 3 === 0 || processedCount === totalToProcess) {
         saveStoredScreenshotsBatch([newItem]);
         this.saveIndexedImageIds(indexedIds);
+        this.savePersistedState({
+          status: "scanning",
+          totalImages: candidates.length,
+          indexedImages: newlyIndexedCount,
+          pendingImages: Math.max(0, totalToProcess - (i + 1)),
+          skippedImages: skippedCount,
+          currentBatchIndex: Math.floor((i + 1) / 3),
+          totalBatches: Math.ceil(totalToProcess / 3),
+          currentItemName: fileName,
+          percent: basePercent,
+        });
       }
 
-      await yieldToMainThread(10);
+      await yieldToMainThread(15);
     }
 
     // STEP 6: Completed
     this.setLastScanTimestamp(scanStartTimeIso);
     this.saveIndexedImageIds(indexedIds);
     this.isScanning = false;
+    this.savePersistedState({
+      status: "completed",
+      totalImages: candidates.length,
+      indexedImages: newlyIndexedCount,
+      pendingImages: 0,
+      skippedImages: skippedCount,
+      percent: 100,
+      currentStep: "Completed",
+      currentItemName: undefined,
+      pausedAtIndex: 0,
+    });
 
     const finalList = Array.from(updatedScreenshotsMap.values());
     searchEngine.updateIndex(finalList);

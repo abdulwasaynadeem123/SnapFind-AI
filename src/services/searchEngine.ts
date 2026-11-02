@@ -2,6 +2,7 @@ import { ScreenshotItem, SearchResultMatch, CategoryType } from "../types";
 import { loadSearchHistory, saveSearchHistory } from "./storage";
 import { collectionSecurity } from "./collectionSecurity";
 import { isFinanceOrPaymentScreenshot } from "./smartSnapsClassifier";
+import { calculatePerceptualSimilarity } from "../utils/hashUtils";
 import FlexSearch from "flexsearch";
 
 export interface SearchFilters {
@@ -9,6 +10,9 @@ export interface SearchFilters {
   isFavorite?: boolean;
   category?: CategoryType | "All" | string;
   folder?: string;
+  sourceApp?: string;
+  color?: string;
+  tag?: string;
   dateRange?: {
     startDate?: string | number;
     endDate?: string | number;
@@ -32,10 +36,13 @@ export interface SearchSuggestion {
  */
 export const SEARCH_FIELD_WEIGHTS = {
   title: 3.5,
+  sourceApp: 3.2,
+  entities: 3.2,
   category: 3.0,
   website: 2.8,
   qr: 2.8,
   objects: 2.8,
+  colors: 2.5,
   keywords: 2.5,
   tags: 2.5,
   visuals: 2.2,
@@ -265,6 +272,14 @@ export function parseQueryIntent(rawQuery: string): QueryIntent {
     targetFormat = "receipt";
   } else if (lower.includes("recipe") || lower.includes("food") || lower.includes("dish")) {
     targetFormat = "recipe";
+  } else if (lower.includes("tracking") || lower.includes("track") || lower.includes("traking") || lower.includes("courier") || lower.includes("shipment")) {
+    targetFormat = "tracking_number";
+  } else if (lower.includes("phone") || lower.includes("mobile") || lower.includes("contact") || lower.includes("call")) {
+    targetFormat = "phone_number";
+  } else if (lower.includes("email") || lower.includes("e-mail") || lower.includes("mail address")) {
+    targetFormat = "email_address";
+  } else if (lower.includes("price") || lower.includes("cost") || lower.includes("laptop price") || lower.includes("rate") || lower.includes("amount") || lower.includes("pkr") || lower.includes("rs") || lower.includes("dollar")) {
+    targetFormat = "price_amount";
   }
 
   // Color detection
@@ -562,6 +577,8 @@ export class SnapFindSearchEngine {
     const intent = parseQueryIntent(query);
     const filters = options.filters || {};
 
+    const startTime = typeof performance !== "undefined" ? performance.now() : Date.now();
+
     // 1. Filter candidates by structural rules
     const candidates = items.filter((item) => {
       // Security filter: items inside locked collections or locked vault are hidden until unlocked
@@ -582,6 +599,35 @@ export class SnapFindSearchEngine {
         if (item.folder.toLowerCase() !== filters.folder.toLowerCase()) return false;
       }
 
+      if (filters.sourceApp && filters.sourceApp !== "all" && filters.sourceApp !== "All") {
+        const itemApp = (item.source_app || item.sourceApp || "").toLowerCase();
+        if (!itemApp.includes(filters.sourceApp.toLowerCase())) return false;
+      }
+
+      if (filters.color) {
+        const itemColors = (item.colors || []).map((c) => c.toLowerCase());
+        const targetColor = filters.color.toLowerCase();
+        const matched = itemColors.some((c) => c.includes(targetColor) || targetColor.includes(c));
+        if (!matched) return false;
+      }
+
+      if (filters.tag) {
+        const itemTags = (item.tags || []).map((t) => t.toLowerCase());
+        if (!itemTags.includes(filters.tag.toLowerCase())) return false;
+      }
+
+      if (filters.dateRange) {
+        const itemDate = new Date(item.createdAt || item.created_at || (item as any).indexedAt || (item as any).date_created || 0).getTime();
+        if (filters.dateRange.startDate) {
+          const start = new Date(filters.dateRange.startDate).getTime();
+          if (itemDate < start) return false;
+        }
+        if (filters.dateRange.endDate) {
+          const end = new Date(filters.dateRange.endDate).getTime();
+          if (itemDate > end) return false;
+        }
+      }
+
       return true;
     });
 
@@ -590,6 +636,14 @@ export class SnapFindSearchEngine {
       .map((item) => this.scoreItem(item, intent))
       .filter((res) => res.score >= (options.minScore ?? 0.10))
       .sort((a, b) => b.score - a.score);
+
+    const latencyMs = Math.max(
+      0.5,
+      Math.round(((typeof performance !== "undefined" ? performance.now() : Date.now()) - startTime) * 10) / 10
+    );
+    results.forEach((r) => {
+      r.latencyMs = latencyMs;
+    });
 
     // Save query to recent search history
     if (results.length > 0) {
@@ -620,6 +674,37 @@ export class SnapFindSearchEngine {
         weight: SEARCH_FIELD_WEIGHTS.title,
         text: item.title || "",
         tokens: tokenize(item.title || ""),
+      },
+      {
+        name: "sourceApp",
+        weight: SEARCH_FIELD_WEIGHTS.sourceApp,
+        text: item.source_app || item.sourceApp || "",
+        tokens: tokenize(item.source_app || item.sourceApp || ""),
+      },
+      {
+        name: "colors",
+        weight: SEARCH_FIELD_WEIGHTS.colors,
+        text: (item.colors || []).join(" "),
+        tokens: (item.colors || []).flatMap(tokenize),
+      },
+      {
+        name: "entities",
+        weight: SEARCH_FIELD_WEIGHTS.entities,
+        text: [
+          ...(item.extractedEntities?.trackingNumbers || []),
+          ...(item.extractedEntities?.phoneNumbers || []),
+          ...(item.extractedEntities?.emails || []),
+          ...(item.extractedEntities?.amounts || []),
+          ...(item.extractedEntities?.dates || []),
+          ...(item.extractedEntities?.urls || []),
+        ].join(" "),
+        tokens: [
+          ...(item.extractedEntities?.trackingNumbers || []),
+          ...(item.extractedEntities?.phoneNumbers || []),
+          ...(item.extractedEntities?.emails || []),
+          ...(item.extractedEntities?.amounts || []),
+          ...(item.extractedEntities?.dates || []),
+        ].flatMap(tokenize),
       },
       {
         name: "category",
@@ -904,19 +989,77 @@ export class SnapFindSearchEngine {
       matchReasons.push("Matched Banking & Payment Snaps");
     }
 
-    // Color Document Intent (e.g. "Blue document")
+    // Color Document Intent (e.g. "Blue document", "blue laptop")
     if (intent.colorDescriptor) {
+      const itemColors = (item.colors || []).map((c) => c.toLowerCase());
       const tagsLower = (item.tags || []).map((t) => t.toLowerCase());
       const objectsLower = [...(item.objects || []), ...(item.objectsDetected || [])].map((o) => o.toLowerCase());
       const summaryLower = (item.summary || "").toLowerCase();
 
-      if (
+      const colorMatch =
+        itemColors.some((c) => c.includes(intent.colorDescriptor!) || intent.colorDescriptor!.includes(c)) ||
         tagsLower.includes(intent.colorDescriptor) ||
         objectsLower.includes(intent.colorDescriptor) ||
-        summaryLower.includes(intent.colorDescriptor)
-      ) {
-        intentMatchBoost += 0.35;
+        summaryLower.includes(intent.colorDescriptor);
+
+      if (colorMatch) {
+        intentMatchBoost += 0.45;
         matchReasons.push(`Color match (${intent.colorDescriptor})`);
+      }
+    }
+
+    // Source App Intent (e.g. "WhatsApp conversation", "Amazon order", "Slack")
+    const appQuery = (item.source_app || item.sourceApp || "").toLowerCase();
+    if (appQuery && (
+      (intent.targetApp && appQuery.includes(intent.targetApp)) ||
+      intent.rawQuery.toLowerCase().includes(appQuery)
+    )) {
+      intentMatchBoost += 0.50;
+      matchReasons.push(`Source app (${item.source_app || item.sourceApp})`);
+    }
+
+    // Tracking Number Intent Boost
+    if (intent.targetFormat === "tracking_number") {
+      const trackingIds = item.extractedEntities?.trackingNumbers || [];
+      const ocrLower = (item.fullText || item.ocr_text || "").toLowerCase();
+      if (trackingIds.length > 0) {
+        intentMatchBoost += 0.85;
+        matchReasons.push(`Matched Tracking ID (${trackingIds[0]})`);
+      } else if (ocrLower.includes("tracking") || ocrLower.includes("consignment") || ocrLower.includes("shipment")) {
+        intentMatchBoost += 0.40;
+        matchReasons.push("Matched Tracking keyword");
+      }
+    }
+
+    // Phone Number Intent Boost
+    if (intent.targetFormat === "phone_number") {
+      const phones = item.extractedEntities?.phoneNumbers || [];
+      if (phones.length > 0) {
+        intentMatchBoost += 0.85;
+        matchReasons.push(`Matched Phone Number (${phones[0]})`);
+      }
+    }
+
+    // Email Address Intent Boost
+    if (intent.targetFormat === "email_address") {
+      const emails = item.extractedEntities?.emails || [];
+      if (emails.length > 0) {
+        intentMatchBoost += 0.85;
+        matchReasons.push(`Matched Email (${emails[0]})`);
+      }
+    }
+
+    // Price / Amount Intent Boost
+    if (intent.targetFormat === "price_amount") {
+      const amounts = item.extractedEntities?.amounts || [];
+      const titleLower = (item.title || "").toLowerCase();
+      const ocrLower = (item.fullText || item.ocr_text || "").toLowerCase();
+      if (amounts.length > 0) {
+        intentMatchBoost += 0.85;
+        matchReasons.push(`Matched Amount (${amounts[0]})`);
+      } else if (titleLower.includes("price") || ocrLower.includes("price") || ocrLower.includes("rs") || ocrLower.includes("pkr")) {
+        intentMatchBoost += 0.40;
+        matchReasons.push("Matched Price keyword");
       }
     }
 
@@ -1095,6 +1238,99 @@ export class SnapFindSearchEngine {
     const results = this.search(query, list, { minScore: 0.05 });
     return results;
   }
+
+  public findVisuallySimilar(
+    referenceItem: ScreenshotItem,
+    items?: ScreenshotItem[],
+    limit: number = 10
+  ): VisuallySimilarMatch[] {
+    const list = items || this.cachedItems || [];
+    return findVisuallySimilar(referenceItem, list, limit);
+  }
+}
+
+export interface VisuallySimilarMatch {
+  item: ScreenshotItem;
+  similarityScore: number;
+  matchReasons: string[];
+}
+
+export function findVisuallySimilar(
+  referenceItem: ScreenshotItem,
+  items: ScreenshotItem[],
+  limit: number = 10
+): VisuallySimilarMatch[] {
+  if (!referenceItem || !items || items.length === 0) return [];
+
+  const refHash = referenceItem.perceptual_hash || referenceItem.perceptualHash;
+  const refColors = (referenceItem.colors || []).map((c) => c.toLowerCase());
+  const refCategory = (referenceItem.category || "").toLowerCase();
+  const refObjects = [...(referenceItem.objects || []), ...(referenceItem.objectsDetected || [])].map((o) => o.toLowerCase());
+  const refSourceApp = (referenceItem.source_app || referenceItem.sourceApp || "").toLowerCase();
+
+  const results: VisuallySimilarMatch[] = [];
+
+  for (const candidate of items) {
+    if (candidate.id === referenceItem.id) continue;
+    if (!collectionSecurity.isItemAccessible(candidate)) continue;
+
+    let score = 0;
+    const reasons: string[] = [];
+
+    // 1. Perceptual Hash Similarity (weight: 0.50)
+    const candHash = candidate.perceptual_hash || candidate.perceptualHash;
+    if (refHash && candHash && refHash !== "0000000000000000" && candHash !== "0000000000000000") {
+      const pSim = calculatePerceptualSimilarity(refHash, candHash);
+      if (pSim > 0.55) {
+        score += pSim * 0.50;
+        reasons.push(`${Math.round(pSim * 100)}% visual layout match`);
+      }
+    }
+
+    // 2. Dominant Color Harmony (weight: 0.25)
+    const candColors = (candidate.colors || []).map((c) => c.toLowerCase());
+    if (refColors.length > 0 && candColors.length > 0) {
+      const sharedColors = refColors.filter((rc) => candColors.some((cc) => cc.includes(rc) || rc.includes(cc)));
+      if (sharedColors.length > 0) {
+        const colorSim = sharedColors.length / Math.max(refColors.length, candColors.length);
+        score += colorSim * 0.25;
+        reasons.push(`Shared colors (${sharedColors.slice(0, 2).join(", ")})`);
+      }
+    }
+
+    // 3. Category & Source App Match (weight: 0.15)
+    const candCat = (candidate.category || "").toLowerCase();
+    const candApp = (candidate.source_app || candidate.sourceApp || "").toLowerCase();
+    if (refCategory && candCat && refCategory === candCat) {
+      score += 0.12;
+      reasons.push(`Same category (${candidate.category})`);
+    }
+    if (refSourceApp && candApp && refSourceApp === candApp) {
+      score += 0.10;
+      reasons.push(`Same app (${candidate.source_app || candidate.sourceApp})`);
+    }
+
+    // 4. Object & Concept Overlap (weight: 0.15)
+    const candObjects = [...(candidate.objects || []), ...(candidate.objectsDetected || [])].map((o) => o.toLowerCase());
+    if (refObjects.length > 0 && candObjects.length > 0) {
+      const sharedObjects = refObjects.filter((ro) => candObjects.includes(ro));
+      if (sharedObjects.length > 0) {
+        score += 0.15;
+        reasons.push(`Shared objects (${sharedObjects.slice(0, 2).join(", ")})`);
+      }
+    }
+
+    if (score >= 0.12) {
+      results.push({
+        item: candidate,
+        similarityScore: Math.min(1.0, score),
+        matchReasons: reasons,
+      });
+    }
+  }
+
+  results.sort((a, b) => b.similarityScore - a.similarityScore);
+  return results.slice(0, limit);
 }
 
 export const searchEngine = new SnapFindSearchEngine();

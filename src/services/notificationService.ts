@@ -15,6 +15,7 @@ import {
   getLastClearedAllTimestamp,
   setLastClearedAllTimestamp,
 } from "./storage";
+import { getAuthBearerHeader } from "./supabase";
 
 export type NotificationListener = (notifications: AppNotification[]) => void;
 
@@ -997,9 +998,13 @@ class NotificationServiceEngine {
     if (this.notifications.length !== prevLen) {
       this.notifyListeners();
     }
-    try {
-      fetch(`/api/notifications/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
-    } catch {}
+    // Secure deletion: attach verified authentication token
+    getAuthBearerHeader().then((authHeaders) => {
+      fetch(`/api/notifications/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { ...authHeaders },
+      }).catch(() => {});
+    }).catch(() => {});
   }
 
   public clearAll(userId?: string): void {
@@ -1020,12 +1025,14 @@ class NotificationServiceEngine {
     saveNotifications([]);
     this.notifyListeners();
 
-    try {
+    // Secure wipe: attach verified authentication token
+    getAuthBearerHeader().then((authHeaders) => {
       const effectiveUserId = userId || "guest";
       fetch(`/api/notifications?userId=${encodeURIComponent(effectiveUserId)}`, {
         method: "DELETE",
+        headers: { ...authHeaders },
       }).catch(() => {});
-    } catch {}
+    }).catch(() => {});
   }
 
   // ==========================================

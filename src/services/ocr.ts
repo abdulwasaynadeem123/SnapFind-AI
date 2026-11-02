@@ -1,13 +1,22 @@
 import { createWorker } from "tesseract.js";
+import {
+  preprocessImageForOcr,
+  extractStructuredEntitiesFromText,
+  ExtractedEntities,
+  hasUrduOrArabicScript,
+} from "../utils/ocrPreprocessing";
 
 export interface OCRResult {
   success: boolean;
   text: string;
   ocrText?: string;
   confidence: number;
+  isLowConfidence: boolean;
   lines: string[];
   words: string[];
   provider: string;
+  entities: ExtractedEntities;
+  hasUrduOrArabic?: boolean;
 }
 
 /**
@@ -33,6 +42,7 @@ class OCRWorkerManager {
       this.workerPromise = (async () => {
         try {
           console.log("[OCRWorkerManager] Initializing persistent Tesseract OCR worker singleton...");
+          // Primary english worker (ultra-fast, highly accurate)
           const worker = await createWorker("eng");
           this.workerInstance = worker;
           return worker;
@@ -60,39 +70,60 @@ class OCRWorkerManager {
 
   /**
    * Run OCR recognition with concurrency mutex through the shared worker
+   * Includes automated contrast & sharpness preprocessing, structured entity extraction,
+   * and confidence threshold validation.
    */
   public async recognize(
     imageSource: string | File | Blob,
-    onProgress?: (progress: number, status: string) => void
+    onProgress?: (progress: number, status: string) => void,
+    skipPreprocessing: boolean = false
   ): Promise<OCRResult> {
-    return new Promise<OCRResult>((resolve, reject) => {
+    return new Promise<OCRResult>((resolve) => {
       const task = async () => {
         try {
-          if (onProgress) onProgress(15, "Accessing persistent OCR Engine...");
+          if (onProgress) onProgress(10, "Optimizing image contrast & sharpness for OCR...");
+          
+          let processedImage = imageSource;
+          if (!skipPreprocessing) {
+            try {
+              processedImage = await preprocessImageForOcr(imageSource);
+            } catch {
+              processedImage = imageSource;
+            }
+          }
+
+          if (onProgress) onProgress(30, "Accessing persistent OCR Engine...");
           const worker = await this.getWorker();
 
-          if (onProgress) onProgress(45, "Scanning text on image...");
-          const ret = await worker.recognize(imageSource);
+          if (onProgress) onProgress(60, "Scanning text on image...");
+          const ret = await worker.recognize(processedImage);
 
-          if (onProgress) onProgress(90, "Formatting extracted text...");
+          if (onProgress) onProgress(90, "Extracting structured entities & formatting...");
           const rawText = ret.data?.text || "";
           const cleanText = rawText.trim();
-          const confidence = ret.data?.confidence || 0;
+          const confidence = Math.round(ret.data?.confidence || 0);
+          const isLowConfidence = confidence < 65 && cleanText.length > 0;
+          
           const lines = cleanText.split("\n").filter((l: string) => l.trim().length > 0);
           const words = cleanText.split(/\s+/).filter((w: string) => w.trim().length > 0);
+          const entities = extractStructuredEntitiesFromText(cleanText);
+          const hasUrduOrArabic = hasUrduOrArabicScript(cleanText);
 
           resolve({
             success: true,
             text: cleanText,
             ocrText: cleanText,
-            confidence: Math.round(confidence),
+            confidence,
+            isLowConfidence,
             lines,
             words,
-            provider: "Tesseract.js (Persistent Singleton)",
+            provider: "Tesseract.js (Enhanced Preprocessed)",
+            entities,
+            hasUrduOrArabic,
           });
         } catch (err: any) {
           console.error("[OCRWorkerManager] Recognize error:", err);
-          // If worker crashed, reset instance
+          // If worker crashed, reset instance for clean next attempt
           this.workerInstance = null;
           this.workerPromise = null;
           resolve({
@@ -100,9 +131,18 @@ class OCRWorkerManager {
             text: "",
             ocrText: "",
             confidence: 0,
+            isLowConfidence: true,
             lines: [],
             words: [],
             provider: "Tesseract.js (Fallback)",
+            entities: {
+              dates: [],
+              phoneNumbers: [],
+              emails: [],
+              urls: [],
+              amounts: [],
+              trackingNumbers: [],
+            },
           });
         }
       };
@@ -173,12 +213,17 @@ export async function extractTextServerOCR(
 
     const data = await response.json();
     const extractedText = (data.ocrText || data.text || "").trim();
+    const confidence = data.confidence || 95;
+    const isLowConfidence = confidence < 65;
+    const entities = extractStructuredEntitiesFromText(extractedText);
 
     return {
       success: true,
       text: extractedText,
       ocrText: extractedText,
-      confidence: data.confidence || 95,
+      confidence,
+      isLowConfidence,
+      entities,
       lines: extractedText.split("\n").filter((l: string) => l.trim()),
       words: extractedText.split(/\s+/).filter((w: string) => w.trim()),
       provider: data.provider || "Free Server Vision OCR",

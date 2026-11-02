@@ -111,6 +111,19 @@ export interface ScreenshotItem {
   sha256_hash?: string;
   hash?: string;
   fileHash?: string;
+  perceptual_hash?: string;
+  perceptualHash?: string;
+  pHash?: string;
+  ocrConfidence?: number;
+  isLowConfidenceOCR?: boolean;
+  extractedEntities?: {
+    dates?: string[];
+    phoneNumbers?: string[];
+    emails?: string[];
+    urls?: string[];
+    amounts?: string[];
+    trackingNumbers?: string[];
+  };
   privacy_level?: "normal" | "private" | "highly_sensitive";
   privacyLevel?: "normal" | "private" | "highly_sensitive";
   sensitive_categories?: string[];
@@ -257,6 +270,7 @@ export interface SearchResultMatch {
   score: number;
   matchReason: string;
   highlightSnippet?: string;
+  latencyMs?: number;
 }
 
 export interface SearchHistoryItem {

@@ -1,6 +1,6 @@
 import { ScreenshotItem, CategoryType } from "../types";
 import { loadStoredScreenshots, saveStoredScreenshots, normalizeScreenshotItem } from "./storage";
-import { computeImageSha256 } from "../utils/hashUtils";
+import { computeImageSha256, calculatePerceptualSimilarity, isPerceptualDuplicate } from "../utils/hashUtils";
 
 export interface CandidateAttributes {
   id?: string;
@@ -10,6 +10,9 @@ export interface CandidateAttributes {
   content_hash?: string;
   hash?: string;
   sha256Hash?: string;
+  perceptualHash?: string;
+  perceptual_hash?: string;
+  pHash?: string;
   width?: number;
   height?: number;
   dimensions?: { width: number; height: number };
@@ -37,7 +40,9 @@ export interface CandidateAttributes {
 export interface DuplicateMatchResult {
   isDuplicate: boolean;
   existingItem?: ScreenshotItem;
-  matchedCriteria: Array<"hash" | "dimensions" | "ocr" | "summary" | "fileSize" | "creationTime">;
+  matchedCriteria: Array<"hash" | "pHash" | "visualSimilarity" | "dimensions" | "ocr" | "summary" | "fileSize" | "creationTime">;
+  duplicateLevel?: "exact_hash" | "perceptual_hash" | "visual_similarity";
+  similarityScore?: number;
   reason?: string;
   hasMetadataChanged: boolean;
   updatedMetadataKeys: string[];
@@ -168,9 +173,9 @@ export function checkDuplicateScreenshot(
       existing.title !== "Screenshot" &&
       existing.title !== "Screenshot pending AI...";
 
-    const matchedCriteria: Array<"hash" | "dimensions" | "ocr" | "summary" | "fileSize" | "creationTime"> = [];
+    const matchedCriteria: Array<"hash" | "pHash" | "visualSimilarity" | "dimensions" | "ocr" | "summary" | "fileSize" | "creationTime"> = [];
 
-    // 1. Hash comparison (only if non-empty real hash)
+    // LEVEL 1: Exact Hash Comparison (SHA-256)
     const existingHash = (
       existing.content_hash ||
       existing.contentHash ||
@@ -186,6 +191,21 @@ export function checkDuplicateScreenshot(
       matchedCriteria.push("hash");
     }
 
+    // LEVEL 2: Visual & Perceptual Hash Comparison (pHash/dHash)
+    const candPHash = (candidate.perceptualHash || candidate.perceptual_hash || candidate.pHash || "").trim().toLowerCase();
+    const existingPHash = (existing.perceptual_hash || existing.perceptualHash || existing.pHash || "").trim().toLowerCase();
+
+    let isPHashMatched = false;
+    let perceptualSimilarity = 0;
+    if (candPHash && existingPHash && candPHash.length >= 16 && existingPHash.length >= 16) {
+      perceptualSimilarity = calculatePerceptualSimilarity(candPHash, existingPHash);
+      if (isPerceptualDuplicate(candPHash, existingPHash) || perceptualSimilarity >= 0.91) {
+        isPHashMatched = true;
+        matchedCriteria.push("pHash");
+      }
+    }
+
+    // LEVEL 3: Similarity Comparison for Resized/Compressed Versions (Dimensions, Size, OCR, Summary)
     // 2. Dimensions comparison
     const existingWidth = existing.width || existing.dimensions?.width || 0;
     const existingHeight = existing.height || existing.dimensions?.height || 0;
@@ -239,14 +259,36 @@ export function checkDuplicateScreenshot(
       matchedCriteria.push("summary");
     }
 
-    // Evaluate overall duplicate rule decision: requires strong evidence and completed status
-    const isDuplicate =
-      isExistingCompleted &&
-      (isHashMatched ||
-        (isDimensionsMatched && isFileSizeMatched && isCreationTimeMatched) ||
-        (isOcrMatched && isSummaryMatched));
+    if (perceptualSimilarity >= 0.88 || (isOcrMatched && isDimensionsMatched)) {
+      matchedCriteria.push("visualSimilarity");
+    }
+
+    // Evaluate multi-level duplicate decision
+    const isExactHash = isHashMatched;
+    const isPerceptualMatch = isPHashMatched;
+    const isVisualVariant =
+      (isDimensionsMatched && isFileSizeMatched && isCreationTimeMatched) ||
+      (isOcrMatched && isSummaryMatched) ||
+      (isOcrMatched && isDimensionsMatched);
+
+    const isDuplicate = isExistingCompleted && (isExactHash || isPerceptualMatch || isVisualVariant);
 
     if (isDuplicate) {
+      // Determine duplicate level & similarity
+      const duplicateLevel = isExactHash
+        ? "exact_hash"
+        : isPerceptualMatch
+        ? "perceptual_hash"
+        : "visual_similarity";
+
+      const similarityScore = isExactHash
+        ? 1.0
+        : perceptualSimilarity > 0
+        ? perceptualSimilarity
+        : isOcrMatched
+        ? ocrSimilarity
+        : 0.92;
+
       // Check if metadata changed
       const updatedKeys: string[] = [];
       if (candidate.folder && candidate.folder !== existing.folder) updatedKeys.push("folder");
@@ -260,12 +302,14 @@ export function checkDuplicateScreenshot(
       }
 
       const hasMetadataChanged = updatedKeys.length > 0;
-      const reason = `Matched duplicate via [${matchedCriteria.join(", ")}]`;
+      const reason = `Matched duplicate (${duplicateLevel}, score: ${(similarityScore * 100).toFixed(0)}%) via [${matchedCriteria.join(", ")}]`;
 
       return {
         isDuplicate: true,
         existingItem: existing,
         matchedCriteria,
+        duplicateLevel,
+        similarityScore,
         reason,
         hasMetadataChanged,
         updatedMetadataKeys: updatedKeys,

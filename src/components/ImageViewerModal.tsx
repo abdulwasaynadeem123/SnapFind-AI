@@ -37,6 +37,7 @@ import {
 import { motion, AnimatePresence, PanInfo } from "motion/react";
 import { ScreenshotItem } from "../types";
 import { AskAIBottomSheet } from "./AskAIBottomSheet";
+import { findVisuallySimilar, VisuallySimilarMatch } from "../services/searchEngine";
 
 interface ImageViewerModalProps {
   item: ScreenshotItem | null;
@@ -69,10 +70,17 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
   const [revealSensitive, setRevealSensitive] = useState(false);
 
-  // Collapsible Section Toggles (AI Summary, OCR, Keywords, Tags, Objects, Links & QR open by default; Metadata collapsed)
+  // Compute visually similar and related screenshots
+  const similarItems: VisuallySimilarMatch[] = useMemo(() => {
+    if (!item || !items || items.length <= 1) return [];
+    return findVisuallySimilar(item, items, 8);
+  }, [item, items]);
+
+  // Collapsible Section Toggles (AI Summary, OCR, Similar, Keywords, Tags, Objects, Links & QR open by default; Metadata collapsed)
   const [sections, setSections] = useState({
     summary: true,
     ocr: true,
+    similar: true,
     keywords: true,
     tags: true,
     objects: true,
@@ -284,6 +292,19 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                 {revealSensitive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             )}
+
+            {/* Find Similar Action */}
+            <button
+              onClick={() => {
+                setIsInfoOpen(true);
+                setSections((prev) => ({ ...prev, similar: true }));
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-[#116466]/20 text-[#D1E8E2] hover:bg-[#116466]/30 border border-[#116466]/40 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+              title="Find visually similar screenshots"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#D1E8E2]" />
+              <span className="hidden sm:inline">Find Similar</span>
+            </button>
 
             {/* Share */}
             <button

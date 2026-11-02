@@ -1,8 +1,8 @@
 import { ScreenshotItem, SearchResultMatch } from "../types";
 import { searchEngine } from "./searchEngine";
 import { UsageService } from "./billing/UsageService";
-
 import { searchCache } from "./searchCache";
+import { getAuthBearerHeader } from "./supabase";
 
 export interface AnalyzeResponse {
   success: boolean;
@@ -17,6 +17,9 @@ export interface AnalyzeResponse {
     keywords?: string[];
     tags: string[];
     objects?: string[];
+    source_app?: string;
+    sourceApp?: string;
+    colors?: string[];
     textDensity?: "low" | "medium" | "high";
     keyMetrics?: string[];
     indexedAt: string;
@@ -60,11 +63,13 @@ export async function analyzeScreenshotImage(
 
   try {
     const deviceId = UsageService.getDeviceId();
+    const authHeaders = await getAuthBearerHeader().catch(() => ({}));
     const response = await fetch("/api/analyze-screenshot", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-device-id": deviceId,
+        ...authHeaders,
       },
       body: JSON.stringify({
         base64Data,

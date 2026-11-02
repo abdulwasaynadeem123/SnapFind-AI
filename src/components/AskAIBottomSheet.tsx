@@ -35,28 +35,32 @@ interface AskAIBottomSheetProps {
 
 const PRESET_PROMPTS = [
   {
-    label: "What is this?",
+    label: "What does this screenshot contain?",
     icon: HelpCircle,
-  },
-  {
-    label: "When did I save it?",
-    icon: Clock,
-  },
-  {
-    label: "Summarize",
-    icon: FileText,
   },
   {
     label: "Extract important information",
     icon: FileSearch,
   },
   {
+    label: "Summarize this conversation",
+    icon: FileText,
+  },
+  {
+    label: "What is the tracking number?",
+    icon: Clock,
+  },
+  {
+    label: "Find related screenshots",
+    icon: BookOpen,
+  },
+  {
     label: "Translate",
     icon: Languages,
   },
   {
-    label: "Explain",
-    icon: BookOpen,
+    label: "When did I save it?",
+    icon: Clock,
   },
 ];
 

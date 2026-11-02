@@ -124,9 +124,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // If running inside a popup window, notify parent opener and close self
             if (window.opener && window.opener !== window) {
               try {
+                // Security Hardening: Never send tokens to wildcard '*'. Target strictly current origin.
                 window.opener.postMessage(
                   { type: "OAUTH_AUTH_SUCCESS", session: data.session },
-                  "*"
+                  window.location.origin
                 );
               } catch (e) {
                 console.warn("[AuthContext] Failed to postMessage to popup opener:", e);
@@ -155,9 +156,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (window.opener && window.opener !== window) {
             try {
+              // Security Hardening: Never send tokens to wildcard '*'. Target strictly current origin.
               window.opener.postMessage(
                 { type: "OAUTH_AUTH_SUCCESS", session: data.session },
-                "*"
+                window.location.origin
               );
             } catch (e) {
               console.warn("[AuthContext] Failed to postMessage to popup opener:", e);

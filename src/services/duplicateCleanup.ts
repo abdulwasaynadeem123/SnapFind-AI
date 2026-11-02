@@ -9,9 +9,11 @@
  */
 
 import { ScreenshotItem } from "../types";
-import { computeImageSha256 } from "../utils/hashUtils";
+import { computeImageSha256, calculatePerceptualSimilarity, isPerceptualDuplicate } from "../utils/hashUtils";
 import { saveStoredScreenshots, loadStoredScreenshots } from "./storage";
 import { supabase, isSupabaseConfigured } from "./supabase";
+
+export type DuplicateType = "exact" | "visual_similarity";
 
 export interface DuplicateGroup {
   contentHash: string;
@@ -19,6 +21,8 @@ export interface DuplicateGroup {
   canonicalItem: ScreenshotItem;
   duplicateItems: ScreenshotItem[];
   totalCount: number;
+  duplicateType?: DuplicateType;
+  similarityScore?: number;
 }
 
 /**
@@ -57,6 +61,8 @@ export function compareCanonicalPriority(a: ScreenshotItem, b: ScreenshotItem): 
 
 /**
  * Scan screenshots and identify all duplicate groups for a user
+ * Level 1: Exact SHA-256 match
+ * Level 2: Perceptual pHash similarity >= 91%
  */
 export function findDuplicateGroups(
   screenshots: ScreenshotItem[] = loadStoredScreenshots(),
@@ -65,8 +71,9 @@ export function findDuplicateGroups(
   // Filter out already deleted/trashed items
   const activeItems = screenshots.filter((s) => !s.isDeleted && !s.is_deleted);
 
-  // Group by user_id + content_hash
+  // Group by user_id + content_hash (Level 1: Exact)
   const groupMap = new Map<string, ScreenshotItem[]>();
+  const exactGroupedIds = new Set<string>();
 
   for (const item of activeItems) {
     const itemUserId = item.user_id || item.userId || "guest";
@@ -103,12 +110,62 @@ export function findDuplicateGroups(
       const canonicalItem = sorted[0];
       const duplicateItems = sorted.slice(1);
 
+      items.forEach((it) => exactGroupedIds.add(it.id));
+
       result.push({
         contentHash,
         userId,
         canonicalItem,
         duplicateItems,
         totalCount: items.length,
+        duplicateType: "exact",
+        similarityScore: 1.0,
+      });
+    }
+  }
+
+  // Level 2 & 3: Perceptual pHash similarity for items not in exact duplicate groups
+  const unmappedItems = activeItems.filter((s) => !exactGroupedIds.has(s.id));
+  const pHashGroupedIds = new Set<string>();
+
+  for (let i = 0; i < unmappedItems.length; i++) {
+    const itemA = unmappedItems[i];
+    if (pHashGroupedIds.has(itemA.id)) continue;
+    const pHashA = itemA.perceptual_hash || itemA.perceptualHash || itemA.pHash || "";
+    if (!pHashA || pHashA.length < 16) continue;
+
+    const userA = itemA.user_id || itemA.userId || "guest";
+    const visualGroup: ScreenshotItem[] = [itemA];
+    let highestSim = 0;
+
+    for (let j = i + 1; j < unmappedItems.length; j++) {
+      const itemB = unmappedItems[j];
+      if (pHashGroupedIds.has(itemB.id)) continue;
+      const userB = itemB.user_id || itemB.userId || "guest";
+      if (userA !== "guest" && userB !== "guest" && userA !== userB) continue;
+
+      const pHashB = itemB.perceptual_hash || itemB.perceptualHash || itemB.pHash || "";
+      if (!pHashB || pHashB.length < 16) continue;
+
+      const sim = calculatePerceptualSimilarity(pHashA, pHashB);
+      if (isPerceptualDuplicate(pHashA, pHashB) || sim >= 0.91) {
+        visualGroup.push(itemB);
+        pHashGroupedIds.add(itemB.id);
+        if (sim > highestSim) highestSim = sim;
+      }
+    }
+
+    if (visualGroup.length > 1) {
+      pHashGroupedIds.add(itemA.id);
+      const sorted = [...visualGroup].sort(compareCanonicalPriority);
+      result.push({
+        contentHash: pHashA,
+        userId: userA,
+        canonicalItem: sorted[0],
+        duplicateItems: sorted.slice(1),
+        totalCount: visualGroup.length,
+        duplicateType: "visual_similarity",
+        similarityScore: highestSim || 0.94,
       });
     }
   }

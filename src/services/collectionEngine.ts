@@ -22,6 +22,76 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
     color: "from-zinc-700 to-black",
     description: "Encrypted secure vault for strictly protected personal captures",
   },
+  "Screenshots": {
+    icon: "Image",
+    color: "from-[#116466] to-[#0B0F19]",
+    description: "All captured device screenshots and visual clippings",
+  },
+  "Receipts": {
+    icon: "Receipt",
+    color: "from-emerald-500 to-teal-700",
+    description: "Invoices, payment receipts, store purchases, and utility billing records",
+  },
+  "Documents": {
+    icon: "FileText",
+    color: "from-blue-600 to-slate-800",
+    description: "PDFs, official records, certificates, IDs, and scanned documents",
+  },
+  "Shopping": {
+    icon: "ShoppingBag",
+    color: "from-pink-500 to-rose-700",
+    description: "Online store products, Amazon carts, wishlists, and order deliveries",
+  },
+  "Conversations": {
+    icon: "MessageSquare",
+    color: "from-cyan-500 to-blue-700",
+    description: "WhatsApp chats, Slack discussions, SMS, and messaging threads",
+  },
+  "Social Media": {
+    icon: "Share2",
+    color: "from-purple-500 to-pink-600",
+    description: "Twitter/X posts, Instagram stories, YouTube captures, and viral feeds",
+  },
+  "Travel": {
+    icon: "Plane",
+    color: "from-amber-500 to-orange-700",
+    description: "Flight tickets, boarding passes, hotel reservations, and travel itineraries",
+  },
+  "Education": {
+    icon: "GraduationCap",
+    color: "from-violet-500 to-indigo-800",
+    description: "Course notes, lecture slides, study materials, and certificates",
+  },
+  "Finance": {
+    icon: "DollarSign",
+    color: "from-green-500 to-emerald-800",
+    description: "Bank statements, payment transfers, investments, and financial reports",
+  },
+  "Important Information": {
+    icon: "Sparkles",
+    color: "from-[#116466] to-cyan-700",
+    description: "Screenshots containing tracking numbers, phone numbers, codes, and key entities",
+  },
+  "Favorites": {
+    icon: "Star",
+    color: "from-amber-400 to-yellow-600",
+    description: "Starred, bookmarked, and frequently accessed screenshots",
+  },
+  "💳 Banking & Payments": {
+    icon: "CreditCard",
+    color: "from-[#00FF66] to-emerald-700",
+    description: "Bank transactions, payment confirmations, transfers, and account statements",
+  },
+  "🔒 Private & Sensitive": {
+    icon: "ShieldAlert",
+    color: "from-amber-500 to-rose-700",
+    description: "Identity documents, credentials, private messages, and confidential records",
+  },
+  "🔐 Vault": {
+    icon: "Lock",
+    color: "from-zinc-700 to-black",
+    description: "Encrypted secure vault for strictly protected personal captures",
+  },
   "Travel & Identity": {
     icon: "Plane",
     color: "from-blue-500 to-indigo-600",
@@ -213,6 +283,61 @@ export function deriveAndSyncCollections(
           icon: preset.icon,
         });
       }
+    }
+
+    const addSmartToCol = (colName: string) => {
+      const col = collectionMap.get(colName);
+      if (col) {
+        col.itemCount = (col.itemCount || 0) + (name === colName ? 0 : 1);
+        if (!col.coverImageUrl) col.coverImageUrl = sc.thumbnailUri || sc.imageUrl;
+      } else {
+        const preset = COLLECTION_PRESETS[colName] || {
+          icon: "Folder",
+          color: "from-blue-600 to-indigo-700",
+          description: colName,
+        };
+        collectionMap.set(colName, {
+          id: `col_smart_${colName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+          name: colName,
+          description: preset.description,
+          coverImageUrl: sc.thumbnailUri || sc.imageUrl,
+          isAiGenerated: true,
+          createdAt: new Date().toISOString(),
+          itemCount: 1,
+          color: preset.color,
+          icon: preset.icon,
+        });
+      }
+    };
+
+    // Auto aggregate Favorites
+    if (sc.isFavorite || sc.favorite) {
+      addSmartToCol("Favorites");
+    }
+
+    // Auto aggregate Important Information (entities detected)
+    const hasEntities =
+      (sc.extractedEntities?.trackingNumbers && sc.extractedEntities.trackingNumbers.length > 0) ||
+      (sc.extractedEntities?.phoneNumbers && sc.extractedEntities.phoneNumbers.length > 0) ||
+      (sc.extractedEntities?.emails && sc.extractedEntities.emails.length > 0) ||
+      (sc.keyEntities && sc.keyEntities.length > 0);
+    if (hasEntities) {
+      addSmartToCol("Important Information");
+    }
+
+    // Auto aggregate Conversations
+    if (sc.category === "Chat & Message" || (sc.source_app || sc.sourceApp || "").toLowerCase().includes("whatsapp")) {
+      addSmartToCol("Conversations");
+    }
+
+    // Auto aggregate Receipts
+    if (sc.category === "Receipt & Invoice" || sc.category === "Electricity Bill") {
+      addSmartToCol("Receipts");
+    }
+
+    // Auto aggregate Shopping
+    if (sc.category === "E-Commerce" || (sc.source_app || sc.sourceApp || "").toLowerCase().includes("amazon")) {
+      addSmartToCol("Shopping");
     }
   });
 

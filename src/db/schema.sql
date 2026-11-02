@@ -93,19 +93,19 @@ ALTER TABLE public.screenshots ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can select own screenshots" 
     ON public.screenshots FOR SELECT 
-    USING (auth.uid() = user_id OR user_id IS NULL);
+    USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert own screenshots" 
     ON public.screenshots FOR INSERT 
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update own screenshots" 
     ON public.screenshots FOR UPDATE 
-    USING (auth.uid() = user_id OR user_id IS NULL);
+    USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own screenshots" 
     ON public.screenshots FOR DELETE 
-    USING (auth.uid() = user_id OR user_id IS NULL);
+    USING (auth.uid() = user_id);
 
 -- 3. SEARCH_HISTORY TABLE
 -- Logs past natural language search queries for rapid re-execution.
@@ -127,15 +127,15 @@ ALTER TABLE public.search_history ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can select own search history" 
     ON public.search_history FOR SELECT 
-    USING (auth.uid() = user_id OR user_id IS NULL);
+    USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert own search history" 
     ON public.search_history FOR INSERT 
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own search history" 
     ON public.search_history FOR DELETE 
-    USING (auth.uid() = user_id OR user_id IS NULL);
+    USING (auth.uid() = user_id);
 
 -- 4. SETTINGS TABLE
 -- User preference settings, theme modes, and OCR vision model configurations.
@@ -155,15 +155,15 @@ ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can select own settings" 
     ON public.settings FOR SELECT 
-    USING (auth.uid() = user_id OR user_id IS NULL);
+    USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can update own settings" 
     ON public.settings FOR UPDATE 
-    USING (auth.uid() = user_id OR user_id IS NULL);
+    USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert own settings" 
     ON public.settings FOR INSERT 
-    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    WITH CHECK (auth.uid() = user_id);
 
 -- 5. AUTOMATIC USER CREATION TRIGGER & FUNCTION
 -- Automatically creates profile and settings records when a new user signs up in Supabase Auth.

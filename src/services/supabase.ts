@@ -53,4 +53,19 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   },
 });
 
+/**
+ * Security Helper: Retrieve Bearer authorization header from active Supabase session
+ */
+export async function getAuthBearerHeader(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      return { Authorization: `Bearer ${data.session.access_token}` };
+    }
+  } catch (err) {
+    console.warn("[Auth] Failed to retrieve session for bearer header:", err);
+  }
+  return {};
+}
+
 
