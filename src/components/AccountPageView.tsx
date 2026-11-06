@@ -417,13 +417,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
       {/* Top Standard Page Hero Header */}
       <PageHeroHeader
         type="account"
-        title="Account & Security"
-        description="Manage your personal profile, authenticated credentials, cloud quotas, and device sessions."
-        badge={
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
-            Supabase Auth
-          </span>
-        }
+        title="Account"
         actions={
           <div className="flex items-center gap-2">
             {isAdmin && (
@@ -984,7 +978,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
               <Cloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">Supabase Cloud Storage & Realtime Sync</h3>
+              <h3 className="font-bold text-sm text-white">Encrypted Cloud Storage & Sync</h3>
               <p className="text-xs text-slate-400">
                 Encrypted backup allocation for OCR vectors, embeddings, and media binaries.
               </p>
@@ -1136,7 +1130,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <div>
             <div className="font-bold text-xs text-white">Delete SnapFind Account Permanently</div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              Permanently purges your Supabase user profile, credentials, indexed screenshots, and SQLite cache.
+              Permanently purges your user profile, credentials, indexed screenshots, and local cache.
             </div>
           </div>
           <button
@@ -1345,7 +1339,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
             <form onSubmit={handleChangeEmailSubmit} className="space-y-4 text-xs">
               <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-slate-300 text-[11px] leading-relaxed">
-                Supabase Auth will dispatch a confirmation email to both your old address and your new address for security verification.
+                A confirmation email will be dispatched to both your old address and your new address for security verification.
               </div>
 
               {/* New Email */}
@@ -1420,7 +1414,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              This will permanently delete your user profile, purge all indexed screenshot metadata, delete Supabase storage images, and reset your local database.
+              This will permanently delete your user profile, purge all indexed screenshot metadata, delete cloud storage images, and reset your local database.
             </p>
 
             <div className="space-y-3 text-xs">

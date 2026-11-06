@@ -507,8 +507,7 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
       {/* Header Section */}
       <PageHeroHeader
         type="import"
-        title="Import & Vision Indexing"
-        subtitle="Bring your screenshots into SnapFind. Gemini vision pipeline extracts text, summaries, and key entities automatically."
+        title="Import"
         isDark={isDark}
         actions={
           <button

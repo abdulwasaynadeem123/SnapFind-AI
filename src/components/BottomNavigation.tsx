@@ -3,8 +3,8 @@ import {
   Home,
   Grid,
   Search,
-  Layers,
-  User,
+  Heart,
+  Settings,
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -60,7 +60,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       id: "gallery",
       label: "Gallery",
       icon: Grid,
-      isActive: activeView === "gallery" || activeView === "favorites" || activeView === "trash",
+      isActive: activeView === "gallery" || activeView === "collections",
     },
     {
       id: "search",
@@ -69,16 +69,16 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       isActive: activeView === "search" || activeView === "history",
     },
     {
-      id: "collections",
-      label: "Collections",
-      icon: Layers,
-      isActive: activeView === "collections",
+      id: "favorites",
+      label: "Favorites",
+      icon: Heart,
+      isActive: activeView === "favorites",
     },
     {
       id: "settings",
-      label: "Profile",
-      icon: User,
-      isActive: activeView === "settings" || activeView === "pricing" || activeView === "notifications" || activeView === "feedback",
+      label: "Settings",
+      icon: Settings,
+      isActive: activeView === "settings" || activeView === "pricing" || activeView === "notifications" || activeView === "account" || activeView === "feedback",
     },
   ];
 

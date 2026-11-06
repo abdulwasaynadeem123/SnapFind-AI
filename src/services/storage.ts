@@ -142,7 +142,50 @@ export function normalizeScreenshotItem(item: Partial<ScreenshotItem>): Screensh
     ai_description: item.ai_description || descriptionText,
     description: descriptionText,
     summary: summary,
-    title: item.title || "Screenshot",
+    title: (() => {
+      let resolvedTitle = (item.title || "").trim();
+      const lowerTitle = resolvedTitle.toLowerCase();
+      const isPendingPlaceholder =
+        !resolvedTitle ||
+        lowerTitle === "screenshot pending indexing" ||
+        lowerTitle === "screenshot pending ai..." ||
+        lowerTitle === "pending indexing" ||
+        lowerTitle === "screenshot pending" ||
+        lowerTitle === "pending";
+
+      if (isPendingPlaceholder) {
+        if (fullText || descriptionText) {
+          const fileNameStr = item.fileName || item.file_name || "screenshot.png";
+          const cleanFileNameBase = fileNameStr.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
+          const lowerFileNameBase = cleanFileNameBase.toLowerCase();
+
+          let derivedTitle = "";
+          if (fullText) {
+            const ocrLines = fullText.split("\n").map((l) => l.trim()).filter((l) => l.length > 2);
+            for (const line of ocrLines) {
+              const cleanLine = line.replace(/[^\w\s-]/g, " ").replace(/\s+/g, " ").trim();
+              if (cleanLine.length > 2 && cleanLine.toLowerCase() !== lowerFileNameBase) {
+                const words = cleanLine.split(/\s+/).slice(0, 6).join(" ");
+                if (words.length > 2) {
+                  derivedTitle = words.charAt(0).toUpperCase() + words.slice(1);
+                  break;
+                }
+              }
+            }
+          }
+          if (!derivedTitle && summary && !summary.includes("Imported screenshot") && !summary.includes("Gallery Screenshot")) {
+            const cleanSum = summary.replace(/^Contains text:\s*/i, "").replace(/^Extracted text:\s*/i, "").trim();
+            const words = cleanSum.split(/\s+/).slice(0, 6).join(" ");
+            if (words.length > 2 && words.toLowerCase() !== lowerFileNameBase) {
+              derivedTitle = words.charAt(0).toUpperCase() + words.slice(1);
+            }
+          }
+          return derivedTitle || "Screenshot";
+        }
+        return "Screenshot";
+      }
+      return resolvedTitle;
+    })(),
     category: category,
     collectionName: colName,
     collection: colName,
@@ -292,12 +335,8 @@ export async function initializeStorage(): Promise<void> {
     const provider = StorageManager.getProvider();
 
     cachedScreenshots = await provider.getAllScreenshots();
-    if (!cachedScreenshots || cachedScreenshots.length === 0) {
-      const samples = INITIAL_SAMPLE_SCREENSHOTS.map(normalizeScreenshotItem);
-      if (provider.saveAllScreenshots) {
-        await provider.saveAllScreenshots(samples);
-      }
-      cachedScreenshots = samples;
+    if (!cachedScreenshots) {
+      cachedScreenshots = [];
     }
 
     cachedSettings = await provider.loadSettings();
@@ -339,14 +378,14 @@ export function loadStoredScreenshots(): ScreenshotItem[] {
     const raw = localStorage.getItem("snapfind_screenshots_v1");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         cachedScreenshots = parsed.map(normalizeScreenshotItem);
         return cachedScreenshots;
       }
     }
   } catch (err) {}
 
-  cachedScreenshots = INITIAL_SAMPLE_SCREENSHOTS.map(normalizeScreenshotItem);
+  cachedScreenshots = [];
   return cachedScreenshots;
 }
 

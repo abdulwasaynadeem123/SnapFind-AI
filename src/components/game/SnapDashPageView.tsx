@@ -49,8 +49,7 @@ export const SnapDashPageView: React.FC<SnapDashPageViewProps> = ({
       {/* Top 3D Game Hero Header */}
       <PageHeroHeader
         type="snapdash"
-        title="SnapDash Cyber Flight"
-        subtitle="Endless cyber flight runner. Dodge neural obstacles, collect OCR core gems, and climb the real-time global leaderboard."
+        title="Game"
         isDark={isDark}
         actions={
           <div className="flex items-center gap-2.5">

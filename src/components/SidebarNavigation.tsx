@@ -6,19 +6,13 @@ import {
   Search,
   Layers,
   Heart,
-  UploadCloud,
-  CreditCard,
-  Crown,
   Sparkles,
-  Bell,
   Settings,
-  User,
   Trash2,
   PanelLeftClose,
   PanelLeft,
   X,
   ShieldCheck,
-  Gamepad2,
   MessageSquarePlus,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -86,33 +80,33 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
     if (onCloseMobile) onCloseMobile();
   };
 
-  // Top primary navigation items matching exact prompt requirements:
-  // Logo, Dashboard, All Screenshots, Smart Snaps, Collections, Favorites, Trash, Settings
-  const primaryNavItems = [
+  const isAdmin =
+    user?.email?.toLowerCase().trim() === "ash.mary.2006@gmail.com" ||
+    user?.role === "admin" ||
+    (user as any)?.user_metadata?.role === "admin" ||
+    (user as any)?.app_metadata?.role === "admin";
+
+  // Essential navigation items with standard names:
+  // Home, Gallery, Search, Favorites, Collections, Demo, Feedback, Settings, Trash (+ Admin if admin)
+  const navItems = [
     {
       id: "dashboard" as NavViewType,
-      label: "Dashboard",
+      label: "Home",
       icon: LayoutDashboard,
       isActive: activeView === "dashboard" || activeView === "landing" || activeView === "timeline",
     },
     {
       id: "gallery" as NavViewType,
-      label: "All Screenshots",
+      label: "Gallery",
       icon: ImageIcon,
       count: indexedCount,
       isActive: activeView === "gallery",
     },
     {
       id: "search" as NavViewType,
-      label: "Smart Snaps",
-      icon: Sparkles,
+      label: "Search",
+      icon: Search,
       isActive: activeView === "search" || activeView === "history",
-    },
-    {
-      id: "collections" as NavViewType,
-      label: "Collections",
-      icon: Layers,
-      isActive: activeView === "collections",
     },
     {
       id: "favorites" as NavViewType,
@@ -122,89 +116,46 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
       isActive: activeView === "favorites",
     },
     {
+      id: "collections" as NavViewType,
+      label: "Collections",
+      icon: Layers,
+      isActive: activeView === "collections",
+    },
+    {
+      id: "demo" as NavViewType,
+      label: "Demo",
+      icon: Sparkles,
+      isActive: activeView === "demo",
+    },
+    {
+      id: "feedback" as NavViewType,
+      label: "Feedback",
+      icon: MessageSquarePlus,
+      isActive: activeView === "feedback",
+    },
+    {
+      id: "settings" as NavViewType,
+      label: "Settings",
+      icon: Settings,
+      isActive: activeView === "settings" || activeView === "account" || activeView === "notifications" || activeView === "pricing",
+    },
+    {
       id: "trash" as NavViewType,
       label: "Trash",
       icon: Trash2,
       count: trashCount,
       isActive: activeView === "trash",
     },
-    {
-      id: "settings" as NavViewType,
-      label: "Settings",
-      icon: Settings,
-      isActive: activeView === "settings",
-    },
-  ];
-
-  // Secondary tools (Import, Demo, Game)
-  const secondaryNavItems = [
-    {
-      id: "import" as NavViewType,
-      label: "Import Vault",
-      icon: UploadCloud,
-      isActive: activeView === "import",
-    },
-    {
-      id: "demo" as NavViewType,
-      label: "Interactive Demo",
-      icon: Search,
-      isActive: activeView === "demo",
-    },
-    {
-      id: "game" as NavViewType,
-      label: "SnapDash Game",
-      icon: Gamepad2,
-      isActive: activeView === "game",
-    },
-  ];
-
-  // Business items (Plans & Pricing)
-  const businessItems = [
-    {
-      id: "pricing" as NavViewType,
-      label: "Plans & Pricing",
-      icon: CreditCard,
-      isActive: activeView === "pricing" || activeView === "founders",
-    },
-  ];
-
-  const isAdmin =
-    user?.email?.toLowerCase().trim() === "ash.mary.2006@gmail.com" ||
-    user?.role === "admin" ||
-    (user as any)?.user_metadata?.role === "admin" ||
-    (user as any)?.app_metadata?.role === "admin";
-
-  // Bottom items (Account, Notifications, Admin, Feedback)
-  const bottomItems = [
     ...(isAdmin
       ? [
           {
             id: "admin-payments" as NavViewType,
-            label: "Admin Console",
+            label: "Admin",
             icon: ShieldCheck,
             isActive: activeView === "admin-payments",
           },
         ]
       : []),
-    {
-      id: "feedback" as NavViewType,
-      label: "Give Feedback",
-      icon: MessageSquarePlus,
-      isActive: activeView === "feedback",
-    },
-    {
-      id: "notifications" as NavViewType,
-      label: "Notifications",
-      icon: Bell,
-      count: unreadNotificationCount,
-      isActive: activeView === "notifications",
-    },
-    {
-      id: "account" as NavViewType,
-      label: "Account Profile",
-      icon: User,
-      isActive: activeView === "account",
-    },
   ];
 
   // Render a navigation button with high-contrast palette aesthetic
@@ -320,53 +271,8 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
         </div>
 
         {/* Scrollable Middle Navigation Menu */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 py-1 space-y-4 pr-0.5">
-          {/* Top Primary Navigation Group */}
-          <div className="space-y-1">
-            {!isCollapsed && (
-              <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-                Dashboard &amp; Vault
-              </div>
-            )}
-            {primaryNavItems.map((item) => renderNavButton(item, isCollapsed))}
-          </div>
-
-          {/* Secondary Tools Section */}
-          <div className="pt-2 border-t border-[#334155]/80">
-            {!isCollapsed && (
-              <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-                Tools &amp; Simulation
-              </div>
-            )}
-            <div className="space-y-1">
-              {secondaryNavItems.map((item) => renderNavButton(item, isCollapsed))}
-            </div>
-          </div>
-
-          {/* Business Section (Plans & Pricing) */}
-          <div className="pt-2 border-t border-[#334155]/80">
-            {!isCollapsed && (
-              <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-                Plans &amp; Upgrades
-              </div>
-            )}
-
-            <div className="space-y-1">
-              {businessItems.map((item) => renderNavButton(item, isCollapsed))}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Navigation Section */}
-        <div className="shrink-0 pt-2 border-t border-[#334155]">
-          {!isCollapsed && (
-            <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-              Workspace
-            </div>
-          )}
-          <div className="space-y-1">
-            {bottomItems.map((item) => renderNavButton(item, isCollapsed))}
-          </div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 py-2 space-y-1 pr-0.5">
+          {navItems.map((item) => renderNavButton(item, isCollapsed))}
         </div>
       </aside>
 
@@ -412,36 +318,9 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
                   </button>
                 </div>
 
-                {/* Primary Navigation */}
+                {/* Navigation Items */}
                 <div className="space-y-1">
-                  <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-                    Dashboard &amp; Vault
-                  </div>
-                  {primaryNavItems.map((item) => renderNavButton(item, false))}
-                </div>
-
-                {/* Tools Section */}
-                <div className="pt-2 border-t border-[#334155] space-y-1">
-                  <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-                    Tools &amp; Simulation
-                  </div>
-                  {secondaryNavItems.map((item) => renderNavButton(item, false))}
-                </div>
-
-                {/* Business Section */}
-                <div className="pt-2 border-t border-[#334155] space-y-1">
-                  <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-                    Plans &amp; Pricing
-                  </div>
-                  {businessItems.map((item) => renderNavButton(item, false))}
-                </div>
-
-                {/* Bottom Navigation */}
-                <div className="pt-2 border-t border-[#334155] space-y-1">
-                  <div className="px-3 pb-1 text-[10px] font-mono font-semibold tracking-wider uppercase text-[#94A3B8]/70">
-                    System &amp; Account
-                  </div>
-                  {bottomItems.map((item) => renderNavButton(item, false))}
+                  {navItems.map((item) => renderNavButton(item, false))}
                 </div>
               </div>
 

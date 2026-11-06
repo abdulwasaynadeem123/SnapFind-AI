@@ -6,7 +6,7 @@ import {
   normalizeScreenshotItem,
   StorageManager,
 } from "./storage.ts";
-import { extractTextServerOCR } from "./ocr";
+import { extractTextClientOCR, extractTextServerOCR } from "./ocr";
 import { analyzeScreenshotImage } from "./api";
 import { determinePrimaryTitle, printPipelineDebuggingReport } from "./pipelineAudit";
 import { processingQueue } from "./processingQueue";
@@ -661,13 +661,18 @@ class IncrementalIndexingEngine {
         visualFeatures = (analysis as any).visual_features || (analysis as any).visualFeatures;
       }
 
-      // Standalone OCR fallback if AI was unavailable or produced no text
+      // Automatic Tesseract.js client OCR if AI was unavailable or produced no text
       if (!ocrText && optimizedBase64) {
         try {
-          const ocrRes = await extractTextServerOCR(optimizedBase64, fileName);
-          ocrText = (ocrRes.text || ocrRes.ocrText || "").trim();
-        } catch (e) {
-          console.warn("[IndexingEngine] Standalone OCR fallback error:", e);
+          const clientOcrRes = await extractTextClientOCR(optimizedBase64);
+          ocrText = (clientOcrRes.text || clientOcrRes.ocrText || "").trim();
+        } catch {
+          try {
+            const ocrRes = await extractTextServerOCR(optimizedBase64, fileName);
+            ocrText = (ocrRes.text || ocrRes.ocrText || "").trim();
+          } catch (e) {
+            console.warn("[IndexingEngine] OCR fallback notice:", e);
+          }
         }
       }
 

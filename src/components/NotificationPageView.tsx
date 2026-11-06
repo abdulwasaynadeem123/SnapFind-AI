@@ -214,8 +214,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
       {/* Top Breadcrumb & Hero Header */}
       <PageHeroHeader
         type="notifications"
-        title="Notifications & Alert Center"
-        subtitle="Real-time event stream for vision indexing, security, sync backups, and subscriptions."
+        title="Notifications"
         isDark={isDark}
         actions={
           <div className="flex items-center gap-2 flex-wrap">

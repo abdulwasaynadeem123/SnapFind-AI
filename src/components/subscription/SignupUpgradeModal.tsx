@@ -156,7 +156,7 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
                   ? `Your account is permanently upgraded with Lifetime Pro as Founder #${founderNumber || "VIP"}.`
                   : founderInfo.remainingSpots > 0
                   ? "As one of our first 50 pioneer members, you are eligible for 100% free Lifetime Pro access with an official Crown tag!"
-                  : "Supercharge your workflow with instant OCR, multimodal Gemini AI search, and cloud sync."}
+                  : "Supercharge your workflow with instant OCR, multimodal AI vision search, and cloud sync."}
               </p>
             </div>
 
@@ -208,7 +208,7 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>🧠 Gemini Multimodal Vision AI</span>
+                      <span>🧠 Multimodal Vision AI</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />

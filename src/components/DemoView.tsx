@@ -21,6 +21,7 @@ import { ScreenshotItem, SearchResultMatch, CategoryType } from "../types";
 import { INITIAL_SAMPLE_SCREENSHOTS } from "../data/sampleScreenshots";
 import { instantKeywordSearch } from "../services/api";
 import { ScreenshotCard } from "./ScreenshotCard";
+import { PageHeroHeader } from "./PageHeroHeader";
 
 interface DemoViewProps {
   onOpenAuth: () => void;
@@ -89,47 +90,32 @@ export const DemoView: React.FC<DemoViewProps> = ({
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto select-text">
-      {/* Demo Notice Banner */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6 text-white space-y-3 shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 border border-zinc-700">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-700 font-mono text-[10px] font-bold uppercase tracking-wider mb-1">
-                Interactive Public Demo
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-white">
-                Explore SnapFind Visual Search (Read-Only Demo Mode)
-              </h2>
-              <p className="text-xs text-zinc-400 max-w-2xl mt-0.5">
-                No sign-in required. This demo operates entirely on synthetic sample screenshots with full Vision OCR and keyword indexing. Your personal screenshots remain completely isolated in your private vault.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+      {/* Page Hero Header */}
+      <PageHeroHeader
+        type="demo"
+        title="Demo"
+        isDark={true}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onNavigateToGallery}
+              type="button"
+              className="px-3.5 py-2 rounded-xl bg-[#1E293B] hover:bg-[#243347] border border-[#334155] text-[#D1E8E2] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Exit Demo</span>
+            </button>
             <button
               onClick={onLoadSamplesToVault}
               type="button"
-              className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-zinc-200 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#116466]/20"
             >
-              <CheckCircle2 className="w-4 h-4 text-zinc-300" />
-              <span>Copy to My Vault</span>
-            </button>
-
-            <button
-              onClick={onOpenAuth}
-              type="button"
-              className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-98"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Create Free Account</span>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Copy to Vault</span>
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Interactive Search Controls */}
       <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-950 space-y-4 shadow-xl">
@@ -274,69 +260,6 @@ export const DemoView: React.FC<DemoViewProps> = ({
         </div>
       )}
 
-      {/* Feature Comparison / Account Upsell Explainer */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 sm:p-8 space-y-6">
-        <div className="text-center max-w-2xl mx-auto space-y-1.5">
-          <h3 className="text-lg font-bold text-white">
-            What Requires a SnapFind Account?
-          </h3>
-          <p className="text-xs text-zinc-400">
-            The demo is read-only and publicly accessible. Here is how your experience expands with a free account:
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 text-white flex items-center justify-center font-bold text-xs font-mono">
-              01
-            </div>
-            <h4 className="font-semibold text-sm text-white">Private Vault &amp; Uploads</h4>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Upload your own real screenshot images from computer or mobile camera roll, indexed with private local storage.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 text-white flex items-center justify-center font-bold text-xs font-mono">
-              02
-            </div>
-            <h4 className="font-semibold text-sm text-white">PIN Lock &amp; Privacy Shield</h4>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Automatically detect sensitive financial and ID documents. Protect them behind biometric or numeric PIN codes.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 text-white flex items-center justify-center font-bold text-xs font-mono">
-              03
-            </div>
-            <h4 className="font-semibold text-sm text-white">Multi-Device Cloud Sync</h4>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Synchronize your visual index securely across Web and Android, with automatic trash retention and restore.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            onClick={onOpenAuth}
-            type="button"
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98 shadow-sm"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Create Free Account</span>
-          </button>
-
-          <button
-            onClick={onNavigateToGallery}
-            type="button"
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-[#30363D] bg-[#1E2226] hover:bg-[#262C32] text-[#F5F7FA] text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>Go to My Personal Vault</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

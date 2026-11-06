@@ -326,8 +326,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
       {!searchQuery && (
         <PageHeroHeader
           type="gallery"
-          title="Visual Knowledge Vault"
-          subtitle="Explore, organize, and retrieve your screenshots with multi-select actions, categorized filtering, and OCR text extraction."
+          title="Gallery"
           isDark={isDark}
         />
       )}
@@ -526,12 +525,12 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
           <div className="space-y-1 max-w-md mx-auto">
             <h3 className="text-lg font-bold tracking-tight text-[#F1F5F9]">
               {screenshots.length === 0
-                ? "Your Screenshot Vault is Ready."
+                ? "Your Private Vault is Ready & Clean"
                 : "No matching screenshots found."}
             </h3>
             <p className="text-xs text-[#94A3B8] leading-relaxed">
               {screenshots.length === 0
-                ? "Upload or drag screenshots to index text, extract amounts, and categorize them automatically."
+                ? "Your private gallery starts empty for complete data isolation. Upload screenshots to index OCR text locally, or explore our read-only demo gallery."
                 : searchQuery || localSearch
                 ? "No screenshots matched your current filter. Try clearing terms or explore other categories."
                 : "We'll organize and index your screenshots automatically with privacy protection."}
@@ -558,9 +557,10 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             {screenshots.length === 0 && onOpenDemo && (
               <button
                 onClick={onOpenDemo}
-                className="px-4 py-2.5 rounded-2xl border border-[#334155] text-[#F1F5F9] hover:bg-[#243347] text-xs font-semibold transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-2xl border border-[#116466]/50 bg-[#116466]/10 text-[#D1E8E2] hover:bg-[#116466]/20 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
               >
-                Try Interactive Demo
+                <Sparkles className="w-3.5 h-3.5 text-[#116466]" />
+                <span>Explore Demo Gallery</span>
               </button>
             )}
             {screenshots.length === 0 && onLoadSamplePack && (
@@ -568,7 +568,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 onClick={onLoadSamplePack}
                 className="px-4 py-2.5 rounded-2xl border border-[#334155] hover:bg-[#243347] text-[#94A3B8] hover:text-[#F1F5F9] text-xs font-semibold transition-all cursor-pointer"
               >
-                Load 6 Sample Files
+                Load Sample Pack (Optional)
               </button>
             )}
           </div>

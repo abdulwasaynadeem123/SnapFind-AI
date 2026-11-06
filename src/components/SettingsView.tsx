@@ -1,75 +1,24 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { SnapFindLogo } from "./SnapFindLogo";
+import React, { useState } from "react";
 import {
-  Settings,
-  Sliders,
-  Palette,
-  Bell,
-  HardDrive,
-  Cpu,
-  Sparkles,
-  Shield,
   User,
-  Info,
-  Moon,
-  Sun,
-  Monitor,
+  Palette,
+  Shield,
+  Sliders,
   CheckCircle2,
   AlertTriangle,
-  RefreshCw,
-  Trash2,
   Lock,
-  Mail,
-  Zap,
-  Key,
-  ShieldCheck,
+  LogOut,
+  Moon,
+  Sun,
+  Trash2,
+  Loader2,
   Check,
-  ChevronRight,
-  Database,
-  Cloud,
-  FileText,
-  Clock,
-  Layers,
-  Search,
-  SlidersHorizontal,
-  FolderOpen,
-  Volume2,
-  VolumeX,
-  Smartphone,
-  Flame,
-  Globe,
-  ExternalLink,
-  Download,
-  UploadCloud,
-  Copy,
-  Activity,
-  Terminal,
-  Fingerprint,
-  MessageSquarePlus,
-  Crown,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 import { AppSettings, UserProfile, ScreenshotItem } from "../types";
 import { useAuth } from "../context/AuthContext";
-import { SyncEngine, SyncState } from "../services/syncEngine";
-import { AccountPageView } from "./AccountPageView";
-import { FeedbackView } from "./FeedbackView";
-import { YourUsageCard } from "./subscription/YourUsageCard";
 import { PageHeroHeader } from "./PageHeroHeader";
-import { APP_VERSION, APP_VERSION_CODE, APP_VERSION_NAME, isNewerVersion } from "../config/version";
-import { UpdateService, UpdateState } from "../services/updateService";
-import { UpdateModal } from "./update/UpdateModal";
 
-export type SettingsSectionId =
-  | "general"
-  | "appearance"
-  | "notifications"
-  | "storage"
-  | "privacy"
-  | "account"
-  | "founder"
-  | "feedback"
-  | "about";
+export type SettingsSectionId = "account" | "appearance" | "privacy" | "preferences";
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -87,18 +36,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onUpdateSettings,
   user,
-  isDark,
+  isDark = true,
   indexedCount,
   onResetAllData,
   onOpenAuth,
-  screenshots = [],
-  initialSection = "general",
+  initialSection = "account",
 }) => {
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>(initialSection);
-  const [searchFilter, setSearchFilter] = useState<string>("");
-  const { updateName, changePassword, resetPassword, deleteAccount } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingsSectionId>(initialSection);
+  const { updateName, changePassword, signOut, deleteAccount } = useAuth();
 
-  // Account State
+  // Name edit state
   const [nameInput, setNameInput] = useState(user.name || "");
   const [nameLoading, setNameLoading] = useState(false);
   const [nameMsg, setNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -109,67 +56,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [passLoading, setPassLoading] = useState(false);
   const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Reset password email state
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetMsg, setResetMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  // Clear data confirmation modal
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
 
-  // Delete account confirmation
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // Delete account modal
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  // Clear cache confirmation
-  const [showClearCacheModal, setShowClearCacheModal] = useState(false);
-
-  // Sync state
-  const [syncState, setSyncState] = useState<SyncState>(() => SyncEngine.getState());
-
-  // Copy success indicator
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
-  // App Update State
-  const [updateState, setUpdateState] = useState<UpdateState>(() => UpdateService.getState());
-  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-
-  useEffect(() => {
-    return UpdateService.subscribe((state) => {
-      setUpdateState(state);
-    });
-  }, []);
-
-  const handleManualCheckUpdates = async () => {
-    setIsCheckingUpdates(true);
-    try {
-      const release = await UpdateService.checkForUpdates(true);
-      if (release && isNewerVersion(release.version, updateState.currentVersion)) {
-        setShowUpdateModal(true);
-      }
-    } finally {
-      setIsCheckingUpdates(false);
-    }
-  };
-
-  useEffect(() => {
-    return SyncEngine.subscribe((state) => {
-      setSyncState(state);
-    });
-  }, []);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!nameInput.trim()) return;
     setNameLoading(true);
     setNameMsg(null);
-    const res = await updateName(nameInput);
+    const res = await updateName(nameInput.trim());
     setNameLoading(false);
     if (res.error) {
       setNameMsg({ type: "error", text: res.error });
     } else {
-      setNameMsg({ type: "success", text: "Display name updated successfully!" });
+      setNameMsg({ type: "success", text: "Name updated." });
     }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setPassMsg({ type: "error", text: "Password must be at least 6 characters." });
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setPassMsg({ type: "error", text: "Passwords do not match." });
       return;
@@ -181,1054 +96,531 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (res.error) {
       setPassMsg({ type: "error", text: res.error });
     } else {
-      setPassMsg({ type: "success", text: "Password updated successfully!" });
+      setPassMsg({ type: "success", text: "Password updated successfully." });
       setNewPassword("");
       setConfirmPassword("");
     }
   };
 
-  const handleSendResetEmail = async () => {
-    setResetLoading(true);
-    setResetMsg(null);
-    const res = await resetPassword(user.email);
-    setResetLoading(false);
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError("Please enter your current password to confirm.");
+      return;
+    }
+    setDeleteLoading(true);
+    setDeleteError(null);
+    const res = await deleteAccount(deletePassword);
+    setDeleteLoading(false);
     if (res.error) {
-      setResetMsg({ type: "error", text: res.error });
+      setDeleteError(res.error);
     } else {
-      setResetMsg({ type: "success", text: `Password recovery link sent to ${user.email}` });
+      setShowDeleteAccountModal(false);
     }
   };
 
-  const handleDeleteAccountConfirm = async () => {
-    setDeleteLoading(true);
-    await deleteAccount();
-    setDeleteLoading(false);
-    setShowDeleteModal(false);
-  };
-
-  const handleCopy = (text: string, keyName: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(keyName);
-    setTimeout(() => setCopiedKey(null), 2000);
-  };
-
-  // Nav Sections Definition
-  const sections: {
-    id: SettingsSectionId;
-    label: string;
-    description: string;
-    icon: React.ReactNode;
-    color: string;
-    badge?: string;
-  }[] = [
-    {
-      id: "general",
-      label: "General",
-      description: "Startup, confirmation prompts, language",
-      icon: <Sliders className="w-4 h-4" />,
-      color: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-    },
-    {
-      id: "appearance",
-      label: "Appearance",
-      description: "Theme, accents, layout density & animations",
-      icon: <Palette className="w-4 h-4" />,
-      color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-    },
-    {
-      id: "notifications",
-      label: "Notifications",
-      description: "Real-time alerts, OCR & AI updates, sounds",
-      icon: <Bell className="w-4 h-4" />,
-      color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-    },
-    {
-      id: "storage",
-      label: "Storage",
-      description: "SQLite cache, sync state & cloud quota",
-      icon: <HardDrive className="w-4 h-4" />,
-      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-    },
-    {
-      id: "privacy",
-      label: "Privacy",
-      description: "Local encryption, telemetry, zero-leak policy",
-      icon: <Shield className="w-4 h-4" />,
-      color: "text-teal-400 bg-teal-500/10 border-teal-500/20",
-    },
-    {
-      id: "account",
-      label: "Account",
-      description: "Profile, password recovery & security",
-      icon: <User className="w-4 h-4" />,
-      color: "text-rose-400 bg-rose-500/10 border-rose-500/20",
-    },
-    ...(user.entitlement?.isFounder || user.plan === "Founder"
-      ? [
-          {
-            id: "founder" as SettingsSectionId,
-            label: "Founder",
-            description: "Founder recognition banner & crown tag display",
-            icon: <Crown className="w-4 h-4 text-amber-400" />,
-            color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-            badge: user.entitlement?.founderNumber ? `#${user.entitlement.founderNumber}` : "VIP",
-          },
-        ]
-      : []),
-    {
-      id: "feedback",
-      label: "Feedback",
-      description: "Bug reports, feature requests & product feedback",
-      icon: <MessageSquarePlus className="w-4 h-4" />,
-      color: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-    },
-    {
-      id: "about",
-      label: "About",
-      description: "Version, updates, system status & build metadata",
-      icon: <Info className="w-4 h-4" />,
-      color: "text-slate-400 bg-slate-500/10 border-slate-500/20",
-      badge: APP_VERSION_NAME,
-    },
+  const tabs: { id: SettingsSectionId; label: string; icon: any }[] = [
+    { id: "account", label: "Account", icon: User },
+    { id: "appearance", label: "Appearance", icon: Palette },
+    { id: "privacy", label: "Privacy", icon: Shield },
+    { id: "preferences", label: "Preferences", icon: Sliders },
   ];
 
-  // Filter sections by search query if present
-  const filteredSections = useMemo(() => {
-    if (!searchFilter.trim()) return sections;
-    const q = searchFilter.toLowerCase();
-    return sections.filter(
-      (s) => s.label.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
-    );
-  }, [sections, searchFilter]);
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-16">
-      {/* Top 3D Header Banner */}
+    <div className="max-w-4xl mx-auto space-y-6 pb-20 px-3 sm:px-4">
       <PageHeroHeader
         type="settings"
-        title="Workspace Preferences"
-        subtitle="Configure system defaults, dark/light appearance, Gemini AI models, Supabase cloud sync, and security encryption."
+        title="Settings"
         isDark={isDark}
-        actions={
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#116466]/20 border border-[#116466]/40 text-[#D1E8E2] text-xs font-semibold">
-            <CheckCircle2 className="w-4 h-4 text-[#D1E8E2]" />
-            <span>Auto-Saved Local & Cloud</span>
-          </div>
-        }
       />
 
-      {/* Main Settings Layout: Side Navigation + Content Pane */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start min-w-0">
-        {/* Mobile Horizontal Section Tabs Bar */}
-        <div className="lg:hidden w-full overflow-x-auto scrollbar-none pb-2">
-          <div className="flex items-center gap-2">
-            {sections.map((sec) => {
-              const isSelected = activeSection === sec.id;
-              return (
+      {/* Clean Tab Bar */}
+      <div className="flex items-center gap-2 border-b border-[#334155] pb-3 overflow-x-auto scrollbar-none">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                isActive
+                  ? "bg-[#116466] text-[#F1F5F9] border border-[#116466] shadow-md shadow-[#116466]/20"
+                  : "bg-[#1E293B] text-[#94A3B8] border border-[#334155] hover:text-[#F1F5F9] hover:border-[#116466]"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 1. ACCOUNT SETTINGS */}
+      {activeTab === "account" && (
+        <div className="space-y-6">
+          {user.isLoggedIn ? (
+            <>
+              {/* Profile info */}
+              <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl space-y-4">
+                <h3 className="text-sm font-bold text-[#F1F5F9]">Profile Information</h3>
+                <form onSubmit={handleUpdateName} className="space-y-4 max-w-md">
+                  <div className="space-y-1.5 text-xs">
+                    <label className="text-[#94A3B8] font-medium">Display Name</label>
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19]/80 border border-[#334155] focus:border-[#116466] text-xs text-[#F1F5F9] outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 text-xs">
+                    <label className="text-[#94A3B8] font-medium">Email</label>
+                    <input
+                      type="email"
+                      value={user.email}
+                      disabled
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19]/40 border border-[#334155] text-xs text-[#94A3B8] cursor-not-allowed"
+                    />
+                  </div>
+
+                  {nameMsg && (
+                    <div
+                      className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                        nameMsg.type === "success"
+                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                          : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                      }`}
+                    >
+                      {nameMsg.type === "success" ? (
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                      )}
+                      <span>{nameMsg.text}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={nameLoading}
+                    className="px-4 py-2 rounded-xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {nameLoading ? "Saving..." : "Save Name"}
+                  </button>
+                </form>
+              </div>
+
+              {/* Change Password */}
+              <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl space-y-4">
+                <h3 className="text-sm font-bold text-[#F1F5F9]">Change Password</h3>
+                <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                  <div className="space-y-1.5 text-xs">
+                    <label className="text-[#94A3B8] font-medium">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19]/80 border border-[#334155] focus:border-[#116466] text-xs text-[#F1F5F9] outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 text-xs">
+                    <label className="text-[#94A3B8] font-medium">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19]/80 border border-[#334155] focus:border-[#116466] text-xs text-[#F1F5F9] outline-none"
+                    />
+                  </div>
+
+                  {passMsg && (
+                    <div
+                      className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                        passMsg.type === "success"
+                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                          : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                      }`}
+                    >
+                      {passMsg.type === "success" ? (
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                      )}
+                      <span>{passMsg.text}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={passLoading || !newPassword}
+                    className="px-4 py-2 rounded-xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {passLoading ? "Updating..." : "Update Password"}
+                  </button>
+                </form>
+              </div>
+
+              {/* Sign out */}
+              <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-[#F1F5F9]">Sign Out</h3>
+                  <p className="text-xs text-[#94A3B8] mt-0.5">
+                    Sign out of your active session on this device.
+                  </p>
+                </div>
                 <button
-                  key={sec.id}
-                  onClick={() => setActiveSection(sec.id)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-[#116466] text-white shadow-md shadow-[#116466]/30 border border-[#116466]"
-                      : isDark
-                      ? "bg-[#1E293B] border border-[#334155] text-slate-400 hover:text-white"
-                      : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
+                  type="button"
+                  onClick={() => signOut()}
+                  className="px-4 py-2 rounded-xl bg-[#0B0F19] hover:bg-[#2C3531] text-rose-400 border border-rose-500/30 hover:border-rose-500/60 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  <div className="shrink-0">{sec.icon}</div>
-                  <span>{sec.label}</span>
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign out</span>
                 </button>
-              );
-            })}
+              </div>
+            </>
+          ) : (
+            /* Guest View */
+            <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl text-center space-y-3">
+              <User className="w-10 h-10 mx-auto text-[#D1E8E2] opacity-80" />
+              <h3 className="text-sm font-bold text-[#F1F5F9]">Guest Session</h3>
+              <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
+                You are currently browsing as a guest with private local storage. Sign in or create an account to back up and sync across devices.
+              </p>
+              {onOpenAuth && (
+                <button
+                  type="button"
+                  onClick={onOpenAuth}
+                  className="px-5 py-2.5 rounded-xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] text-xs font-bold transition-all shadow-md shadow-[#116466]/20 cursor-pointer"
+                >
+                  Sign in or Create Account
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2. APPEARANCE SETTINGS */}
+      {activeTab === "appearance" && (
+        <div className="space-y-6">
+          <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#F1F5F9]">Theme</h3>
+              <p className="text-xs text-[#94A3B8] mt-0.5">
+                Select your preferred visual style.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+              <button
+                type="button"
+                onClick={() => onUpdateSettings({ theme: "dark" })}
+                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                  settings.theme === "dark" || isDark
+                    ? "bg-[#116466]/20 border-[#116466] text-[#F1F5F9] shadow-md shadow-[#116466]/20"
+                    : "bg-[#0B0F19]/60 border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9]"
+                }`}
+              >
+                <div className="p-2 rounded-lg bg-[#0B0F19] border border-[#334155]">
+                  <Moon className="w-5 h-5 text-[#D1E8E2]" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-[#F1F5F9]">Dark Mode</div>
+                  <div className="text-[11px] text-[#94A3B8]">Forest Slate & Cyber Teal</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onUpdateSettings({ theme: "light" })}
+                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                  settings.theme === "light" && !isDark
+                    ? "bg-[#116466]/20 border-[#116466] text-[#F1F5F9] shadow-md shadow-[#116466]/20"
+                    : "bg-[#0B0F19]/60 border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9]"
+                }`}
+              >
+                <div className="p-2 rounded-lg bg-[#0B0F19] border border-[#334155]">
+                  <Sun className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-[#F1F5F9]">Light Mode</div>
+                  <div className="text-[11px] text-[#94A3B8]">Clean high-contrast theme</div>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Left Navigation Sidebar (Desktop) */}
-        <div
-          className={`hidden lg:block lg:col-span-4 p-3 rounded-3xl border space-y-2 sticky top-24 min-w-0 ${
-            isDark ? "bg-[#1E293B] border-[#334155] backdrop-blur-xl" : "bg-white border-slate-200"
-          }`}
-        >
-          {/* Quick Search inside Settings */}
-          <div className="relative px-1 pt-1 pb-2">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Search settings..."
-              className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs border outline-none transition-all ${
-                isDark
-                  ? "bg-[#2C3531] border-[#334155] text-white placeholder-slate-500 focus:border-[#116466] focus:shadow-[0_0_12px_rgba(17,100,102,0.35)]"
-                  : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-500"
-              }`}
-            />
+      {/* 3. PRIVACY SETTINGS */}
+      {activeTab === "privacy" && (
+        <div className="space-y-6">
+          {/* Gallery Permission Status */}
+          <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[#F1F5F9]">Gallery Permission Status</h3>
+                <p className="text-xs text-[#94A3B8] mt-0.5">
+                  Screenshots are stored locally in your browser sandbox.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                <span>Protected</span>
+              </span>
+            </div>
+            <div className="text-xs text-[#94A3B8] leading-relaxed pt-2 border-t border-[#334155]">
+              SnapFind uses the browser device storage API. Your images remain private on your computer or phone and are not silently accessed without your explicit selection.
+            </div>
           </div>
 
-          <div className="space-y-1">
-            {filteredSections.map((section) => {
-              const isActive = activeSection === section.id;
-              return (
+          {/* Data Deletion */}
+          <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-[#F1F5F9]">Data Management</h3>
+
+            {/* Clear All Data */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[#0B0F19]/60 border border-[#334155]">
+              <div>
+                <div className="text-xs font-bold text-[#F1F5F9]">Reset Local Gallery</div>
+                <div className="text-[11px] text-[#94A3B8] mt-0.5">
+                  Removes all {indexedCount} screenshots and local cache from this device.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowClearDataModal(true)}
+                className="px-4 py-2 rounded-xl bg-[#0B0F19] hover:bg-rose-950/40 text-rose-400 border border-rose-500/30 hover:border-rose-500/60 text-xs font-semibold transition-all cursor-pointer self-start sm:self-auto shrink-0"
+              >
+                Clear Gallery
+              </button>
+            </div>
+
+            {/* Delete Account (if logged in) */}
+            {user.isLoggedIn && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[#0B0F19]/60 border border-rose-500/20">
+                <div>
+                  <div className="text-xs font-bold text-rose-300">Delete Account Permanently</div>
+                  <div className="text-[11px] text-[#94A3B8] mt-0.5">
+                    Purges your user profile, cloud-synced screenshots, and credentials.
+                  </div>
+                </div>
                 <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center justify-between group cursor-pointer ${
-                    isActive
-                      ? isDark
-                        ? "bg-[#116466]/20 border-[#116466]/50 text-white shadow-md shadow-[#116466]/15"
-                        : "bg-blue-50 border-blue-200 text-blue-900 shadow-sm"
-                      : isDark
-                      ? "border-transparent text-slate-300 hover:bg-[#2C3531] hover:border-[#334155]"
-                      : "border-transparent text-slate-700 hover:bg-slate-100"
+                  type="button"
+                  onClick={() => setShowDeleteAccountModal(true)}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer self-start sm:self-auto shrink-0 shadow-md shadow-rose-600/30"
+                >
+                  Delete Account
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. PREFERENCES SETTINGS */}
+      {activeTab === "preferences" && (
+        <div className="space-y-6">
+          <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl space-y-5">
+            <h3 className="text-sm font-bold text-[#F1F5F9]">App Preferences</h3>
+
+            <div className="space-y-4">
+              {/* Auto-index toggle */}
+              <div className="flex items-center justify-between gap-4 py-2 border-b border-[#334155]/60">
+                <div>
+                  <div className="text-xs font-semibold text-[#F1F5F9]">Automatic OCR &amp; Indexing</div>
+                  <div className="text-[11px] text-[#94A3B8]">
+                    Automatically analyze text and categorize images when added to the gallery.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSettings({ autoIndexNewScreenshots: !settings.autoIndexNewScreenshots })
+                  }
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    settings.autoIndexNewScreenshots ? "bg-[#116466]" : "bg-[#334155]"
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`p-2 rounded-xl border shrink-0 transition-transform group-hover:scale-105 ${section.color}`}
-                    >
-                      {section.icon}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs">{section.label}</span>
-                        {section.badge && (
-                          <span className="px-1.5 py-0.2 rounded-md bg-[#116466]/25 text-[#D1E8E2] border border-[#116466]/40 text-[9px] font-mono font-semibold">
-                            {section.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                        {section.description}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight
-                    className={`w-4 h-4 shrink-0 transition-transform ${
-                      isActive ? "text-[#D1E8E2] translate-x-0.5" : "text-slate-500 opacity-40 group-hover:opacity-100"
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                      settings.autoIndexNewScreenshots ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </button>
-              );
-            })}
-          </div>
-
-          {/* Quick Storage Badge in Sidebar */}
-          <div className="pt-3 px-3 border-t border-[#334155] space-y-2 text-[11px]">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-[#D1E8E2]" />
-                <span>Indexed Screenshots</span>
-              </span>
-              <span className="font-mono font-bold text-slate-200">{indexedCount} items</span>
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-[#2C3531] overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#116466] to-[#D1E8E2] rounded-full transition-all"
-                style={{ width: `${Math.min(100, Math.max(5, (indexedCount / 50) * 100))}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right Dynamic Settings Panels */}
-        <div className="w-full lg:col-span-8 min-w-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeSection}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: "easeInOut" }}
-              className="space-y-6"
-            >
-              {/* SECTION 1: GENERAL */}
-              {activeSection === "general" && (
-                <div className="space-y-5">
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<Sliders className="w-5 h-5 text-blue-400" />}
-                    title="General Application Preferences"
-                    description="Configure system startup behavior, confirmations, and language localization."
-                  >
-                    <div className="space-y-4 text-xs">
-                      {/* Language Selection */}
-                      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                        <div>
-                          <div className="font-semibold text-slate-200">Interface Language</div>
-                          <div className="text-[11px] text-slate-400">Select language for menus and buttons</div>
-                        </div>
-                        <select
-                          value={settings.language || "en-US"}
-                          onChange={(e) => onUpdateSettings({ language: e.target.value })}
-                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold outline-none cursor-pointer ${
-                            isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-                          }`}
-                        >
-                          <option value="en-US">English (US)</option>
-                          <option value="es-ES">Español</option>
-                          <option value="fr-FR">Français</option>
-                          <option value="de-DE">Deutsch</option>
-                          <option value="ja-JP">日本語</option>
-                          <option value="zh-CN">中文 (简体)</option>
-                        </select>
-                      </div>
-
-                      {/* Auto Launch Toggle */}
-                      <ToggleRow
-                        title="Launch on System Startup"
-                        description="Automatically launch SnapFind in background on device boot"
-                        checked={settings.autoLaunchAtStartup ?? true}
-                        onChange={(v) => onUpdateSettings({ autoLaunchAtStartup: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Confirm Before Delete */}
-                      <ToggleRow
-                        title="Confirmation Prompts"
-                        description="Show safety confirmation dialog before moving items to trash"
-                        checked={settings.confirmBeforeDelete ?? true}
-                        onChange={(v) => onUpdateSettings({ confirmBeforeDelete: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Default Landing View */}
-                      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                        <div>
-                          <div className="font-semibold text-slate-200">Default Startup View</div>
-                          <div className="text-[11px] text-slate-400">Choose default tab shown when opening the app</div>
-                        </div>
-                        <select
-                          value={settings.defaultView || "gallery"}
-                          onChange={(e) => onUpdateSettings({ defaultView: e.target.value })}
-                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold outline-none cursor-pointer ${
-                            isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-                          }`}
-                        >
-                          <option value="gallery">Gallery Stream</option>
-                          <option value="search">AI Search</option>
-                          <option value="favorites">Starred Documents</option>
-                          <option value="history">Search History</option>
-                        </select>
-                      </div>
-                    </div>
-                  </SectionCard>
-                </div>
-              )}
-
-              {/* SECTION 2: APPEARANCE */}
-              {activeSection === "appearance" && (
-                <div className="space-y-5">
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<Palette className="w-5 h-5 text-indigo-400" />}
-                    title="Appearance & Theme"
-                    description="Customize visual themes, color accents, layout density, and animations."
-                  >
-                    <div className="space-y-5 text-xs">
-                      {/* Theme Selector */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-300 mb-2.5">
-                          Theme Mode
-                        </label>
-                        <div className="grid grid-cols-3 gap-3">
-                          {[
-                            { id: "dark", label: "Dark Mode", icon: <Moon className="w-4 h-4 text-[#D1E8E2]" /> },
-                            { id: "light", label: "Light Mode", icon: <Sun className="w-4 h-4 text-[#D9B08C]" /> },
-                            { id: "system", label: "System Sync", icon: <Monitor className="w-4 h-4 text-[#116466]" /> },
-                          ].map((th) => (
-                            <button
-                              key={th.id}
-                              onClick={() => onUpdateSettings({ theme: th.id as any })}
-                              className={`p-3.5 rounded-2xl border text-center font-bold flex flex-col items-center gap-2 transition-all cursor-pointer ${
-                                settings.theme === th.id
-                                  ? "bg-[#116466] text-white border-[#116466] shadow-lg shadow-[#116466]/25"
-                                  : isDark
-                                  ? "bg-[#2C3531] border-[#334155] text-slate-300 hover:bg-[#1E293B]"
-                                  : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
-                              }`}
-                            >
-                              {th.icon}
-                              <span>{th.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Accent Color Palette */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-300 mb-2.5">
-                          Interface Accent Tone
-                        </label>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          {[
-                            { id: "cyber-teal", label: "Cyber Teal", color: "bg-[#116466]" },
-                            { id: "soft-mint", label: "Soft Mint", color: "bg-[#D1E8E2]" },
-                            { id: "warm-beige", label: "Warm Beige", color: "bg-[#D9B08C]" },
-                            { id: "charcoal", label: "Charcoal Slate", color: "bg-[#1E293B]" },
-                            { id: "onyx", label: "Onyx Dark", color: "bg-[#2C3531]" },
-                          ].map((acc) => (
-                            <button
-                              key={acc.id}
-                              onClick={() => onUpdateSettings({ accentColor: acc.id as any })}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                                (settings.accentColor || "cyber-teal") === acc.id
-                                  ? "bg-[#116466]/30 border-[#116466] text-white shadow-md ring-2 ring-[#116466]/40"
-                                  : "bg-[#2C3531] border-[#334155] text-slate-400 hover:text-white"
-                              }`}
-                            >
-                              <span className={`w-3 h-3 rounded-full ${acc.color} border border-white/20`} />
-                              <span>{acc.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Compact Grid View Toggle */}
-                      <ToggleRow
-                        title="Compact Grid Density"
-                        description="Increase card density and display more screenshot previews per row"
-                        checked={settings.compactGridView}
-                        onChange={(v) => onUpdateSettings({ compactGridView: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Reduced Motion Toggle */}
-                      <ToggleRow
-                        title="Reduced Motion & Fast Transitions"
-                        description="Minimize motion animations for snappier window rendering and battery saving"
-                        checked={settings.reducedMotion ?? false}
-                        onChange={(v) => onUpdateSettings({ reducedMotion: v })}
-                        isDark={isDark}
-                      />
-                    </div>
-                  </SectionCard>
-                </div>
-              )}
-
-              {/* SECTION 3: NOTIFICATIONS */}
-              {activeSection === "notifications" && (
-                <div className="space-y-5">
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<Bell className="w-5 h-5 text-amber-400" />}
-                    title="Notification Preferences"
-                    description="SnapFind AI only notifies you when information is genuinely important or requires your attention."
-                  >
-                    <div className="space-y-4 text-xs">
-                      {/* Master Notifications Toggle */}
-                      <ToggleRow
-                        title="Important Notifications"
-                        description="Master switch for high-priority alerts, screenshot index summaries, and account activity"
-                        checked={settings.enableNotifications}
-                        onChange={(v) => onUpdateSettings({ enableNotifications: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Security Alerts (Always ON / Locked) */}
-                      <div
-                        className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
-                          isDark ? "bg-[#18181B] border-white/5" : "bg-slate-50 border-slate-200"
-                        }`}
-                      >
-                        <div className="space-y-1 pr-4">
-                          <div className="flex items-center gap-2">
-                            <h4 className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-900"}`}>
-                              Security Alerts
-                            </h4>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                              Always On
-                            </span>
-                          </div>
-                          <p className={`text-[11px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                            New logins, password changes, and account security notices (Mandatory for account protection)
-                          </p>
-                        </div>
-                        <div className="relative inline-flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={true}
-                            disabled={true}
-                            className="sr-only"
-                          />
-                          <div className="w-9 h-5 bg-emerald-500 rounded-full opacity-80 cursor-not-allowed flex items-center justify-end px-0.5">
-                            <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Subscription & Billing */}
-                      <ToggleRow
-                        title="Subscription & Billing"
-                        description="Receive alerts for plan renewals, upgrades, and payment status updates"
-                        checked={settings.notifyOnSubscription ?? true}
-                        disabled={!settings.enableNotifications}
-                        onChange={(v) => onUpdateSettings({ notifyOnSubscription: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Screenshot Indexing */}
-                      <ToggleRow
-                        title="Screenshot Indexing"
-                        description="Receive one grouped notification when screenshots finish processing and become searchable"
-                        checked={settings.notifyOnIndexing ?? true}
-                        disabled={!settings.enableNotifications}
-                        onChange={(v) => onUpdateSettings({ notifyOnIndexing: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Storage Warnings */}
-                      <ToggleRow
-                        title="Storage & Quota Warnings"
-                        description="Notify only when storage capacity is approaching full (90%+)"
-                        checked={settings.notifyOnStorageWarnings ?? true}
-                        disabled={!settings.enableNotifications}
-                        onChange={(v) => onUpdateSettings({ notifyOnStorageWarnings: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Marketing */}
-                      <ToggleRow
-                        title="Product Tips & Updates"
-                        description="Occasional announcements about new AI search capabilities (Default OFF)"
-                        checked={settings.notifyOnMarketing ?? false}
-                        disabled={!settings.enableNotifications}
-                        onChange={(v) => onUpdateSettings({ notifyOnMarketing: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Audio Sound Effect */}
-                      <ToggleRow
-                        title="Notification Sound Chimes"
-                        description="Play a subtle audio tone for incoming important alerts"
-                        checked={settings.soundEnabled ?? true}
-                        disabled={!settings.enableNotifications}
-                        onChange={(v) => onUpdateSettings({ soundEnabled: v })}
-                        isDark={isDark}
-                      />
-                    </div>
-                  </SectionCard>
-                </div>
-              )}
-
-              {/* SECTION 4: STORAGE */}
-              {activeSection === "storage" && (
-                <div className="space-y-5">
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<HardDrive className="w-5 h-5 text-emerald-400" />}
-                    title="Storage Engine & Database Cache"
-                    description="Manage SQLite local cache, cloud backup quota, and data cleanup policies."
-                  >
-                    <div className="space-y-5 text-xs">
-                      {/* Authoritative Usage Dashboard Card */}
-                      <YourUsageCard
-                        screenshots={screenshots}
-                        user={user}
-                        isDark={isDark}
-                        onOpenUpgrade={() => setActiveSection("account")}
-                      />
-
-                      {/* Sync Toggles */}
-                      <ToggleRow
-                        title="Automatic Cloud Sync"
-                        description="Synchronize metadata and vector embeddings with Supabase database"
-                        checked={settings.syncEnabled ?? true}
-                        onChange={(v) => onUpdateSettings({ syncEnabled: v })}
-                        isDark={isDark}
-                      />
-
-                      <ToggleRow
-                        title="Upload High-Res Images to Encrypted Cloud"
-                        description="Store original image binaries in remote cloud storage alongside metadata"
-                        checked={settings.uploadImagesToCloud ?? false}
-                        onChange={(v) => onUpdateSettings({ uploadImagesToCloud: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Auto-Clean Trash */}
-                      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                        <div>
-                          <div className="font-semibold text-slate-200">Auto-Purge Trash Retention</div>
-                          <div className="text-[11px] text-slate-400">Permanently empty deleted items after period</div>
-                        </div>
-                        <select
-                          value={settings.autoCleanTrashDays || 30}
-                          onChange={(e) => onUpdateSettings({ autoCleanTrashDays: Number(e.target.value) })}
-                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold outline-none cursor-pointer ${
-                            isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-                          }`}
-                        >
-                          <option value={7}>After 7 Days</option>
-                          <option value={14}>After 14 Days</option>
-                          <option value={30}>After 30 Days (Recommended)</option>
-                          <option value={90}>After 90 Days</option>
-                          <option value={0}>Never Auto-Purge</option>
-                        </select>
-                      </div>
-
-                      {/* Clear Cache Action */}
-                      <div className="pt-2">
-                        <button
-                          onClick={() => setShowClearCacheModal(true)}
-                          className="w-full py-2.5 px-4 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span>Clear Local Offline Cache & Rebuild Index</span>
-                        </button>
-                      </div>
-                    </div>
-                  </SectionCard>
-                </div>
-              )}
-
-              {/* SECTION 5: PRIVACY */}
-              {activeSection === "privacy" && (
-                <div className="space-y-5">
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<Shield className="w-5 h-5 text-teal-400" />}
-                    title="Privacy & Data Protection"
-                    description="SnapFind utilizes zero-knowledge encrypted local storage with complete user data sovereignty."
-                  >
-                    <div className="space-y-4 text-xs">
-                      {/* Local Encryption */}
-                      <ToggleRow
-                        title="Encrypt On-Device SQLite Database"
-                        description="AES-256 local database encryption for all indexed tokens and screenshot text"
-                        checked={settings.encryptLocalCache ?? true}
-                        onChange={(v) => onUpdateSettings({ encryptLocalCache: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Anonymize OCR Data */}
-                      <ToggleRow
-                        title="Anonymize Sensitive OCR Entities"
-                        description="Mask credit card CVVs and sensitive ID numbers in client-side search previews"
-                        checked={settings.anonymizeOcrData ?? true}
-                        onChange={(v) => onUpdateSettings({ anonymizeOcrData: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Telemetry Toggle */}
-                      <ToggleRow
-                        title="Anonymous Diagnostics & Crash Telemetry"
-                        description="Share non-identifying telemetry to help improve OCR accuracy models"
-                        checked={settings.telemetryEnabled ?? false}
-                        onChange={(v) => onUpdateSettings({ telemetryEnabled: v })}
-                        isDark={isDark}
-                      />
-
-                      {/* Auto Lock Timer */}
-                      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                        <div>
-                          <div className="font-semibold text-slate-200">Inactivity Vault Auto-Lock</div>
-                          <div className="text-[11px] text-slate-400">Lock vault after period of user inactivity</div>
-                        </div>
-                        <select
-                          value={settings.autoLockMinutes || 15}
-                          onChange={(e) => onUpdateSettings({ autoLockMinutes: Number(e.target.value) })}
-                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold outline-none cursor-pointer ${
-                            isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-                          }`}
-                        >
-                          <option value={5}>5 Minutes</option>
-                          <option value={15}>15 Minutes (Default)</option>
-                          <option value={30}>30 Minutes</option>
-                          <option value={60}>1 Hour</option>
-                          <option value={0}>Disabled</option>
-                        </select>
-                      </div>
-                    </div>
-                  </SectionCard>
-                </div>
-              )}
-
-              {/* SECTION 8: ACCOUNT */}
-              {activeSection === "account" && (
-                <AccountPageView
-                  user={user}
-                  isDark={isDark}
-                  indexedCount={indexedCount}
-                  settings={settings}
-                  onUpdateSettings={onUpdateSettings}
-                  onOpenAuth={onOpenAuth}
-                />
-              )}
-
-              {/* SECTION: FOUNDER */}
-              {activeSection === "founder" && (
-                <div className="space-y-5">
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<Crown className="w-5 h-5 text-amber-400" />}
-                    title="Founder Recognition"
-                    description="Show your Founder rank and crown across SnapFind."
-                  >
-                    <div className="space-y-4 text-xs">
-                      {/* Founder Recognition Toggle */}
-                      <ToggleRow
-                        title="Founder Recognition"
-                        description="Show your Founder rank and crown across SnapFind."
-                        checked={settings.founder_banner_enabled !== false}
-                        onChange={(v) =>
-                          onUpdateSettings({
-                            founder_banner_enabled: v,
-                            founderBannerEnabled: v,
-                          })
-                        }
-                        isDark={isDark}
-                      />
-
-                      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between gap-4">
-                        <div className="space-y-1">
-                          <div className="font-bold text-amber-300 flex items-center gap-1.5 text-sm">
-                            <span>👑 Founder #{user.entitlement?.founderNumber || "VIP"} Status Active</span>
-                          </div>
-                          <p className="text-[11px] text-slate-300">
-                            You have permanent complimentary Lifetime Pro access. Disabling the recognition banner only hides the top visual banner; your Founder entitlements and lifetime perks remain permanently active.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </SectionCard>
-                </div>
-              )}
-
-              {/* SECTION 9: FEEDBACK */}
-              {activeSection === "feedback" && (
-                <FeedbackView
-                  isDark={isDark}
-                  currentUser={user}
-                  screenshots={screenshots}
-                />
-              )}
-
-              {/* SECTION 10: ABOUT & APP UPDATES */}
-              {activeSection === "about" && (
-                <div className="space-y-5">
-                  {/* APP UPDATES CARD */}
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<Download className="w-5 h-5 text-[#D1E8E2]" />}
-                    title="App Updates"
-                    description="Official GitHub Release updates, version management & integrity."
-                  >
-                    <div className="space-y-4 text-xs">
-                      {/* Version info & Check Button */}
-                      <div className="p-4 rounded-2xl bg-[#2C3531] border border-[#334155] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="space-y-1">
-                          <div className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">App Version</div>
-                          <div className="text-base font-black text-white flex items-center gap-2">
-                            <span>Current version: {APP_VERSION_NAME}</span>
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#116466]/20 text-[#D1E8E2] border border-[#116466]/40 font-mono font-bold">
-                              Build {APP_VERSION_CODE}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-0.5">
-                            <Clock className="w-3.5 h-3.5 text-slate-500" />
-                            <span>
-                              Last checked:{" "}
-                              {updateState.lastCheckedAt
-                                ? new Date(updateState.lastCheckedAt).toLocaleString(undefined, {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                  })
-                                : "Not checked yet"}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2.5">
-                          <button
-                            onClick={handleManualCheckUpdates}
-                            disabled={isCheckingUpdates}
-                            className="px-4 py-2.5 rounded-xl bg-[#1E293B] hover:bg-[#243347] border border-[#334155] active:scale-95 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-                          >
-                            <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdates ? "animate-spin text-[#D1E8E2]" : ""}`} />
-                            <span>{isCheckingUpdates ? "Checking..." : "Check for Updates"}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Available Update Prompt */}
-                      {updateState.status === "available" && updateState.latestRelease && (
-                        <div className="p-4 rounded-2xl bg-[#116466]/15 border border-[#116466]/40 space-y-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-[11px] font-bold uppercase tracking-wider text-[#D1E8E2]">
-                                🚀 New SnapFind update available
-                              </div>
-                              <div className="text-sm font-black text-white mt-0.5">
-                                Version: {updateState.latestRelease.versionName}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setShowUpdateModal(true)}
-                              className="px-4 py-2 rounded-xl bg-[#116466] hover:bg-[#16787b] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-[#116466]/25 cursor-pointer transition-all"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>Update Now</span>
-                            </button>
-                          </div>
-
-                          <div className="space-y-1 pt-1 text-slate-300 text-xs">
-                            <div className="text-[11px] font-semibold text-slate-400">Changes:</div>
-                            {updateState.latestRelease.bulletChanges.map((change, idx) => (
-                              <div key={idx} className="flex items-start gap-2">
-                                <span className="text-[#D1E8E2] font-bold">•</span>
-                                <span>{change}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Up to date feedback if just checked and no update */}
-                      {updateState.status === "up_to_date" && (
-                        <div className="p-3.5 rounded-2xl bg-[#116466]/20 border border-[#116466]/35 text-[#D1E8E2] text-xs flex items-center gap-2.5">
-                          <CheckCircle2 className="w-4 h-4 shrink-0" />
-                          <span>You're on the latest official version of SnapFind AI ({APP_VERSION_NAME}).</span>
-                        </div>
-                      )}
-
-                      {/* Error Feedback */}
-                      {updateState.status === "error" && updateState.errorMessage && (
-                        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5">
-                          <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                          <div className="space-y-1">
-                            <div className="font-semibold">{updateState.errorMessage}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Automatic update checks toggle */}
-                      <ToggleRow
-                        title="Automatic update checks"
-                        description="Check for new releases on startup and background resume (no Google Play required)"
-                        checked={settings.autoCheckUpdates !== false}
-                        onChange={(v) => onUpdateSettings({ autoCheckUpdates: v })}
-                        isDark={isDark}
-                      />
-                    </div>
-                  </SectionCard>
-
-                  {/* ABOUT ARCHITECTURE CARD */}
-                  <SectionCard
-                    isDark={isDark}
-                    icon={<Info className="w-5 h-5 text-[#D1E8E2]" />}
-                    title="About SnapFind AI"
-                    description="Architecture, versioning, system telemetry, and licensing."
-                  >
-                    <div className="space-y-4 text-xs">
-                      {/* App Spec Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div className="p-3.5 rounded-2xl bg-[#2C3531] border border-[#334155]">
-                          <span className="text-[11px] text-slate-400">Release Version</span>
-                          <div className="text-base font-extrabold text-[#D1E8E2] mt-0.5">
-                            {APP_VERSION_NAME}
-                          </div>
-                        </div>
-                        <div className="p-3.5 rounded-2xl bg-[#2C3531] border border-[#334155]">
-                          <span className="text-[11px] text-slate-400">AI Core Engine</span>
-                          <div className="text-base font-extrabold text-[#D1E8E2] mt-0.5">Gemini 3.7 Vision</div>
-                        </div>
-                        <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-[#2C3531] border border-[#334155]">
-                          <span className="text-[11px] text-slate-400">Local DB Engine</span>
-                          <div className="text-base font-extrabold text-[#D9B08C] mt-0.5">SQLite / IndexedDB</div>
-                        </div>
-                      </div>
-
-                      {/* System Telemetry & Endpoints */}
-                      <div className="p-4 rounded-2xl bg-[#2C3531] border border-[#334155] space-y-2 font-mono text-[11px]">
-                        <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400">Search Latency:</span>
-                          <span className="text-emerald-400 font-bold">0ms Client-Side Vector Match</span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400">OCR Precision:</span>
-                          <span className="text-white font-bold">99.8% Multi-Token Confidence</span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400">Cloud Sync:</span>
-                          <span className="text-teal-400 font-bold">Supabase Realtime v2</span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400">Application ID:</span>
-                          <span className="text-slate-400 font-mono">com.snapfind.ai</span>
-                        </div>
-                      </div>
-
-                      <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-slate-300 text-xs leading-relaxed flex items-start gap-2.5">
-                        <SnapFindLogo className="w-5 h-5 rounded-lg shrink-0 mt-0.5" />
-                        <div>
-                          <strong className="text-white">SnapFind AI Vision Engine</strong> — Instant screenshot indexing, deep optical character recognition, and multimodal natural language search crafted for privacy and speed.
-                        </div>
-                      </div>
-                    </div>
-                  </SectionCard>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Delete Account Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="max-w-md w-full p-6 rounded-3xl bg-[#121216] border border-rose-500/40 text-white space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-rose-400">
-              <div className="p-3 rounded-2xl bg-rose-500/20">
-                <AlertTriangle className="w-6 h-6" />
               </div>
-              <div>
-                <h3 className="text-lg font-bold">Delete Account Permanently?</h3>
-                <p className="text-xs text-slate-400">This action cannot be undone.</p>
+
+              {/* Confirm before delete toggle */}
+              <div className="flex items-center justify-between gap-4 py-2 border-b border-[#334155]/60">
+                <div>
+                  <div className="text-xs font-semibold text-[#F1F5F9]">Confirm Before Delete</div>
+                  <div className="text-[11px] text-[#94A3B8]">
+                    Show a confirmation prompt before removing screenshots.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSettings({ confirmBeforeDelete: !settings.confirmBeforeDelete })
+                  }
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    settings.confirmBeforeDelete ? "bg-[#116466]" : "bg-[#334155]"
+                  }`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                      settings.confirmBeforeDelete ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
               </div>
-            </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Deleting your account will permanently purge all your indexed screenshots, OCR search history, SQLite local cache, Supabase Database rows, and Supabase Cloud Storage images.
-            </p>
+              {/* Audio feedback toggle */}
+              <div className="flex items-center justify-between gap-4 py-2 border-b border-[#334155]/60">
+                <div>
+                  <div className="text-xs font-semibold text-[#F1F5F9]">Sound Effects</div>
+                  <div className="text-[11px] text-[#94A3B8]">
+                    Play subtle audio cues for key actions and completion alerts.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ soundEnabled: !settings.soundEnabled })}
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    settings.soundEnabled ? "bg-[#116466]" : "bg-[#334155]"
+                  }`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                      settings.soundEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 rounded-xl border border-white/10 hover:bg-white/10 text-xs font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAccountConfirm}
-                disabled={deleteLoading}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
-              >
-                {deleteLoading ? "Purging Data..." : "Permanently Delete"}
-              </button>
+              {/* Compact grid view toggle */}
+              <div className="flex items-center justify-between gap-4 py-2">
+                <div>
+                  <div className="text-xs font-semibold text-[#F1F5F9]">Compact Gallery Grid</div>
+                  <div className="text-[11px] text-[#94A3B8]">
+                    Display smaller thumbnail cards to fit more screenshots on screen.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSettings({ compactGridView: !settings.compactGridView })
+                  }
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    settings.compactGridView ? "bg-[#116466]" : "bg-[#334155]"
+                  }`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                      settings.compactGridView ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Clear Cache Confirmation Modal */}
-      {showClearCacheModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="max-w-md w-full p-6 rounded-3xl bg-[#121821] border border-amber-500/40 text-white space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-amber-400">
-              <div className="p-3 rounded-2xl bg-amber-500/20">
-                <HardDrive className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Clear Local Cache?</h3>
-                <p className="text-xs text-slate-400">Reset local offline database</p>
-              </div>
+      {/* Clear Gallery Confirmation Modal */}
+      {showClearDataModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl bg-[#1E293B] border border-[#334155] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-[#F1F5F9]">Reset Local Gallery?</h3>
             </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              This will clear your local indexed cache and reset sample datasets. If cloud sync is active, your cloud data will remain safe.
+            <p className="text-xs text-[#94A3B8] leading-relaxed">
+              This will remove all {indexedCount} screenshots and clear the local search index from this browser. This action cannot be undone.
             </p>
-
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
-                onClick={() => setShowClearCacheModal(false)}
-                className="px-4 py-2 rounded-xl border border-white/[0.08] hover:bg-white/10 text-xs font-semibold cursor-pointer"
+                type="button"
+                onClick={() => setShowClearDataModal(false)}
+                className="px-4 py-2 rounded-xl bg-[#0B0F19] text-[#94A3B8] hover:text-[#F1F5F9] border border-[#334155] text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => {
                   onResetAllData();
-                  setShowClearCacheModal(false);
+                  setShowClearDataModal(false);
                 }}
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer"
               >
-                Clear & Reset Local Cache
+                Yes, Reset Gallery
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* App Update Dialog */}
-      <UpdateModal
-        isOpen={showUpdateModal}
-        onClose={() => setShowUpdateModal(false)}
-        updateState={updateState}
-        isDark={isDark}
-      />
-    </div>
-  );
-};
+      {/* Delete Account Modal */}
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl bg-[#1E293B] border border-rose-500/40 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-[#F1F5F9]">Delete Account Permanently</h3>
+            </div>
+            <p className="text-xs text-[#94A3B8] leading-relaxed">
+              All your cloud backups, user records, and settings will be permanently erased. Please enter your current password to confirm.
+            </p>
 
-interface SectionCardProps {
-  isDark: boolean;
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}
+            <div className="space-y-1.5 text-xs">
+              <label className="text-[#94A3B8] font-medium">Current Password</label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19] border border-[#334155] focus:border-rose-500 text-xs text-[#F1F5F9] outline-none"
+              />
+            </div>
 
-const SectionCard: React.FC<SectionCardProps> = ({ isDark, icon, title, description, children }) => {
-  return (
-    <div
-      className={`p-6 rounded-3xl border space-y-5 transition-all ${
-        isDark ? "bg-[#1E293B] border-[#334155] backdrop-blur-xl shadow-xl shadow-black/40" : "bg-white border-slate-200 shadow-md"
-      }`}
-    >
-      <div className="flex items-start gap-3.5 border-b border-[#334155] pb-4">
-        <div className="p-2.5 rounded-2xl bg-[#2C3531] border border-[#334155] shrink-0">{icon}</div>
-        <div>
-          <h3 className="font-extrabold text-base tracking-tight text-[#F1F5F9]">{title}</h3>
-          <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+            {deleteError && (
+              <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteAccountModal(false);
+                  setDeletePassword("");
+                  setDeleteError(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-[#0B0F19] text-[#94A3B8] hover:text-[#F1F5F9] border border-[#334155] text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading || !deletePassword}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleteLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Delete Account</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div>{children}</div>
+      )}
     </div>
   );
 };
 
-interface ToggleRowProps {
-  title: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-  isDark: boolean;
-}
-
-const ToggleRow: React.FC<ToggleRowProps> = ({ title, description, checked, onChange, disabled, isDark }) => {
-  return (
-    <div
-      className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-        disabled
-          ? "opacity-40 pointer-events-none"
-          : isDark
-          ? "bg-[#2C3531] border-[#334155] hover:border-[#116466]/50 hover:bg-[#151d2a]"
-          : "bg-slate-50 border-slate-200"
-      }`}
-    >
-      <div className="pr-4">
-        <div className="font-semibold text-slate-200 text-xs">{title}</div>
-        <div className="text-[11px] text-slate-400 leading-relaxed">{description}</div>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-          checked ? "bg-[#116466] shadow-[0_0_12px_rgba(17,100,102,0.45)]" : isDark ? "bg-[#1E293B]" : "bg-slate-300"
-        }`}
-      >
-        <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#F1F5F9] shadow-lg ring-0 transition duration-200 ease-in-out ${
-            checked ? "translate-x-5" : "translate-x-0"
-          }`}
-        />
-      </button>
-    </div>
-  );
-};
+export default SettingsView;

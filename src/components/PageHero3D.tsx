@@ -15,7 +15,8 @@ export type PageHero3DType =
   | "account"
   | "feedback"
   | "founder"
-  | "timeline";
+  | "timeline"
+  | "demo";
 
 export interface PageHero3DProps {
   type: PageHero3DType;
@@ -620,6 +621,33 @@ export const PageHero3D: React.FC<PageHero3DProps> = ({
             <circle cx="84" cy="50" r="2" fill="#818CF8" className="motion-safe:animate-pulse" />
             <circle cx="50" cy="84" r="2" fill="#CCFF00" />
             <circle cx="16" cy="50" r="2" fill="#00FF66" />
+          </svg>
+        </div>
+      )}
+
+      {/* 16. DEMO: Interactive Crystal Sphere & Sparkles */}
+      {type === "demo" && (
+        <div className="relative w-full h-full flex items-center justify-center motion-safe:animate-[float_4.8s_ease-in-out_infinite]">
+          {glow && (
+            <div className="absolute inset-0 rounded-full bg-[#116466]/25 blur-lg" />
+          )}
+          <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_16px_rgba(17,100,102,0.6)]">
+            <defs>
+              <radialGradient id="demoCore" cx="40%" cy="35%" r="65%">
+                <stop offset="0%" stopColor="#D1E8E2" />
+                <stop offset="45%" stopColor="#116466" />
+                <stop offset="100%" stopColor="#0B0F19" />
+              </radialGradient>
+              <linearGradient id="demoRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#D1E8E2" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#116466" stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="50" rx="38" ry="16" fill="none" stroke="url(#demoRing)" strokeWidth="1.2" strokeDasharray="3 4" transform="rotate(-20 50 50)" className="motion-safe:animate-[spin_16s_linear_infinite]" />
+            <circle cx="50" cy="50" r="24" fill="url(#demoCore)" stroke="#D1E8E2" strokeWidth="1.2" />
+            <path d="M50 32 L53 45 L66 48 L55 55 L58 68 L48 60 L38 66 L43 54 L34 46 L47 44 Z" fill="#D1E8E2" opacity="0.8" />
+            <circle cx="28" cy="30" r="2" fill="#D1E8E2" className="motion-safe:animate-pulse" />
+            <circle cx="72" cy="70" r="1.5" fill="#D1E8E2" className="motion-safe:animate-pulse" />
           </svg>
         </div>
       )}

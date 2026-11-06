@@ -457,10 +457,19 @@ class ProcessingQueueService {
     const optimizedBase64 = optResult.optimizedBase64 || rawSource;
     job.thumbnailUri = optResult.thumbnailBase64 || job.imageUri;
 
-    // Step 2 & 3: Run Consolidated High-Speed AI Vision & OCR Analysis
-    this.updateJobState(job, "AI Analysis", 45);
+    // Step 2: Automatic Tesseract.js OCR Text Extraction (Local Browser Worker with Safe Fallback)
+    this.updateJobState(job, "OCR Processing", 30);
+    await yieldToMainThread(5);
 
     let ocrText = "";
+    let ocrEntities: any = {
+      dates: [],
+      phoneNumbers: [],
+      emails: [],
+      urls: [],
+      amounts: [],
+      trackingNumbers: [],
+    };
     let rawAiTitle: string | undefined = undefined;
     let aiSummary = "";
     let aiDescription = "";
@@ -476,9 +485,13 @@ class ProcessingQueueService {
     let aiSucceeded = false;
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
 
-    // Check intelligent cache first to avoid redundant API/OCR calls
+    // Check intelligent cache first to avoid redundant OCR / API calls for identical image content
     const cachedAnalysis = await intelligentCache.getAiAnalysis(imgHash, (job as any).userId);
     const cachedOcr = await intelligentCache.getOcrText(imgHash, (job as any).userId);
+
+    if (cachedOcr) {
+      ocrText = cachedOcr;
+    }
 
     if (cachedAnalysis) {
       rawAiTitle = cachedAnalysis.title;
@@ -486,17 +499,63 @@ class ProcessingQueueService {
       aiDescription = cachedAnalysis.description || cachedAnalysis.summary || "";
       aiCategory = (cachedAnalysis.category as CategoryType) || "Other";
       aiCollectionName = cachedAnalysis.collectionName;
-      ocrText = (cachedAnalysis.fullText || cachedAnalysis.ocrText || "").trim();
+      if (!ocrText) {
+        ocrText = (cachedAnalysis.fullText || cachedAnalysis.ocrText || "").trim();
+      }
       aiTags = Array.from(new Set([...aiTags, ...(cachedAnalysis.tags || [])]));
       aiKeywords = Array.isArray(cachedAnalysis.keywords) ? cachedAnalysis.keywords : [];
       aiKeyEntities = Array.isArray(cachedAnalysis.keyEntities) ? cachedAnalysis.keyEntities : [];
       aiObjects = Array.isArray(cachedAnalysis.objects) ? cachedAnalysis.objects : [];
       aiSucceeded = true;
-    } else if (cachedOcr) {
-      ocrText = cachedOcr;
     }
 
-    // Single consolidated high-speed AI call: extracts OCR + all metadata simultaneously (when online)
+    // Run OCR text extraction when not cached (Local Tesseract or Server OCR.Space Cloud API)
+    if (!ocrText && optimizedBase64 && optimizedBase64.startsWith("data:image")) {
+      try {
+        const clientOcrResult = await extractTextClientOCR(
+          optimizedBase64,
+          (progressPercent: number, _statusMsg: string) => {
+            const mappedProgress = Math.min(58, Math.max(30, 30 + Math.round(progressPercent * 0.28)));
+            this.updateJobState(job, "OCR Processing", mappedProgress);
+          }
+        );
+
+        if (clientOcrResult && clientOcrResult.success && clientOcrResult.text) {
+          ocrText = (clientOcrResult.text || clientOcrResult.ocrText || "").trim();
+          if (clientOcrResult.entities) {
+            ocrEntities = clientOcrResult.entities;
+          }
+          if (ocrText) {
+            intelligentCache.setOcrText(imgHash, ocrText, (job as any).userId);
+          }
+        }
+      } catch (ocrErr) {
+        console.warn("[ProcessingQueue] Client OCR notice, falling back to Server OCR.Space engine:", ocrErr);
+      }
+
+      // If client OCR did not extract text, invoke Server OCR (OCR.Space API)
+      if (!ocrText) {
+        try {
+          const fallbackRes = await extractTextServerOCR(optimizedBase64, job.fileName);
+          if (fallbackRes && fallbackRes.success && fallbackRes.text) {
+            ocrText = (fallbackRes.text || fallbackRes.ocrText || "").trim();
+            if (fallbackRes.entities) {
+              ocrEntities = fallbackRes.entities;
+            }
+            if (ocrText) {
+              intelligentCache.setOcrText(imgHash, ocrText, (job as any).userId);
+            }
+          }
+        } catch (serverOcrErr) {
+          console.warn("[ProcessingQueue] Server OCR fallback notice:", serverOcrErr);
+        }
+      }
+    }
+
+    // Step 3: Run Gemini AI Image Analysis to Complement Tesseract OCR (online)
+    this.updateJobState(job, "AI Analysis", 65);
+    await yieldToMainThread(5);
+
     if (!aiSucceeded && !isOffline && optimizedBase64 && optimizedBase64.startsWith("data:image")) {
       try {
         const aiRes = await analyzeScreenshotImage(optimizedBase64, job.fileName);
@@ -507,7 +566,14 @@ class ProcessingQueueService {
           aiDescription = analysis.description || analysis.summary || "";
           aiCategory = (analysis.category as CategoryType) || "Other";
           aiCollectionName = analysis.collectionName;
-          ocrText = (analysis.fullText || "").trim();
+          const aiFullText = (analysis.fullText || "").trim();
+          
+          // Complement OCR: preserve Tesseract literal text, supplement with any extra text recognized by AI
+          if (aiFullText && !ocrText) {
+            ocrText = aiFullText;
+            intelligentCache.setOcrText(imgHash, ocrText, (job as any).userId);
+          }
+
           aiTags = Array.from(new Set([...aiTags, ...(analysis.tags || [])]));
           aiKeywords = Array.isArray(analysis.keywords) ? analysis.keywords : [];
           aiKeyEntities = Array.isArray(analysis.keyEntities) ? analysis.keyEntities : [];
@@ -518,31 +584,9 @@ class ProcessingQueueService {
           rawAiSensitiveCategories = Array.isArray(anyAnalysis.sensitive_categories) ? anyAnalysis.sensitive_categories : [];
           aiSucceeded = true;
           intelligentCache.setAiAnalysis(imgHash, analysis, (job as any).userId);
-          if (ocrText) {
-            intelligentCache.setOcrText(imgHash, ocrText, (job as any).userId);
-          }
         }
       } catch (aiErr) {
-        console.warn("[ProcessingQueue] AI analysis warning, attempting OCR fallback:", aiErr);
-      }
-    }
-
-    // Fast OCR: use client-side persistent Tesseract OCR when offline or server OCR when online
-    if (!ocrText && optimizedBase64 && optimizedBase64.startsWith("data:image")) {
-      this.updateJobState(job, "OCR Processing", 65);
-      try {
-        if (isOffline) {
-          const clientOcr = await extractTextClientOCR(optimizedBase64);
-          ocrText = (clientOcr.text || clientOcr.ocrText || "").trim();
-        } else {
-          const ocrRes = await extractTextServerOCR(optimizedBase64, job.fileName);
-          ocrText = (ocrRes.text || ocrRes.ocrText || "").trim();
-        }
-        if (ocrText) {
-          intelligentCache.setOcrText(imgHash, ocrText, (job as any).userId);
-        }
-      } catch (e) {
-        console.warn("[ProcessingQueue] OCR fallback failed:", e);
+        console.warn("[ProcessingQueue] Gemini AI analysis notice (proceeding with Tesseract OCR):", aiErr);
       }
     }
 
@@ -696,6 +740,7 @@ class ProcessingQueueService {
       description: aiDescription,
       fullText: ocrText,
       ocr_text: ocrText,
+      extractedEntities: ocrEntities,
       keyEntities: aiKeyEntities,
       keywords: aiKeywords,
       tags: Array.from(new Set(aiTags)),

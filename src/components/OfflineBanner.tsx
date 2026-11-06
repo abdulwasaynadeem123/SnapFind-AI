@@ -18,7 +18,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ isDark }) => {
         <WifiOff className="w-4 h-4 text-amber-500 shrink-0" />
         <span className="font-semibold">Offline Mode Active:</span>
         <span className="opacity-90">
-          Using local storage index &amp; Tesseract client OCR engine. Cloud AI calls will resume when connection restores.
+          Using local storage index &amp; on-device OCR engine. Cloud sync will resume when connection restores.
         </span>
       </div>
       <div className="hidden sm:flex items-center gap-1 font-mono text-[10px] opacity-75 bg-amber-500/10 px-2 py-0.5 rounded-md">

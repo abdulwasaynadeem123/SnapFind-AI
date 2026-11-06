@@ -161,38 +161,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
-        {/* Top Header & 3D Spatial Launcher */}
+        {/* Top Header & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#334155]/60 pb-6">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#116466] shadow-[0_0_8px_#116466] animate-pulse" />
-              <span className="text-xs font-semibold tracking-wider uppercase text-[#D1E8E2]">
-                Cyber Teal Vault Core
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#F1F5F9] tracking-tight mt-1">
-              SnapFind Dashboard
+            <h1 className="text-2xl sm:text-3xl font-black text-[#F1F5F9] tracking-tight">
+              Home
             </h1>
-            <p className="text-sm text-[#D1E8E2]/70 mt-0.5">
-              Instant OCR, multi-level duplicate prevention & sub-second search
-            </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIs3DVaultOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1E293B] hover:bg-[#116466]/20 text-[#D1E8E2] border border-[#334155] hover:border-[#116466] transition-all shadow-md group"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1E293B] hover:bg-[#116466]/20 text-[#D1E8E2] border border-[#334155] hover:border-[#116466] transition-all shadow-md group cursor-pointer"
             >
               <Maximize2 className="w-4 h-4 text-[#116466] group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-semibold">3D Vault View</span>
+              <span className="text-sm font-semibold">3D View</span>
             </button>
 
             <button
               onClick={() => onNavigate("gallery")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] font-semibold text-sm transition-all shadow-lg shadow-[#116466]/30"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] font-semibold text-sm transition-all shadow-lg shadow-[#116466]/30 cursor-pointer"
             >
               <Layers className="w-4 h-4" />
-              <span>Browse All ({totalScreenshots})</span>
+              <span>Gallery ({totalScreenshots})</span>
             </button>
           </div>
         </div>
@@ -373,6 +364,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {indexingState.failedImages || 0}
               </div>
             </div>
+          </div>
+
+          {/* Honest Platform Access Disclosure */}
+          <div className="mt-3 pt-2.5 border-t border-[#334155]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-[#94A3B8]">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <span>
+                <strong className="text-slate-200">Browser Privacy Sandbox:</strong> Web browsers do not permit silent background access to your phone or PC gallery without user permission. Use <em>Batch Import</em> to select screenshot folders or drag-and-drop.
+              </span>
+            </div>
+            <button
+              onClick={() => onNavigate("import")}
+              className="text-[#D1E8E2] hover:text-white underline font-semibold shrink-0 cursor-pointer text-left"
+            >
+              Select Screenshots Folder →
+            </button>
           </div>
         </div>
 

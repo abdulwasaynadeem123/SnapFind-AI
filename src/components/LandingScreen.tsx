@@ -89,7 +89,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
               className="w-full sm:w-auto px-7 py-3.5 rounded-xl border border-[#1B5254] bg-[#07292B] hover:bg-[#0C3B3D] text-[#F1F5F9] font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-98 shadow-md"
             >
               <span className="w-2 h-2 rounded-full bg-[#D1E8E2] animate-ping" />
-              <span>Try Interactive Demo</span>
+              <span>Try Demo</span>
             </button>
 
             <button

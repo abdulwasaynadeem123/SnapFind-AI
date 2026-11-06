@@ -270,6 +270,9 @@ export interface SearchResultMatch {
   score: number;
   matchReason: string;
   highlightSnippet?: string;
+  matchedOcrText?: string;
+  matchedTerms?: string[];
+  matchType?: "exact" | "partial" | "fuzzy" | "ocr" | "semantic" | "metadata";
   latencyMs?: number;
 }
 

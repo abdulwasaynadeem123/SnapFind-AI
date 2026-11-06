@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 
 export interface SnapFindLogoProps {
   className?: string;
@@ -27,7 +27,7 @@ export const SnapFindLogoSVG: React.FC<{
   isDark?: boolean;
   includeBackground?: boolean;
 }> = ({ className = "w-full h-full", size, isDark = true, includeBackground = true }) => {
-  const uniqueId = React.useId().replace(/:/g, "");
+  const uniqueId = useId().replace(/:/g, "");
 
   return (
     <svg

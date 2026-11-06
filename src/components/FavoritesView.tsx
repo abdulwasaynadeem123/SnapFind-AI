@@ -143,8 +143,7 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
       {/* Header Banner */}
       <PageHeroHeader
         type="favorites"
-        title="Favorites Vault"
-        subtitle="Your bookmarked screenshots synced across local storage & Supabase cloud with zero latency."
+        title="Favorites"
         isDark={isDark}
         actions={
           <div className="flex items-center gap-2">

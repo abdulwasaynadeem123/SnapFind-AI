@@ -2,17 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { SnapFindLogo } from "./SnapFindLogo";
 import {
   X,
-  User,
   Mail,
   Lock,
-  ShieldCheck,
-  CheckCircle2,
-  LogIn,
-  UserPlus,
+  User,
   Eye,
   EyeOff,
   LogOut,
   AlertCircle,
+  CheckCircle2,
   ArrowLeft,
   RotateCw,
 } from "lucide-react";
@@ -25,7 +22,7 @@ interface AuthModalProps {
   onSignupSuccess?: () => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, addToast, onSignupSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignupSuccess }) => {
   const {
     user,
     signInWithEmail,
@@ -33,11 +30,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
     resendVerificationEmail,
     signInWithGoogle,
     signOut,
-    isConfigured,
     resetPassword,
     changePassword,
     isRecoveryMode,
-    setIsRecoveryMode,
     oauthErrorMessage,
     clearOauthError,
   } = useAuth();
@@ -95,7 +90,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
       if (res.error) {
         setErrorMessage(res.error);
       } else {
-        setSuccessMessage(`A new verification link has been sent to ${email.trim()}. Please check your inbox.`);
+        setSuccessMessage(`A verification link has been sent to ${email.trim()}.`);
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to resend verification email.");
@@ -114,21 +109,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
     setIsUnconfirmedUser(false);
     if (clearOauthError) clearOauthError();
 
-    // Validation checks
+    // Validation
     if (authMode !== "reset_password" && !validateEmailFormat(email)) {
-      setErrorMessage("Please enter a valid email address (e.g., name@example.com).");
+      setErrorMessage("Please enter a valid email address.");
       isSubmittingRef.current = false;
       return;
     }
 
     if (authMode === "register" || authMode === "login" || authMode === "reset_password") {
       if (!password) {
-        setErrorMessage("Password cannot be empty.");
+        setErrorMessage("Please enter your password.");
         isSubmittingRef.current = false;
         return;
       }
       if (password.length < 6) {
-        setErrorMessage("Password must be at least 6 characters long.");
+        setErrorMessage("Password must be at least 6 characters.");
         isSubmittingRef.current = false;
         return;
       }
@@ -136,12 +131,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
 
     if (authMode === "register") {
       if (!name.trim()) {
-        setErrorMessage("Please enter your full name.");
+        setErrorMessage("Please enter your name.");
         isSubmittingRef.current = false;
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMessage("Passwords do not match. Please re-enter.");
+        setErrorMessage("Passwords do not match.");
         isSubmittingRef.current = false;
         return;
       }
@@ -149,7 +144,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
 
     if (authMode === "reset_password") {
       if (password !== confirmPassword) {
-        setErrorMessage("New passwords do not match. Please re-enter.");
+        setErrorMessage("Passwords do not match.");
         isSubmittingRef.current = false;
         return;
       }
@@ -161,76 +156,58 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
       if (authMode === "login") {
         const res = await signInWithEmail(email, password);
         if (res.error) {
-          if (res.error.toLowerCase().includes("email not confirmed")) {
+          const lower = res.error.toLowerCase();
+          if (lower.includes("email not confirmed") || lower.includes("unconfirmed")) {
             setIsUnconfirmedUser(true);
-            setErrorMessage("Please verify your email address before signing in. Check your inbox or request a new link.");
-          } else if (res.error.toLowerCase().includes("invalid login credentials")) {
-            setErrorMessage("Invalid email or password. Please verify your credentials or register a new account.");
-          } else {
-            setErrorMessage(res.error);
           }
+          setErrorMessage(res.error);
         } else {
           addToast?.({
-            title: "Signed In Successfully",
-            description: `Welcome back, ${email.split("@")[0] || "Vault Owner"}!`,
+            title: "Signed In",
+            description: `Welcome back, ${res.user?.name || "User"}!`,
             type: "success",
           });
           onClose();
         }
       } else if (authMode === "register") {
-        const res = await signUpWithEmail(email, password, name);
+        const res = await signUpWithEmail(email, password, name.trim());
         if (res.error) {
-          if (res.error.toLowerCase().includes("already registered") || res.error.toLowerCase().includes("user already exists")) {
-            setErrorMessage("This email is already registered. Please sign in or reset your password.");
-          } else if (res.error.toLowerCase().includes("rate limit") || res.error.toLowerCase().includes("email rate limit exceeded")) {
-            setErrorMessage(
-              "Account created, but email verification limit was temporarily reached. You can already try signing in with this email, or check your spam/junk folder."
-            );
-          } else {
-            setErrorMessage(res.error);
-          }
+          setErrorMessage(res.error);
         } else {
-          setSuccessMessage(
-            `Registration successful! We've sent a verification email to ${email.trim()}. Please click the link to activate your vault.`
-          );
           onSignupSuccess?.();
-          addToast?.({
-            title: "Account Created",
-            description: `Verification link sent to ${email.trim()}`,
-            type: "success",
-          });
+          if (res.user?.isLoggedIn) {
+            addToast?.({
+              title: "Account Created",
+              description: `Welcome to SnapFind, ${res.user.name}!`,
+              type: "success",
+            });
+            onClose();
+          } else {
+            setSuccessMessage(
+              `Confirmation email sent to ${email.trim()}. Please verify your email to log in.`
+            );
+          }
         }
       } else if (authMode === "forgot_password") {
         const res = await resetPassword(email);
         if (res.error) {
           setErrorMessage(res.error);
         } else {
-          setSuccessMessage(
-            `A password recovery link has been sent to ${email.trim()}. Please follow the instructions in your inbox.`
-          );
-          addToast?.({
-            title: "Recovery Link Sent",
-            description: `Check your inbox at ${email.trim()}`,
-            type: "info",
-          });
+          setSuccessMessage(`Password recovery link sent to ${email.trim()}. Check your inbox.`);
         }
       } else if (authMode === "reset_password") {
         const res = await changePassword(password);
         if (res.error) {
           setErrorMessage(res.error);
         } else {
-          setSuccessMessage("Your password has been successfully updated. You may now sign in.");
-          setIsRecoveryMode(false);
-          setAuthMode("login");
-          addToast?.({
-            title: "Password Updated",
-            description: "Your vault is now secured with the new password.",
-            type: "success",
-          });
+          setSuccessMessage("Password updated successfully. You can now sign in.");
+          setTimeout(() => {
+            handleModeChange("login");
+          }, 1500);
         }
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "An unexpected error occurred during authentication.");
+      setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
       isSubmittingRef.current = false;
@@ -242,10 +219,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     try {
       const res = await signInWithGoogle();
-      if (res.error) {
+      if (res && res.error) {
         setErrorMessage(res.error);
       }
     } catch (err: any) {
@@ -260,73 +238,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
     await signOut();
     addToast?.({
       title: "Signed Out",
-      description: "You have signed out of your account.",
+      description: "You have signed out.",
       type: "info",
     });
     onClose();
   };
 
-  const passwordsMatch = Boolean(confirmPassword && password && password === confirmPassword);
-  const passwordsMismatch = Boolean(confirmPassword && password && password !== confirmPassword);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-3xl border border-[#334155] bg-[#1E293B] p-6 sm:p-7 shadow-2xl text-[#F1F5F9] space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-6 sm:p-7 shadow-2xl text-[#F1F5F9]">
         {/* Close Button */}
         <button
           onClick={onClose}
           type="button"
           title="Close dialog"
-          className="absolute top-4 right-4 p-2 rounded-xl text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#2C3531] transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header with Logo */}
-        <div className="flex items-center gap-3 pb-3 border-b border-[#334155]">
-          <SnapFindLogo className="w-10 h-10 rounded-xl object-contain border border-[#334155] bg-[#2C3531] shrink-0" />
+        <div className="flex items-center gap-3 pb-5 border-b border-[#334155]">
+          <SnapFindLogo className="w-9 h-9 rounded-xl object-contain border border-[#334155] bg-[#2C3531] shrink-0" />
           <div>
             <h2 className="font-extrabold text-lg tracking-tight text-[#F1F5F9]">
               {user?.isLoggedIn
-                ? "Your Account Vault"
+                ? "Account"
                 : authMode === "forgot_password"
-                ? "Reset Your Password"
+                ? "Reset password"
                 : authMode === "reset_password"
-                ? "Set New Password"
+                ? "Set new password"
                 : authMode === "register"
-                ? "Create SnapFind Account"
-                : "Sign In to SnapFind"}
+                ? "Create account"
+                : "Welcome back"}
             </h2>
-            <p className="text-xs text-[#94A3B8]">
-              {user?.isLoggedIn
-                ? `Active account: ${user.email}`
-                : authMode === "forgot_password"
-                ? "Enter your email to receive a recovery link"
-                : authMode === "reset_password"
-                ? "Choose a strong password for your vault"
-                : authMode === "register"
-                ? "Free account with private local storage"
-                : isConfigured
-                ? "Secure authentication via Supabase"
-                : "Local storage mode active"}
-            </p>
           </div>
         </div>
 
         {user?.isLoggedIn && authMode !== "reset_password" ? (
-          /* User Logged In Profile Card */
-          <div className="space-y-4 pt-1">
+          /* Logged In View */
+          <div className="space-y-4 pt-5">
             <div className="p-4 rounded-xl border border-[#334155] bg-[#2C3531] flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-[#1E293B] border border-[#334155] text-[#D1E8E2] font-semibold text-base flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#1E293B] border border-[#334155] text-[#D1E8E2] font-semibold text-sm flex items-center justify-center shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm text-[#F1F5F9] truncate">{user.name}</h3>
                 <p className="text-xs text-[#94A3B8] truncate">{user.email}</p>
-                <div className="flex items-center gap-1.5 text-xs text-[#D1E8E2] mt-1 font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#D1E8E2]" />
-                  <span>Session Active ({user.plan || "Free"})</span>
-                </div>
               </div>
             </div>
 
@@ -336,64 +294,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
               className="w-full py-2.5 rounded-xl border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sign Out of Account</span>
+              <span>Sign out</span>
             </button>
           </div>
         ) : (
-          /* Login / Register / Forgot Password Forms */
-          <div className="space-y-4">
-            {/* Tab Switcher for login / register */}
-            {(authMode === "login" || authMode === "register") && (
-              <div className="grid grid-cols-2 p-1 rounded-xl bg-[#2C3531] border border-[#334155] text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => handleModeChange("login")}
-                  className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-                    authMode === "login"
-                      ? "bg-[#116466] text-[#F1F5F9] font-bold shadow-sm"
-                      : "text-[#94A3B8] hover:text-[#F1F5F9]"
-                  }`}
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Sign In</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleModeChange("register")}
-                  className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-                    authMode === "register"
-                      ? "bg-[#116466] text-[#F1F5F9] font-bold shadow-sm"
-                      : "text-[#94A3B8] hover:text-[#F1F5F9]"
-                  }`}
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Register</span>
-                </button>
+          /* Auth Form */
+          <div className="space-y-4 pt-5">
+            {/* Error Banner */}
+            {errorMessage && (
+              <div className="p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <p>{errorMessage}</p>
+                  {isUnconfirmedUser && (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendingVerification}
+                      className="inline-flex items-center gap-1 text-xs text-white hover:underline font-medium cursor-pointer"
+                    >
+                      <RotateCw className={`w-3 h-3 ${resendingVerification ? "animate-spin" : ""}`} />
+                      <span>{resendingVerification ? "Sending..." : "Resend confirmation email"}</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Back button if in forgot password mode */}
-            {authMode === "forgot_password" && (
-              <button
-                type="button"
-                onClick={() => handleModeChange("login")}
-                className="inline-flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-[#F1F5F9] transition-colors font-medium cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Sign In</span>
-              </button>
+            {/* Success Banner */}
+            {successMessage && (
+              <div className="p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-xs flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p>{successMessage}</p>
+                </div>
+              </div>
             )}
 
-            {/* Google OAuth Button */}
+            {/* Google OAuth (Login & Register) */}
             {(authMode === "login" || authMode === "register") && (
-              <>
+              <div className="space-y-3">
                 <button
                   type="button"
                   onClick={handleGoogleAuth}
                   disabled={isSubmitting}
-                  className="w-full py-2.5 px-4 rounded-xl border border-[#334155] bg-[#2C3531] hover:bg-[#243347] text-[#F1F5F9] font-medium text-xs flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#334155] bg-[#2C3531] hover:bg-[#334155] text-[#F1F5F9] font-medium text-xs flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -413,105 +360,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
                   </svg>
                   <span>Continue with Google</span>
                 </button>
-                <p className="text-[10px] text-[#94A3B8]/70 text-center px-1">
-                  Google sign-in requires a standard browser (Chrome, Safari, Firefox, Edge).
-                </p>
 
                 <div className="relative flex items-center justify-center my-1">
                   <div className="border-t border-[#334155] w-full" />
-                  <span className="bg-[#1E293B] px-2 text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wider">
-                    Or with email
-                  </span>
-                </div>
-              </>
-            )}
-
-            {/* Error banner */}
-            {errorMessage && (
-              <div className="p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <div className="flex-1 space-y-1.5">
-                  <p>{errorMessage}</p>
-                  {isUnconfirmedUser && (
-                    <button
-                      type="button"
-                      onClick={handleResendVerification}
-                      disabled={resendingVerification}
-                      className="inline-flex items-center gap-1 text-xs text-white hover:underline font-medium cursor-pointer"
-                    >
-                      <RotateCw className={`w-3 h-3 ${resendingVerification ? "animate-spin" : ""}`} />
-                      <span>{resendingVerification ? "Sending link..." : "Resend confirmation email"}</span>
-                    </button>
-                  )}
-                  {authMode === "register" &&
-                    (errorMessage.toLowerCase().includes("already exists") ||
-                      errorMessage.toLowerCase().includes("rate limit") ||
-                      errorMessage.toLowerCase().includes("sign in")) && (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => handleModeChange("login")}
-                          className="inline-flex items-center gap-1 text-xs text-white hover:underline font-semibold cursor-pointer"
-                        >
-                          Sign In with this email instead →
-                        </button>
-                      </div>
-                    )}
+                  <span className="bg-[#1E293B] px-2 text-[11px] text-[#94A3B8]">or</span>
                 </div>
               </div>
             )}
 
-            {/* Success banner */}
-            {successMessage && (
-              <div className="p-3 rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-white shrink-0 mt-0.5" />
-                <div className="flex-1 space-y-1.5">
-                  <p>{successMessage}</p>
-                  {authMode === "register" && (
-                    <button
-                      type="button"
-                      onClick={() => handleModeChange("login")}
-                      className="text-xs text-white hover:underline font-semibold cursor-pointer"
-                    >
-                      Go to Sign In
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Auth Form */}
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {/* Name field (register only) */}
               {authMode === "register" && (
                 <div className="space-y-1 text-xs">
-                  <label className="font-medium text-zinc-400">Full Name</label>
+                  <label className="font-medium text-[#94A3B8]">Name</label>
                   <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Alex Morgan"
-                      disabled={isSubmitting}
-                      required
-                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-zinc-800 bg-zinc-900 text-white placeholder-zinc-500 focus:border-white focus:outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Email field (for login, register, forgot_password) */}
-              {authMode !== "reset_password" && (
-                <div className="space-y-1 text-xs">
-                  <label className="font-medium text-[#94A3B8]">Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="name@example.com"
+                      placeholder="Your name"
                       disabled={isSubmitting}
                       required
                       className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
@@ -520,16 +388,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
                 </div>
               )}
 
-              {/* Password field for login and register */}
-              {(authMode === "login" || authMode === "register") && (
+              {/* Email field */}
+              {authMode !== "reset_password" && (
+                <div className="space-y-1 text-xs">
+                  <label className="font-medium text-[#94A3B8]">Email</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      disabled={isSubmitting}
+                      required
+                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Password field */}
+              {(authMode === "login" || authMode === "register" || authMode === "reset_password") && (
                 <div className="space-y-1 text-xs">
                   <div className="flex items-center justify-between">
-                    <label className="font-medium text-[#94A3B8]">Password</label>
+                    <label className="font-medium text-[#94A3B8]">
+                      {authMode === "reset_password" ? "New password" : "Password"}
+                    </label>
                     {authMode === "login" && (
                       <button
                         type="button"
                         onClick={() => handleModeChange("forgot_password")}
-                        className="text-[11px] text-[#94A3B8] hover:text-[#F1F5F9] transition-colors cursor-pointer"
+                        className="text-[11px] text-[#94A3B8] hover:text-[#D1E8E2] transition-colors cursor-pointer"
                       >
                         Forgot password?
                       </button>
@@ -541,7 +430,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="At least 6 characters"
+                      placeholder="••••••••"
                       disabled={isSubmitting}
                       required
                       className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
@@ -557,38 +446,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
                 </div>
               )}
 
-              {/* Confirm Password field (for register and reset_password) */}
+              {/* Confirm password field (register and reset_password) */}
               {(authMode === "register" || authMode === "reset_password") && (
                 <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <label className="font-medium text-[#94A3B8]">
-                      {authMode === "register" ? "Confirm Password" : "Confirm New Password"}
-                    </label>
-                    {passwordsMatch && (
-                      <span className="text-[11px] text-[#D1E8E2] flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-[#D1E8E2]" /> Matches
-                      </span>
-                    )}
-                    {passwordsMismatch && (
-                      <span className="text-[11px] text-rose-400">
-                        Does not match
-                      </span>
-                    )}
-                  </div>
+                  <label className="font-medium text-[#94A3B8]">Confirm password</label>
                   <div className="relative">
                     <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password"
+                      placeholder="••••••••"
                       disabled={isSubmitting}
                       required
-                      className={`w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:outline-none transition-colors ${
-                        passwordsMismatch
-                          ? "border-rose-500 focus:border-rose-500"
-                          : "border-[#334155] focus:border-[#116466]"
-                      }`}
+                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
                     />
                     <button
                       type="button"
@@ -601,52 +472,66 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, isDark: _isDark, 
                 </div>
               )}
 
-              {/* Submit Button */}
+              {/* Submit button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-1 shadow-[0_0_12px_rgba(17,100,102,0.3)] border border-[#116466]"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2 shadow-md shadow-[#116466]/20"
               >
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Processing...</span>
+                    <span>Please wait...</span>
                   </span>
                 ) : (
                   <span>
                     {authMode === "login"
-                      ? "Sign In"
+                      ? "Sign in"
                       : authMode === "register"
-                      ? "Create Free Account"
+                      ? "Create account"
                       : authMode === "forgot_password"
-                      ? "Send Password Reset Link"
-                      : "Save New Password"}
+                      ? "Send reset link"
+                      : "Save new password"}
                   </span>
                 )}
               </button>
 
-              {/* Direct links between Registration and Login */}
+              {/* Mode switch links */}
+              {authMode === "login" && (
+                <div className="text-center pt-2 text-xs text-[#94A3B8]">
+                  Don't have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange("register")}
+                    className="text-[#D1E8E2] hover:underline font-semibold cursor-pointer"
+                  >
+                    Sign up
+                  </button>
+                </div>
+              )}
+
               {authMode === "register" && (
                 <div className="text-center pt-2 text-xs text-[#94A3B8]">
                   Already have an account?{" "}
                   <button
                     type="button"
                     onClick={() => handleModeChange("login")}
-                    className="text-[#D1E8E2] hover:text-[#F1F5F9] hover:underline font-semibold cursor-pointer"
+                    className="text-[#D1E8E2] hover:underline font-semibold cursor-pointer"
                   >
-                    Sign In
+                    Sign in
                   </button>
                 </div>
               )}
-              {authMode === "login" && (
-                <div className="text-center pt-2 text-xs text-[#94A3B8]">
-                  Don't have an account yet?{" "}
+
+              {authMode === "forgot_password" && (
+                <div className="text-center pt-2">
                   <button
                     type="button"
-                    onClick={() => handleModeChange("register")}
-                    className="text-[#D1E8E2] hover:text-[#F1F5F9] hover:underline font-semibold cursor-pointer"
+                    onClick={() => handleModeChange("login")}
+                    className="inline-flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-[#F1F5F9] transition-colors cursor-pointer"
                   >
-                    Create Free Account
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Sign in</span>
                   </button>
                 </div>
               )}

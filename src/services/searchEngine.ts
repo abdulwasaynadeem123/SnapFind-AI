@@ -131,6 +131,96 @@ export function normalizeAndCorrectToken(token: string): string {
 /**
  * Compute fuzzy token match score (0.0 - 1.0) with misspelling tolerance
  */
+/**
+ * Normalize common OCR glyph substitutions:
+ * 0 <-> O, 1 <-> l/I/|, 5 <-> S, 8 <-> B, 2 <-> Z, rn <-> m, vv <-> w
+ */
+export function normalizeOcrSubstitutions(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[0o]/g, "0")
+    .replace(/[1il|!]/g, "1")
+    .replace(/[5s]/g, "5")
+    .replace(/[8b]/g, "8")
+    .replace(/[2z]/g, "2")
+    .replace(/rn/g, "m")
+    .replace(/vv/g, "w");
+}
+
+/**
+ * Extract matched snippet around search terms from OCR text with context window
+ */
+export function extractMatchedOcrSnippet(
+  text: string,
+  queryTokens: string[],
+  maxLength: number = 140
+): { snippet: string; matchedTerms: string[] } {
+  if (!text || !text.trim()) return { snippet: "", matchedTerms: [] };
+
+  const cleanText = text.replace(/\r\n/g, "\n").trim();
+  const lowerText = cleanText.toLowerCase();
+  const matchedTerms: string[] = [];
+  let bestIndex = -1;
+
+  for (const token of queryTokens) {
+    if (!token || token.length < 2) continue;
+    const cleanTok = token.toLowerCase();
+    const idx = lowerText.indexOf(cleanTok);
+    if (idx !== -1) {
+      if (!matchedTerms.includes(token)) {
+        matchedTerms.push(token);
+      }
+      if (bestIndex === -1 || idx < bestIndex) {
+        bestIndex = idx;
+      }
+    }
+  }
+
+  // If no exact token found, check OCR-normalized substitutions
+  if (bestIndex === -1) {
+    for (const token of queryTokens) {
+      if (!token || token.length < 3) continue;
+      const normTok = normalizeOcrSubstitutions(token);
+      const words = cleanText.split(/[\s\n]+/);
+      let searchOffset = 0;
+      for (const word of words) {
+        const normWord = normalizeOcrSubstitutions(word);
+        if (normWord.includes(normTok)) {
+          const foundIdx = lowerText.indexOf(word.toLowerCase(), searchOffset);
+          if (foundIdx !== -1) {
+            bestIndex = foundIdx;
+            matchedTerms.push(word);
+            break;
+          }
+        }
+        searchOffset += word.length + 1;
+      }
+      if (bestIndex !== -1) break;
+    }
+  }
+
+  if (bestIndex === -1) {
+    const fallback = cleanText.slice(0, maxLength);
+    return {
+      snippet: fallback.length < cleanText.length ? `${fallback}...` : fallback,
+      matchedTerms: [],
+    };
+  }
+
+  // Extract excerpt around best match
+  const start = Math.max(0, bestIndex - 40);
+  const end = Math.min(cleanText.length, bestIndex + maxLength - 40);
+
+  let snippet = cleanText.slice(start, end).replace(/\n+/g, " ").trim();
+  if (start > 0) snippet = `...${snippet}`;
+  if (end < cleanText.length) snippet = `${snippet}...`;
+
+  return { snippet, matchedTerms };
+}
+
+/**
+ * Compute fuzzy token match score (0.0 - 1.0) with misspelling tolerance & OCR confusion matrix
+ */
 function computeTokenFuzzyScore(queryToken: string, targetWord: string): number {
   const q = normalizeAndCorrectToken(queryToken);
   const w = targetWord.toLowerCase().trim();
@@ -148,6 +238,15 @@ function computeTokenFuzzyScore(queryToken: string, targetWord: string): number 
 
   // Query is longer than target word (e.g. query is "monthly" and target word is "month")
   if (q.startsWith(w) && w.length >= 4) return 0.80;
+
+  // OCR glyph confusion match (e.g. "O98241" vs "098241", "1nvoice" vs "invoice")
+  if (q.length >= 3 && w.length >= 3) {
+    const ocrQ = normalizeOcrSubstitutions(q);
+    const ocrW = normalizeOcrSubstitutions(w);
+    if (ocrQ === ocrW) return 0.94;
+    if (ocrW.includes(ocrQ)) return 0.88;
+    if (ocrQ.includes(ocrW) && w.length >= 4) return 0.84;
+  }
 
   // Levenshtein fuzzy match for real misspellings (e.g. "reciept" -> "receipt", "pasport" -> "passport")
   const maxLen = Math.max(q.length, w.length);
@@ -415,16 +514,22 @@ class InvertedSearchIndex {
     const textToTokenize = [
       item.title,
       item.summary,
+      item.ai_description,
+      item.description,
       item.fullText,
+      item.ocr_text,
       item.category,
       item.fileName,
+      item.file_name,
       item.folder,
       ...extractWebsiteStrings(item),
       ...extractQrStrings(item),
       ...extractVisualFeatureStrings(item),
       ...(item.tags || []),
       ...(item.keyEntities || []),
+      ...(item.keywords || []),
       ...(item.objects || []),
+      ...(item.objectsDetected || []),
     ]
       .filter(Boolean)
       .join(" ");
@@ -617,7 +722,7 @@ export class SnapFindSearchEngine {
       }
 
       if (filters.dateRange) {
-        const itemDate = new Date(item.createdAt || item.created_at || (item as any).indexedAt || (item as any).date_created || 0).getTime();
+        const itemDate = new Date(item.createdAt || (item as any).created_at || (item as any).indexedAt || (item as any).date_created || 0).getTime();
         if (filters.dateRange.startDate) {
           const start = new Date(filters.dateRange.startDate).getTime();
           if (itemDate < start) return false;
@@ -1090,9 +1195,21 @@ export class SnapFindSearchEngine {
       accumulatedWeightedScore += tokenCoverage * 2.5;
     }
 
+    // Check exact phrase matching in OCR text
+    const rawOcr = item.fullText || item.ocr_text || "";
+    const rawOcrLower = rawOcr.toLowerCase();
+    const cleanQueryLower = intent.cleanText.toLowerCase().trim();
+    let hasExactOcrPhraseMatch = false;
+
+    if (cleanQueryLower.length >= 3 && rawOcrLower.includes(cleanQueryLower)) {
+      accumulatedWeightedScore += 4.5;
+      hasExactOcrPhraseMatch = true;
+      matchReasons.unshift(`Exact OCR Phrase: "${intent.cleanText}"`);
+    }
+
     // If completely no match found across all tokens and intents, score is 0
     const rawTotalScore = accumulatedWeightedScore + intentMatchBoost;
-    if (rawTotalScore <= 0 || (matchedTokenCount === 0 && intentMatchBoost === 0)) {
+    if (rawTotalScore <= 0 || (matchedTokenCount === 0 && intentMatchBoost === 0 && !hasExactOcrPhraseMatch)) {
       return {
         id: item.id,
         score: 0,
@@ -1104,21 +1221,35 @@ export class SnapFindSearchEngine {
     // Normalize final score [0.20 - 1.0] for valid matches
     const finalScore = Math.min(1.0, Math.max(0.20, Math.round((rawTotalScore / 6.0) * 100) / 100));
 
+    // Extract contextual OCR snippet and matched tokens
+    const ocrSnippetResult = extractMatchedOcrSnippet(rawOcr, cleanQueryTokens, 130);
+
     // Masked snippet for sensitive/private items to ensure no credentials or numbers leak in search preview
-    let snippetText = item.summary || item.fullText?.slice(0, 140) || item.title;
+    let snippetText = ocrSnippetResult.snippet || item.summary || item.fullText?.slice(0, 140) || item.title;
     if (item.is_sensitive || item.isSensitive || item.privacy_level === "private" || item.privacy_level === "highly_sensitive") {
       snippetText = item.masked_ocr_text || item.maskedOcrText || item.summary || item.title;
     }
     const primaryReason =
       matchReasons.length > 0
-        ? matchReasons.join(" • ")
+        ? matchReasons.slice(0, 2).join(" • ")
         : `Matched keywords across Title, Category, OCR & Metadata`;
+
+    const matchType: "exact" | "partial" | "fuzzy" | "ocr" | "semantic" | "metadata" = hasExactOcrPhraseMatch
+      ? "exact"
+      : ocrSnippetResult.matchedTerms.length > 0
+      ? "ocr"
+      : intentMatchBoost > 0
+      ? "semantic"
+      : "partial";
 
     return {
       id: item.id,
       score: finalScore,
       matchReason: primaryReason,
       highlightSnippet: snippetText,
+      matchedOcrText: ocrSnippetResult.snippet,
+      matchedTerms: ocrSnippetResult.matchedTerms,
+      matchType,
     };
   }
 

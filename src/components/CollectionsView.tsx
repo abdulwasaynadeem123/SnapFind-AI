@@ -592,8 +592,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
           {/* Header Banner */}
           <PageHeroHeader
             type="collections"
-            title="AI Smart Collections"
-            subtitle="Gemini vision models automatically cluster your visual knowledge into categorized smart albums. Create, move, rename, and merge albums effortlessly."
+            title="Collections"
             isDark={isDark}
             actions={
               <div className="flex items-center gap-2.5 flex-wrap">

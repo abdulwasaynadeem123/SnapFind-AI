@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   Zap,
@@ -56,7 +56,7 @@ export const UsageModal: React.FC<UsageModalProps> = ({
   }, [isOpen, onClose]);
 
   // Category breakdown calculation
-  const categoryStats = React.useMemo(() => {
+  const categoryStats = useMemo(() => {
     const stats: Record<string, { count: number; bytes: number }> = {};
     screenshots.forEach((item) => {
       if ((item as any).isDeleted || (item as any).is_deleted) return;

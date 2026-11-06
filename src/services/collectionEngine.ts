@@ -77,21 +77,6 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
     color: "from-amber-400 to-yellow-600",
     description: "Starred, bookmarked, and frequently accessed screenshots",
   },
-  "💳 Banking & Payments": {
-    icon: "CreditCard",
-    color: "from-[#00FF66] to-emerald-700",
-    description: "Bank transactions, payment confirmations, transfers, and account statements",
-  },
-  "🔒 Private & Sensitive": {
-    icon: "ShieldAlert",
-    color: "from-amber-500 to-rose-700",
-    description: "Identity documents, credentials, private messages, and confidential records",
-  },
-  "🔐 Vault": {
-    icon: "Lock",
-    color: "from-zinc-700 to-black",
-    description: "Encrypted secure vault for strictly protected personal captures",
-  },
   "Travel & Identity": {
     icon: "Plane",
     color: "from-blue-500 to-indigo-600",

@@ -150,7 +150,7 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#D1E8E2] shrink-0" />
-                      <span>On-device OCR & Gemini AI search</span>
+                      <span>On-device OCR & AI vision search</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#D1E8E2] shrink-0" />

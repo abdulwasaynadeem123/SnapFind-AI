@@ -112,8 +112,7 @@ export const TrashView: React.FC<TrashViewProps> = ({
       {/* Banner */}
       <PageHeroHeader
         type="trash"
-        title="Trash Bin"
-        subtitle="Items in Trash are retained for 30 days before auto-deletion. You can restore them or permanently delete them now."
+        title="Trash"
         isDark={isDark}
         actions={
           <div className="flex items-center gap-3">

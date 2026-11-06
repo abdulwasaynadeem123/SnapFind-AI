@@ -241,13 +241,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
       {/* 1. Standard Page Hero Header */}
       <PageHeroHeader
         type="pricing"
-        title="Plans & Pricing"
-        description="Capture, index, and instantly find your visual memory with on-device OCR and AI search."
-        badge={
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#116466]/20 border border-[#116466]/40 text-xs font-bold text-[#D1E8E2]">
-            <Sparkles className="w-3 h-3 text-[#D1E8E2]" /> All Plans
-          </span>
-        }
+        title="Pricing"
+        isDark={isDark}
         actions={
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-[11px] text-slate-400 bg-[#1E293B] px-3 py-1.5 rounded-xl border border-[#334155]">
@@ -270,7 +265,6 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             )}
           </div>
         }
-        isDark={isDark}
       />
 
       {/* 2. Active User Current Plan Status Banner */}

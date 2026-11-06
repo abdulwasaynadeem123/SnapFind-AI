@@ -173,19 +173,21 @@ export function extractStructuredEntitiesFromText(text: string): ExtractedEntiti
     )
   ).slice(0, 10);
 
-  // 5. Monetary Amounts: PKR 7,999, Rs. 1500, $49.99, etc.
-  const amountRegex = /\b(?:PKR|Rs\.?|USD|\$|EUR|€|GBP|£|AED|SAR)\s*[\d,]+(?:\.\d{1,2})?\b|\b[\d,]+(?:\.\d{1,2})?\s*(?:PKR|Rs\.?|USD|EUR|GBP|AED)\b/gi;
+  // 5. Monetary Amounts: PKR 7,999, Rs. 1500, $49.99, €30, £25, etc.
+  const amountRegex = /(?:PKR|Rs\.?|USD|EUR|GBP|AED|SAR|[$€£])\s*[\d,]+(?:\.\d{1,2})?\b|\b[\d,]+(?:\.\d{1,2})?\s*(?:PKR|Rs\.?|USD|EUR|GBP|AED|SAR|[$€£])\b/gi;
   const rawAmounts = text.match(amountRegex) || [];
   const amounts = Array.from(new Set(rawAmounts.map((a) => a.trim()))).slice(0, 10);
 
   // 6. Tracking Numbers, Transaction IDs (TID), Order Numbers
-  const trackingRegex = /\b(?:TID|TRK|ORDER|REF|INV|TRANSACTION|ID)[\s:#-]*([A-Za-z0-9-]{6,24})\b|\b[A-Z0-9]{10,20}\b/gi;
+  const trackingRegex = /\b(?:TID|TRK|ORDER|REF|INV|TRANSACTION|TRACKING(?:\s+(?:ID|NO|NUMBER|CODE))?)[\s:#-]*([A-Za-z0-9-]{6,24})\b|\b[A-Z]{1,4}[-_]?[0-9]{6,18}\b|\b(?=[A-Za-z0-9]{10,22}\b)(?:[A-Za-z]*[0-9]+[A-Za-z0-9]*)\b/gi;
   const rawTracking: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = trackingRegex.exec(text)) !== null) {
-    const val = match[1] || match[0];
-    if (val && val.length >= 6 && !val.match(/^[0-9]+$/)) {
-      rawTracking.push(val.trim());
+    const val = (match[1] || match[0]).trim();
+    const hasDigit = /\d/.test(val);
+    const hasExplicitPrefix = Boolean(match[1]);
+    if (val.length >= 6 && (hasDigit || hasExplicitPrefix) && !/^(?:https?|www|com|org|net|confirmation|transaction|invoice)$/i.test(val)) {
+      rawTracking.push(val);
     }
   }
   const trackingNumbers = Array.from(new Set(rawTracking)).slice(0, 8);

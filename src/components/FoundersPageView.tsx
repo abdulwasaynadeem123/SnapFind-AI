@@ -139,7 +139,7 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
       accent: "text-[#D9B08C] bg-[#D9B08C]/15 border-[#D9B08C]/35",
     },
     {
-      title: "On-Device OCR & Gemini Vision AI",
+      title: "On-Device OCR & Multimodal Vision AI",
       desc: "High-accuracy multi-lingual optical character recognition with instant natural language search.",
       icon: Sparkles,
       accent: "text-[#D1E8E2] bg-[#116466]/20 border-[#116466]/40",
@@ -152,7 +152,7 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
     },
     {
       title: "Encrypted Cloud Sync",
-      desc: "Real-time cross-device synchronization with Supabase row-level cryptographic isolation.",
+      desc: "Real-time cross-device synchronization with row-level cryptographic isolation.",
       icon: Shield,
       accent: "text-[#D9B08C] bg-[#D9B08C]/15 border-[#D9B08C]/35",
     },
@@ -164,7 +164,6 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
       <PageHeroHeader
         type="founder"
         title="Founders Club"
-        subtitle="We are honoring our first 50 early adopters with permanent Lifetime Pro access free of charge, unlimited screenshots, priority OCR queuing, and an exclusive immutable Founder rank."
         isDark={isDark}
       />
 

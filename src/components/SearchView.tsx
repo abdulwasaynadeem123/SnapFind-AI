@@ -245,12 +245,11 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 pb-16 px-3 sm:px-4 md:px-0 select-none">
-      {/* 3D Search Hero Header */}
+      {/* Search Hero Header */}
       {!hasSearched && (
         <PageHeroHeader
           type="search"
-          title="Natural-Language Neural Search"
-          subtitle="Search across all captured text, visual entities, receipts, code snippets, dates, and context in natural human language."
+          title="Search"
           isDark={isDark}
         />
       )}
@@ -309,13 +308,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
       {/* 3. Empty Search State (When no search has been performed) */}
       {!hasSearched && (
-        <div className="py-12 sm:py-16 text-center space-y-6 max-w-lg mx-auto">
-          <div className="space-y-2">
-            <div className="inline-block px-2.5 py-1 rounded-full bg-[#1E293B] border border-[#334155] text-[#D1E8E2] font-mono text-[10px] font-bold tracking-wider uppercase mb-1">
-              [NATURAL_LANGUAGE // RETRIEVAL]
-            </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#F1F5F9]">
-              Find anything you've saved.
+        <div className="py-12 sm:py-16 text-center space-y-4 max-w-lg mx-auto">
+          <div className="space-y-1">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#F1F5F9]">
+              Find anything you've saved
             </h2>
             <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed">
               Search screenshots using words, descriptions, receipt amounts, or natural language.
@@ -367,7 +363,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                     className="px-4 py-2.5 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 active:scale-98 shadow-[0_0_12px_rgba(17,100,102,0.3)] border border-[#116466]"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Try Query in Interactive Demo</span>
+                    <span>Try Query in Demo</span>
                   </button>
                 )}
                 {onOpenImport && (

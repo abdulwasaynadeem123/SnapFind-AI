@@ -82,7 +82,7 @@ export const AskAIBottomSheet: React.FC<AskAIBottomSheetProps> = ({
         {
           id: "welcome",
           sender: "ai",
-          text: `Hi! I'm Gemini 3.6 Flash. Ask me anything about **"${item.title}"** or pick a prompt below!`,
+          text: `Hi! I'm SnapFind AI. Ask me anything about **"${item.title}"** or pick a prompt below!`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
@@ -226,7 +226,7 @@ export const AskAIBottomSheet: React.FC<AskAIBottomSheetProps> = ({
                     Ask AI Assistant
                   </h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#116466]/30 text-[#D1E8E2] border border-[#116466]/40">
-                    Gemini 3.6 Flash
+                    AI Vision
                   </span>
                 </div>
                 <p className="text-xs text-[#94A3B8] truncate max-w-[280px] sm:max-w-md">
@@ -343,7 +343,7 @@ export const AskAIBottomSheet: React.FC<AskAIBottomSheetProps> = ({
               <div className="relative flex-1">
                 <input
                   type="text"
-                  placeholder="Ask Gemini anything about this screenshot..."
+                  placeholder="Ask anything about this screenshot..."
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
                   disabled={isStreaming}

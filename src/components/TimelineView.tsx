@@ -44,7 +44,7 @@ export interface TimelineGroup {
 }
 
 export function parseScreenshotDate(item: ScreenshotItem): Date {
-  const raw = item.createdAt || item.created_at || (item as any).indexedAt || (item as any).date_created || item.dateModified;
+  const raw = item.createdAt || (item as any).created_at || (item as any).indexedAt || (item as any).date_created || item.dateModified;
   if (!raw) return new Date(0);
   const d = new Date(raw);
   return isNaN(d.getTime()) ? new Date(0) : d;
@@ -327,8 +327,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
       {/* 3D Chronological Timeline Hero Header */}
       <PageHeroHeader
         type="timeline"
-        title="Chronological Timeline"
-        subtitle="Explore your indexed screenshots organized naturally by time periods with calendar grouping, date jumps, and source app filtering."
+        title="Timeline"
         isDark={isDark}
         actions={
           <div className="w-full lg:w-auto flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
