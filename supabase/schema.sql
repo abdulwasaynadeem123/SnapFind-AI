@@ -522,6 +522,14 @@ RETURNS JSONB AS $$
 DECLARE
     v_req RECORD;
 BEGIN
+    -- This SECURITY DEFINER function must never be callable by ordinary users.
+    -- Only the trusted service role or an explicitly server-issued admin claim may execute it.
+    IF COALESCE(auth.jwt() ->> 'role', '') <> 'service_role'
+       AND COALESCE(auth.jwt() -> 'app_metadata' ->> 'role', '') <> 'admin' THEN
+        RAISE EXCEPTION 'Administrator authorization required.'
+            USING ERRCODE = '42501';
+    END IF;
+
     SELECT * INTO v_req
     FROM public.payment_requests
     WHERE id = p_request_id;
@@ -595,7 +603,11 @@ BEGIN
 
     RETURN jsonb_build_object('success', true, 'message', 'Payment approved and Lifetime Pro activated.');
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- SECURITY DEFINER is not sufficient by itself: explicitly deny client execution.
+REVOKE ALL ON FUNCTION public.approve_payment_request(UUID, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.approve_payment_request(UUID, TEXT) TO service_role;
 
 -- ==============================================================================
 -- 10. FEEDBACK TABLE
