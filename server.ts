@@ -563,7 +563,6 @@ app.post("/api/analyze-screenshot", aiRateLimiter, async (req, res) => {
       mimeType: rawMime = "image/png",
       fileName = "screenshot.png",
       timestamp,
-      currentScreenshotCount,
     } = req.body;
 
     const base64Data = rawBase || imageBase64 || base64;
@@ -588,10 +587,8 @@ app.post("/api/analyze-screenshot", aiRateLimiter, async (req, res) => {
       ? PLAN_FEATURES_MAP.pro.maxIndexedScreenshots
       : PLAN_FEATURES_MAP.free.maxIndexedScreenshots;
 
-    const countToCheck =
-      typeof currentScreenshotCount === "number"
-        ? currentScreenshotCount
-        : usage.screenshotsIndexed;
+    // Never trust screenshot counts supplied by the browser.
+    const countToCheck = usage.screenshotsIndexed;
 
     if (countToCheck >= maxScreenshots) {
       return res.status(429).json({
@@ -654,7 +651,7 @@ CRITICAL INSTRUCTIONS:
     let analysis: any = null;
     let rawText = "";
 
-    if (cleanBase64.length < 200 || req.body.testMode) {
+    if (process.env.NODE_ENV !== "production" && (cleanBase64.length < 200 || req.body.testMode === true)) {
       // Instant synthetic analysis for lightweight unit test / placeholder stubs
       analysis = {
         title: fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
@@ -850,7 +847,6 @@ CRITICAL INSTRUCTIONS:
     console.error("Error analyzing screenshot:", error);
     return res.status(500).json({
       error: "Failed to analyze screenshot",
-      details: error.message || String(error),
     });
   }
 });
@@ -939,7 +935,7 @@ ${JSON.stringify(itemsSummary, null, 2)}`;
     res.json({ success: true, results: matches });
   } catch (error: any) {
     console.error("Error performing search:", error);
-    res.status(500).json({ error: "Failed to search screenshots", details: error.message });
+    res.status(500).json({ error: "Failed to search screenshots" });
   }
 });
 
