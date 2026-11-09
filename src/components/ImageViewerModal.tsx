@@ -508,14 +508,14 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
         {/* Top Sticky Header */}
         <div className="sticky top-0 z-30 px-4 sm:px-6 py-3.5 border-b border-[#273548] bg-[#16202C]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
           {/* Back to Gallery Button */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={onClose}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1E293B] hover:bg-[#243347] border border-[#334155] text-xs font-semibold text-white transition-colors cursor-pointer shadow-sm active:scale-98"
+              className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl bg-[#1E293B] hover:bg-[#243347] border border-[#334155] text-xs font-semibold text-white transition-colors cursor-pointer shadow-sm active:scale-98 shrink-0"
               title="Return to gallery (Esc)"
             >
-              <ArrowLeft className="w-4 h-4 text-slate-300" />
-              <span>Back to Gallery</span>
+              <ArrowLeft className="w-4 h-4 text-slate-300 shrink-0" />
+              <span className="truncate whitespace-nowrap">Back</span>
             </button>
 
             {activeItemsList.length > 1 && (
@@ -693,13 +693,13 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
           {/* 2. CLEAR SCREENSHOT TITLE & HEADER SUMMARY */}
           <div className="space-y-2 border-b border-[#273548] pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-words">
+            <div className="flex items-center justify-between gap-3 min-w-0">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight truncate whitespace-nowrap min-w-0 flex-1">
                 {item.title}
               </h1>
               <span className="text-xs text-slate-400 font-medium shrink-0 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                {formattedDate}
+                <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <span className="truncate whitespace-nowrap">{formattedDate}</span>
               </span>
             </div>
 
@@ -763,14 +763,14 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                     <button
                       key={cat.id}
                       onClick={() => setActiveCategory(isActive ? null : cat.id)}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer border ${
+                      className={`flex items-center gap-2 px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer border ${
                         isActive
                           ? "bg-[#116466] text-[#F1F5F9] border-[#157F81] shadow-[0_0_14px_rgba(17,100,102,0.4)] scale-102"
                           : "bg-[#1E293B] text-slate-300 border-[#334155] hover:bg-[#243347] hover:text-white hover:border-[#475569]"
                       }`}
                     >
-                      <Icon className={`w-4 h-4 ${isActive ? "text-[#D1E8E2]" : "text-slate-400"}`} />
-                      <span>{cat.label}</span>
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-[#D1E8E2]" : "text-slate-400"}`} />
+                      <span className="truncate whitespace-nowrap">{cat.label}</span>
                       {typeof cat.count === "number" && (
                         <span
                           className={`ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${

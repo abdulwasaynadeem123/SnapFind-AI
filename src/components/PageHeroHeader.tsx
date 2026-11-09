@@ -27,29 +27,29 @@ export const PageHeroHeader: React.FC<PageHeroHeaderProps> = ({
   const displayDescription = subtitle || description;
   return (
     <div
-      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-6 border-b ${
-        isDark ? "border-[#334155]" : "border-slate-200"
+      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-5 border-b ${
+        isDark ? "border-[#273548]" : "border-slate-200"
       } ${className}`}
     >
-      {/* Left: 3D Object + Title & Description */}
-      <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+      {/* Left: Clean Badge + Single-Line Title & Subtitle */}
+      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
         <Hero3dObject type={type} size={size} />
 
-        <div className="min-w-0 space-y-0.5 sm:space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
             <h1
-              className={`text-xl sm:text-2xl font-black tracking-tight truncate ${
+              className={`text-lg sm:text-xl md:text-2xl font-bold tracking-tight truncate whitespace-nowrap ${
                 isDark ? "text-[#F1F5F9]" : "text-slate-900"
               }`}
             >
               {title}
             </h1>
-            {badge && <div>{badge}</div>}
+            {badge && <div className="shrink-0">{badge}</div>}
           </div>
 
           {displayDescription && (
             <div
-              className={`text-xs sm:text-sm font-normal line-clamp-1 sm:line-clamp-2 ${
+              className={`text-xs sm:text-sm font-normal truncate whitespace-nowrap mt-0.5 ${
                 isDark ? "text-[#94A3B8]" : "text-slate-600"
               }`}
             >
@@ -59,9 +59,9 @@ export const PageHeroHeader: React.FC<PageHeroHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Actions / Search / Filter Slots */}
+      {/* Right: Actions / Buttons - stacked or wrapped cleanly on mobile */}
       {actions && (
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap w-full sm:w-auto shrink-0 justify-start sm:justify-end">
           {actions}
         </div>
       )}

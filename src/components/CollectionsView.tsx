@@ -595,7 +595,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
             title="Collections"
             isDark={isDark}
             actions={
-              <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
                 <button
                   onClick={() => {
                     if (!isPro && !isFounder) {
@@ -604,10 +604,10 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     }
                     setMergeModalOpen(true);
                   }}
-                  className="px-3.5 py-2 rounded-2xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] border border-[#334155] hover:border-[#116466] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-3.5 py-2 min-h-[44px] rounded-xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] border border-[#334155] hover:border-[#116466] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
                 >
-                  <Merge className="w-4 h-4 text-[#94A3B8]" />
-                  <span>Merge Collections</span>
+                  <Merge className="w-4 h-4 text-[#94A3B8] shrink-0" />
+                  <span className="truncate whitespace-nowrap">Merge</span>
                   {!isPro && !isFounder && <ProBadge size="xs" variant="pill" />}
                 </button>
 
@@ -619,10 +619,10 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     }
                     setIsCreateOpen(true);
                   }}
-                  className="px-4 py-2 rounded-2xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_12px_rgba(17,100,102,0.3)] border border-[#116466] active:scale-98"
+                  className="px-4 py-2 min-h-[44px] rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_12px_rgba(17,100,102,0.3)] border border-[#116466] active:scale-98"
                 >
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                  <span>New Collection</span>
+                  <Plus className="w-4 h-4 stroke-[2.5] shrink-0" />
+                  <span className="truncate whitespace-nowrap">New Collection</span>
                   {!isPro && !isFounder && <ProBadge size="xs" variant="solid" />}
                 </button>
               </div>

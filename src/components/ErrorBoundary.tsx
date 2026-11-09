@@ -47,7 +47,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <div
           className="min-h-screen text-[#F1F5F9] flex items-center justify-center p-6 font-sans"
           style={{
-            background: "linear-gradient(135deg, #18211E 0%, #0A3638 100%)",
+            backgroundImage: "linear-gradient(135deg, #18211E 0%, #0A3638 100%)",
+            backgroundColor: "#18211E",
           }}
         >
           <div className="max-w-md w-full bg-[#16202C] border border-[#273548] rounded-3xl p-8 shadow-2xl space-y-6 text-center">

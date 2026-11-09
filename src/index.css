@@ -84,6 +84,7 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   html,
@@ -95,9 +96,21 @@
     padding: 0;
   }
 
+  /* Smooth vertical scrolling and natural touch momentum */
+  #main-content-scroll-container,
+  .overflow-y-auto,
+  .overflow-auto {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
+    html,
+    #main-content-scroll-container,
+    .overflow-y-auto,
+    .overflow-auto {
+      scroll-behavior: auto !important;
     }
   }
 

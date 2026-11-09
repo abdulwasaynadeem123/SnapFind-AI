@@ -419,27 +419,27 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
         type="account"
         title="Account"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             {isAdmin && (
               <button
                 id="account-admin-payments-btn"
                 onClick={() => setShowAdminModal(true)}
-                className="px-3.5 py-2 rounded-2xl border text-xs font-bold flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 transition-all cursor-pointer shadow-lg shadow-amber-500/10"
+                className="px-3.5 py-2 min-h-[44px] rounded-xl border text-xs font-bold flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 transition-all cursor-pointer shadow-lg shadow-amber-500/10"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Admin Payments</span>
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate whitespace-nowrap">Admin Payments</span>
               </button>
             )}
             <button
               onClick={() => signOut()}
-              className={`px-3.5 py-2 rounded-2xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              className={`px-3.5 py-2 min-h-[44px] rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
                 isDark
                   ? "bg-[#18181B] border-white/10 hover:bg-white/10 text-slate-300 hover:text-white"
                   : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
               }`}
             >
-              <LogOut className="w-3.5 h-3.5 text-rose-400" />
-              <span>Sign Out</span>
+              <LogOut className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span className="truncate whitespace-nowrap">Sign Out</span>
             </button>
           </div>
         }

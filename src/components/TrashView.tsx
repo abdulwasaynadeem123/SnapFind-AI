@@ -124,10 +124,10 @@ export const TrashView: React.FC<TrashViewProps> = ({
             {trashItems.length > 0 && (
               <button
                 onClick={() => setShowEmptyConfirmModal(true)}
-                className="px-4 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-red-600/25 cursor-pointer shrink-0"
+                className="px-4 py-2 min-h-[44px] rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-red-600/25 cursor-pointer shrink-0"
               >
-                <Trash className="w-4 h-4" />
-                <span>Empty Trash</span>
+                <Trash className="w-4 h-4 shrink-0" />
+                <span className="truncate whitespace-nowrap">Empty Trash</span>
               </button>
             )}
           </div>

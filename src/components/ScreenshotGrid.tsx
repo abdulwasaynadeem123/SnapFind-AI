@@ -360,22 +360,22 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
         </div>
 
         {/* Gallery Controls & Selection Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           {/* Quick Search inside Gallery */}
-          <div className="relative flex-1 max-w-xs">
+          <div className="relative flex-1 max-w-full sm:max-w-xs">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
             <input
               type="text"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               placeholder="Filter vault..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl text-xs font-medium border border-[#334155] bg-[#1E293B] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
+              className="w-full pl-9 pr-8 py-2 min-h-[40px] rounded-xl text-xs font-medium border border-[#334155] bg-[#1E293B] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
             />
             {localSearch && (
               <button
                 type="button"
                 onClick={() => setLocalSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#F1F5F9] p-0.5"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#F1F5F9] p-1"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -383,7 +383,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
           </div>
 
           {/* Right Toolbar Actions */}
-          <div className="flex items-center justify-between sm:justify-end gap-3 text-xs">
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 text-xs flex-wrap w-full sm:w-auto">
             {/* Multi-Select Toggle Button */}
             <button
               type="button"
@@ -391,14 +391,14 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 setIsSelectionMode(!isSelectionMode);
                 if (isSelectionMode) setSelectedIds(new Set());
               }}
-              className={`px-3 py-2 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3 py-2 min-h-[40px] rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
                 isSelectionMode || selectedIds.size > 0
                   ? "bg-[#116466] text-[#F1F5F9] border-[#116466] font-bold shadow-[0_0_12px_rgba(17,100,102,0.3)]"
                   : "bg-[#1E293B] border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#116466]"
               }`}
             >
               {selectedIds.size > 0 ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-              <span>{isSelectionMode ? "Exit Multi-Select" : "Multi-Select"}</span>
+              <span className="truncate whitespace-nowrap">{isSelectionMode ? "Exit Multi-Select" : "Multi-Select"}</span>
             </button>
 
             {/* Select Quick Tools */}

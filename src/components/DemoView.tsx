@@ -96,22 +96,22 @@ export const DemoView: React.FC<DemoViewProps> = ({
         title="Demo"
         isDark={true}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <button
               onClick={onNavigateToGallery}
               type="button"
-              className="px-3.5 py-2 rounded-xl bg-[#1E293B] hover:bg-[#243347] border border-[#334155] text-[#D1E8E2] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 min-h-[44px] rounded-xl bg-[#1E293B] hover:bg-[#243347] border border-[#334155] text-[#D1E8E2] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Exit Demo</span>
+              <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate whitespace-nowrap">Exit Demo</span>
             </button>
             <button
               onClick={onLoadSamplesToVault}
               type="button"
-              className="px-3.5 py-2 rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#116466]/20"
+              className="px-3.5 py-2 min-h-[44px] rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#116466]/20"
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Copy to Vault</span>
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate whitespace-nowrap">Copy to Vault</span>
             </button>
           </div>
         }

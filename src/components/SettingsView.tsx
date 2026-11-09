@@ -143,14 +143,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              className={`flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 isActive
                   ? "bg-[#116466] text-[#F1F5F9] border border-[#116466] shadow-md shadow-[#116466]/20"
                   : "bg-[#1E293B] text-[#94A3B8] border border-[#334155] hover:text-[#F1F5F9] hover:border-[#116466]"
               }`}
             >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="truncate whitespace-nowrap">{tab.label}</span>
             </button>
           );
         })}

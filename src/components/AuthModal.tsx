@@ -157,14 +157,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
         const res = await signInWithEmail(email, password);
         if (res.error) {
           const lower = res.error.toLowerCase();
-          if (lower.includes("email not confirmed") || lower.includes("unconfirmed")) {
+          if (lower.includes("email not confirmed") || lower.includes("unconfirmed") || res.isUnconfirmedEmail) {
             setIsUnconfirmedUser(true);
           }
           setErrorMessage(res.error);
         } else {
           addToast?.({
             title: "Signed In",
-            description: `Welcome back, ${res.user?.name || "User"}!`,
+            description: "Welcome back!",
             type: "success",
           });
           onClose();
@@ -175,17 +175,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
           setErrorMessage(res.error);
         } else {
           onSignupSuccess?.();
-          if (res.user?.isLoggedIn) {
-            addToast?.({
-              title: "Account Created",
-              description: `Welcome to SnapFind, ${res.user.name}!`,
-              type: "success",
-            });
-            onClose();
-          } else {
+          if (res.requiresVerification) {
             setSuccessMessage(
               `Confirmation email sent to ${email.trim()}. Please verify your email to log in.`
             );
+          } else {
+            addToast?.({
+              title: "Account Created",
+              description: "Welcome to SnapFind!",
+              type: "success",
+            });
+            onClose();
           }
         }
       } else if (authMode === "forgot_password") {

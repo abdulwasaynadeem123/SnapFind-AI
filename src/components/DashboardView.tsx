@@ -162,28 +162,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
         {/* Top Header & Quick Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#334155]/60 pb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-[#F1F5F9] tracking-tight">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b border-[#273548] pb-4 sm:pb-6">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-[#F1F5F9] tracking-tight truncate whitespace-nowrap">
               Home
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               onClick={() => setIs3DVaultOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1E293B] hover:bg-[#116466]/20 text-[#D1E8E2] border border-[#334155] hover:border-[#116466] transition-all shadow-md group cursor-pointer"
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl bg-[#16202C] hover:bg-[#116466]/20 text-[#D1E8E2] border border-[#273548] hover:border-[#116466] transition-all shadow-md group cursor-pointer"
             >
-              <Maximize2 className="w-4 h-4 text-[#116466] group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-semibold">3D View</span>
+              <Maximize2 className="w-4 h-4 text-[#116466] group-hover:scale-110 transition-transform shrink-0" />
+              <span className="text-xs sm:text-sm font-semibold truncate whitespace-nowrap">3D View</span>
             </button>
 
             <button
               onClick={() => onNavigate("gallery")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] font-semibold text-sm transition-all shadow-lg shadow-[#116466]/30 cursor-pointer"
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-[#116466]/30 cursor-pointer"
             >
-              <Layers className="w-4 h-4" />
-              <span>Gallery ({totalScreenshots})</span>
+              <Layers className="w-4 h-4 shrink-0" />
+              <span className="truncate whitespace-nowrap">Gallery ({totalScreenshots})</span>
             </button>
           </div>
         </div>
@@ -248,11 +248,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     : "bg-emerald-400"
                 }`}
               />
-              <div>
-                <h3 className="text-base font-bold text-[#F1F5F9] flex items-center gap-2">
-                  Smart Gallery Indexing Engine
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 truncate whitespace-nowrap">
+                  <span className="truncate whitespace-nowrap">Smart Gallery Indexing Engine</span>
                   <span
-                    className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+                    className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border shrink-0 ${
                       indexingState.status === "scanning"
                         ? "bg-[#116466]/30 text-[#D1E8E2] border-[#116466]"
                         : indexingState.status === "paused"
@@ -267,7 +267,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : "Ready & Synced"}
                   </span>
                 </h3>
-                <p className="text-xs text-[#D1E8E2]/70 mt-0.5">
+                <p className="text-xs text-[#D1E8E2]/70 mt-0.5 truncate whitespace-nowrap">
                   {indexingState.status === "scanning"
                     ? `Processing batch ${indexingState.currentBatchIndex + 1}/${indexingState.totalBatches || 1}: ${
                         indexingState.currentItemName || "analyzing screenshot..."
@@ -454,14 +454,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* CATEGORY PILLS */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-[#F1F5F9] flex items-center gap-2">
-              <Tag className="w-4 h-4 text-[#116466]" />
-              Vault Categories
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 min-w-0 truncate whitespace-nowrap">
+              <Tag className="w-4 h-4 text-[#116466] shrink-0" />
+              <span className="truncate whitespace-nowrap">Vault Categories</span>
             </h3>
             <button
               onClick={() => onNavigate("gallery")}
-              className="text-xs text-[#D1E8E2] hover:text-[#F1F5F9] hover:underline"
+              className="text-xs text-[#D1E8E2] hover:text-[#F1F5F9] hover:underline shrink-0"
             >
               View all
             </button>
@@ -472,7 +472,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 key={cat}
                 onClick={() => onSelectCategory(cat as CategoryType)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1E293B] hover:bg-[#116466]/20 text-[#F1F5F9] border border-[#334155] hover:border-[#116466] transition-all text-xs font-medium shadow-sm group"
+                className="flex items-center gap-2 px-3 sm:px-3.5 py-2 min-h-[40px] rounded-xl bg-[#16202C] hover:bg-[#116466]/20 text-[#F1F5F9] border border-[#273548] hover:border-[#116466] transition-all text-xs font-medium shadow-sm group"
               >
                 <span>{cat}</span>
                 <span className="px-1.5 py-0.5 rounded-full bg-[#0B0F19] text-[#D1E8E2] font-mono text-[11px] group-hover:bg-[#116466] group-hover:text-[#F1F5F9] transition-colors">
@@ -487,14 +487,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Screenshots Gallery (2 Cols) */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-[#F1F5F9] flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#116466]" />
-                Recent Screenshots
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 min-w-0 truncate whitespace-nowrap">
+                <Clock className="w-4 h-4 text-[#116466] shrink-0" />
+                <span className="truncate whitespace-nowrap">Recent Screenshots</span>
               </h3>
               <button
                 onClick={() => onNavigate("gallery")}
-                className="text-xs text-[#D1E8E2] hover:underline"
+                className="text-xs text-[#D1E8E2] hover:underline shrink-0"
               >
                 Gallery view
               </button>
@@ -529,10 +529,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
                     <div className="p-3 flex-1 flex flex-col justify-between">
-                      <div className="text-xs font-bold text-[#F1F5F9] truncate group-hover:text-[#D1E8E2] transition-colors">
+                      <div className="text-xs font-bold text-[#F1F5F9] truncate whitespace-nowrap group-hover:text-[#D1E8E2] transition-colors">
                         {item.title || "Untitled"}
                       </div>
-                      <div className="text-[11px] text-[#D1E8E2]/60 truncate mt-1">
+                      <div className="text-[11px] text-[#D1E8E2]/60 truncate whitespace-nowrap mt-1">
                         {item.summary || item.fullText || "Screenshot"}
                       </div>
                     </div>
@@ -544,9 +544,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Recent Search Activity (1 Col) */}
           <div className="space-y-4">
-            <h3 className="text-base font-bold text-[#F1F5F9] flex items-center gap-2">
-              <Search className="w-4 h-4 text-[#116466]" />
-              Recent Search Activity
+            <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 truncate whitespace-nowrap">
+              <Search className="w-4 h-4 text-[#116466] shrink-0" />
+              <span className="truncate whitespace-nowrap">Recent Search Activity</span>
             </h3>
 
             <div className="bg-[#1E293B] rounded-2xl p-4 border border-[#334155] shadow-md space-y-2">

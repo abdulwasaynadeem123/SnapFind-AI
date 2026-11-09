@@ -1055,7 +1055,7 @@ function AppContent() {
     NotificationService.notifyBatchIndexed(ids.length, 800);
 
     addToast({
-      title: "Gemini Vision AI Re-index Complete",
+      title: "AI Vision Re-index Complete",
       description: `Re-scanned and refreshed OCR intelligence for ${ids.length} screenshot(s).`,
       type: "success",
     });
@@ -1188,9 +1188,10 @@ function AppContent() {
       style={
         isDark
           ? {
-              background: isLandingView
+              backgroundImage: isLandingView
                 ? "linear-gradient(160deg, #062122 0%, #0A383A 50%, #041617 100%)"
                 : "linear-gradient(135deg, #18211E 0%, #0A3638 100%)",
+              backgroundColor: isLandingView ? "#062122" : "#18211E",
               backgroundAttachment: "fixed",
             }
           : undefined
