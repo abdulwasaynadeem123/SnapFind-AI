@@ -97,13 +97,13 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
         aria-expanded={isOpen}
         title="Change display currency"
       >
-        <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+        <Globe className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
         <span className="text-base leading-none">{currentMeta.flagEmoji}</span>
-        <span className="font-bold text-white tracking-wide">{currentMeta.code}</span>
-        <span className="text-slate-400 font-mono text-xs">({currentMeta.symbol})</span>
+        <span className="font-bold text-[#F7F8F5] tracking-wide">{currentMeta.code}</span>
+        <span className="text-[#A5AAA1] font-mono text-xs">({currentMeta.symbol})</span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-blue-400" : ""
+          className={`w-3.5 h-3.5 text-[#A5AAA1] transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-[#B7F36B]" : ""
           }`}
         />
       </button>
@@ -116,24 +116,25 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.96 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute right-0 sm:left-0 sm:right-auto mt-2 w-72 rounded-2xl bg-[#12141F] border border-white/15 shadow-2xl shadow-black/80 backdrop-blur-2xl z-50 p-2 overflow-hidden"
+            className="absolute right-0 sm:left-0 sm:right-auto mt-2 w-72 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[8px_8px_24px_rgba(0,0,0,0.85)] z-50 p-2 overflow-hidden"
           >
             {/* Header info */}
-            <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+            <div className="px-3 py-2 border-b border-[#30362E] flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-white">Select Display Currency</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Approximate rates · Canonical in USD
+                <p className="text-xs font-bold text-[#F7F8F5]">Select Display Currency</p>
+                <p className="text-[10px] text-[#A5AAA1] mt-0.5">
+                  Approximate rates, canonical in USD
                 </p>
               </div>
               <button
+                type="button"
                 onClick={handleRefreshRates}
                 disabled={isRefreshing}
                 title="Refresh exchange rates"
-                className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                className="p-1 rounded-lg hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] transition-colors cursor-pointer"
               >
                 <RefreshCw
-                  className={`w-3 h-3 ${isRefreshing ? "animate-spin text-blue-400" : ""}`}
+                  className={`w-3 h-3 ${isRefreshing ? "animate-spin text-[#B7F36B]" : ""}`}
                 />
               </button>
             </div>
@@ -152,8 +153,8 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
                     onClick={() => handleSelect(curr.code)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
                       isSelected
-                        ? "bg-blue-600/20 text-blue-300 font-semibold border border-blue-500/30"
-                        : "hover:bg-white/5 text-slate-300 hover:text-white border border-transparent"
+                        ? "bg-[#B7F36B] text-[#10130D] font-semibold border border-[#B7F36B]"
+                        : "hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-transparent"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">

@@ -6,14 +6,12 @@ import {
   Search,
   Layers,
   Heart,
-  Sparkles,
   Settings,
   Trash2,
   PanelLeftClose,
   PanelLeft,
   X,
   ShieldCheck,
-  MessageSquarePlus,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { NavViewType } from "./BottomNavigation";
@@ -86,27 +84,33 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
     (user as any)?.user_metadata?.role === "admin" ||
     (user as any)?.app_metadata?.role === "admin";
 
-  // Essential navigation items with standard names:
-  // Home, Gallery, Search, Favorites, Collections, Demo, Feedback, Settings, Trash (+ Admin if admin)
+  // Dedicated page navigation items:
+  // Home, Search, Gallery, Collections, Favorites, Recently Deleted, Settings (+ Admin if admin)
   const navItems = [
     {
-      id: "dashboard" as NavViewType,
+      id: "landing" as NavViewType,
       label: "Home",
       icon: LayoutDashboard,
-      isActive: activeView === "dashboard" || activeView === "landing" || activeView === "timeline",
-    },
-    {
-      id: "gallery" as NavViewType,
-      label: "Gallery",
-      icon: ImageIcon,
-      count: indexedCount,
-      isActive: activeView === "gallery",
+      isActive: activeView === "landing",
     },
     {
       id: "search" as NavViewType,
       label: "Search",
       icon: Search,
       isActive: activeView === "search" || activeView === "history",
+    },
+    {
+      id: "gallery" as NavViewType,
+      label: "Gallery",
+      icon: ImageIcon,
+      count: indexedCount,
+      isActive: activeView === "gallery" || activeView === "dashboard" || activeView === "timeline",
+    },
+    {
+      id: "collections" as NavViewType,
+      label: "Collections",
+      icon: Layers,
+      isActive: activeView === "collections",
     },
     {
       id: "favorites" as NavViewType,
@@ -116,35 +120,22 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
       isActive: activeView === "favorites",
     },
     {
-      id: "collections" as NavViewType,
-      label: "Collections",
-      icon: Layers,
-      isActive: activeView === "collections",
-    },
-    {
-      id: "demo" as NavViewType,
-      label: "Demo",
-      icon: Sparkles,
-      isActive: activeView === "demo",
-    },
-    {
-      id: "feedback" as NavViewType,
-      label: "Feedback",
-      icon: MessageSquarePlus,
-      isActive: activeView === "feedback",
+      id: "trash" as NavViewType,
+      label: "Recently Deleted",
+      icon: Trash2,
+      count: trashCount,
+      isActive: activeView === "trash",
     },
     {
       id: "settings" as NavViewType,
       label: "Settings",
       icon: Settings,
-      isActive: activeView === "settings" || activeView === "account" || activeView === "notifications" || activeView === "pricing",
-    },
-    {
-      id: "trash" as NavViewType,
-      label: "Trash",
-      icon: Trash2,
-      count: trashCount,
-      isActive: activeView === "trash",
+      isActive:
+        activeView === "settings" ||
+        activeView === "account" ||
+        activeView === "notifications" ||
+        activeView === "pricing" ||
+        activeView === "feedback",
     },
     ...(isAdmin
       ? [
@@ -158,7 +149,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
       : []),
   ];
 
-  // Render a navigation button with high-contrast palette aesthetic
+  // Render a navigation button with claymorphic dark palette aesthetic
   const renderNavButton = (
     item: {
       id: NavViewType;
@@ -179,20 +170,20 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
         type="button"
         title={collapsedMode ? item.label : undefined}
         onClick={() => handleNavClick(item.id)}
-        className={`group relative flex items-center ${
+        className={`group relative flex items-center min-h-[44px] ${
           collapsedMode ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2.5"
-        } w-full rounded-xl text-xs font-medium transition-all duration-200 cursor-pointer ${
+        } w-full rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
           active
-            ? "bg-[#1E293B] text-[#D1E8E2] font-semibold border border-[#116466] shadow-[0_0_14px_rgba(17,100,102,0.25)]"
-            : "text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1E293B]/70 hover:border-[#334155] border border-transparent"
+            ? "bg-[#1B1F1A] text-[#F7F8F5] font-semibold border border-[#30362E] shadow-[4px_4px_12px_rgba(0,0,0,0.6),-2px_-2px_6px_rgba(255,255,255,0.02)]"
+            : "text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] border border-transparent"
         }`}
       >
         <div className={`flex items-center ${collapsedMode ? "justify-center" : "gap-3"} min-w-0`}>
           <Icon
-            className={`w-4 h-4 shrink-0 transition-all ${
+            className={`w-4 h-4 shrink-0 transition-colors ${
               active
-                ? "text-[#D1E8E2] drop-shadow-[0_0_6px_rgba(17,100,102,0.6)]"
-                : "text-[#94A3B8] group-hover:text-[#F1F5F9]"
+                ? "text-[#B7F36B]"
+                : "text-[#A5AAA1] group-hover:text-[#F7F8F5]"
             }`}
           />
           {!collapsedMode && <span className="truncate tracking-tight">{item.label}</span>}
@@ -200,19 +191,19 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
 
         {/* Count badge for expanded mode */}
         {!collapsedMode && item.count !== undefined && item.count > 0 && (
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[#141B19] border border-[#273548] text-[#D1E8E2]">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[#0D0F0D] border border-[#30362E] text-[#A5AAA1]">
             {item.count}
           </span>
         )}
 
-        {/* Dot indicator for collapsed mode */}
+        {/* Green indicator for collapsed mode */}
         {collapsedMode && item.count !== undefined && item.count > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#116466] shadow-[0_0_6px_rgba(17,100,102,0.8)]" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#B7F36B]" />
         )}
 
-        {/* Cyber Teal left active bar */}
+        {/* Lime-green left active bar indicator */}
         {active && (
-          <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-[#116466] shadow-[0_0_8px_rgba(17,100,102,0.8)]" />
+          <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-[#B7F36B]" />
         )}
       </button>
     );
@@ -225,29 +216,29 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
         id="desktop-sidebar"
         className={`shrink-0 hidden lg:flex flex-col border-r h-screen overflow-hidden p-3 transition-[width] duration-200 select-none z-30 ${
           isCollapsed ? "w-16" : "w-60"
-        } bg-[#141B19]/95 backdrop-blur-md border-[#273548] text-[#F1F5F9]`}
+        } bg-[#0D0F0D] border-[#30362E] text-[#F7F8F5]`}
       >
         {/* Top Header / Logo & Collapse Toggle */}
         <div className="shrink-0 space-y-2 pb-2">
           <div
             className={`flex items-center ${
               isCollapsed ? "justify-center" : "justify-between"
-            } px-1 pb-2 border-b border-[#273548]`}
+            } px-1 pb-2 border-b border-[#30362E]`}
           >
             {!isCollapsed && (
               <button
                 type="button"
-                onClick={() => handleNavClick("dashboard")}
-                className="flex items-center gap-2 group cursor-pointer text-left"
+                onClick={() => handleNavClick("landing")}
+                className="flex items-center gap-2 group cursor-pointer text-left min-h-[44px]"
               >
                 <div className="relative">
-                  <SnapFindLogo className="w-7 h-7 rounded-lg object-contain border border-[#334155] bg-[#1E293B]" />
+                  <SnapFindLogo className="w-7 h-7 rounded-xl object-contain border border-[#30362E] bg-[#141714]" />
                 </div>
                 <div className="flex items-center">
-                  <span className="font-extrabold text-sm tracking-tight text-[#F1F5F9]">
+                  <span className="font-extrabold text-sm tracking-tight text-[#F7F8F5]">
                     SnapFind
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-[#1E293B] text-[#D1E8E2] border border-[#334155] ml-1.5">
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E] ml-1.5">
                     AI
                   </span>
                 </div>
@@ -259,7 +250,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
               type="button"
               onClick={toggleCollapse}
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1E293B] transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
             >
               {isCollapsed ? (
                 <PanelLeft className="w-4 h-4" />
@@ -287,7 +278,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={onCloseMobile}
-              className="fixed inset-0 bg-black/80 backdrop-blur-xs"
+              className="fixed inset-0 bg-black/85"
             />
 
             {/* Slide-over Content */}
@@ -296,14 +287,14 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="relative w-72 max-w-[85vw] h-full flex flex-col justify-between p-4 shadow-2xl overflow-y-auto select-none bg-[#141B19] text-[#F1F5F9] border-r border-[#273548]"
+              className="relative w-72 max-w-[85vw] h-full flex flex-col justify-between p-4 shadow-2xl overflow-y-auto select-none bg-[#0D0F0D] text-[#F7F8F5] border-r border-[#30362E]"
             >
               <div className="space-y-5">
                 {/* Header with Logo & Close Button */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#273548]">
+                <div className="flex items-center justify-between pb-3 border-b border-[#30362E]">
                   <div className="flex items-center gap-2.5">
-                    <SnapFindLogo className="w-7 h-7 rounded-xl object-contain border border-[#273548] bg-[#16202C]" />
-                    <span className="font-bold text-base tracking-tight text-[#F1F5F9]">
+                    <SnapFindLogo className="w-7 h-7 rounded-xl object-contain border border-[#30362E] bg-[#141714]" />
+                    <span className="font-bold text-base tracking-tight text-[#F7F8F5]">
                       SnapFind
                     </span>
                   </div>
@@ -312,7 +303,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
                     id="mobile-drawer-close-btn"
                     type="button"
                     onClick={onCloseMobile}
-                    className="p-1.5 rounded-xl text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1E293B] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -326,15 +317,15 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
 
               {/* User summary at bottom of drawer */}
               {user && (
-                <div className="pt-4 mt-6 border-t border-[#334155] flex items-center justify-between text-xs">
+                <div className="pt-4 mt-6 border-t border-[#30362E] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2 truncate">
-                    <div className="w-6 h-6 rounded-full bg-[#1E293B] border border-[#334155] text-[#D1E8E2] flex items-center justify-center font-bold text-[10px]">
+                    <div className="w-6 h-6 rounded-full bg-[#141714] border border-[#30362E] text-[#B7F36B] flex items-center justify-center font-bold text-[10px]">
                       {user.name ? user.name[0].toUpperCase() : "U"}
                     </div>
-                    <span className="truncate text-[#94A3B8]">{user.name || "User"}</span>
+                    <span className="truncate text-[#A5AAA1]">{user.name || "User"}</span>
                   </div>
                   {isPro && (
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#116466] text-[#F1F5F9] border border-[#116466]">
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#B7F36B] text-[#10130D]">
                       PRO
                     </span>
                   )}

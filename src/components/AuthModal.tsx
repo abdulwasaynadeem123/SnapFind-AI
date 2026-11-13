@@ -18,11 +18,17 @@ import { useAuth } from "../context/AuthContext";
 interface AuthModalProps {
   onClose: () => void;
   isDark: boolean;
+  initialMode?: "login" | "register";
   addToast?: (msg: { title: string; description?: string; type: "success" | "error" | "info" }) => void;
   onSignupSuccess?: () => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignupSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({
+  onClose,
+  initialMode = "login",
+  addToast,
+  onSignupSuccess,
+}) => {
   const {
     user,
     signInWithEmail,
@@ -40,7 +46,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
   const isSubmittingRef = useRef(false);
 
   const [authMode, setAuthMode] = useState<"login" | "register" | "forgot_password" | "reset_password">(
-    isRecoveryMode ? "reset_password" : "login"
+    isRecoveryMode ? "reset_password" : initialMode
   );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,8 +63,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
   useEffect(() => {
     if (isRecoveryMode) {
       setAuthMode("reset_password");
+    } else {
+      setAuthMode(initialMode);
     }
-  }, [isRecoveryMode]);
+  }, [isRecoveryMode, initialMode]);
 
   useEffect(() => {
     if (oauthErrorMessage) {
@@ -245,23 +253,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-6 sm:p-7 shadow-2xl text-[#F1F5F9]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md rounded-2xl border border-[#30362E] bg-[#141714] p-6 sm:p-7 shadow-[8px_8px_24px_rgba(0,0,0,0.85)] text-[#F7F8F5]">
         {/* Close Button */}
         <button
           onClick={onClose}
           type="button"
           title="Close dialog"
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#2C3531] transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header with Logo */}
-        <div className="flex items-center gap-3 pb-5 border-b border-[#334155]">
-          <SnapFindLogo className="w-9 h-9 rounded-xl object-contain border border-[#334155] bg-[#2C3531] shrink-0" />
+        <div className="flex items-center gap-3 pb-5 border-b border-[#30362E]">
+          <SnapFindLogo className="w-9 h-9 rounded-xl object-contain border border-[#30362E] bg-[#0D0F0D] shrink-0" />
           <div>
-            <h2 className="font-extrabold text-lg tracking-tight text-[#F1F5F9]">
+            <h2 className="font-extrabold text-lg tracking-tight text-[#F7F8F5]">
               {user?.isLoggedIn
                 ? "Account"
                 : authMode === "forgot_password"
@@ -278,13 +286,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
         {user?.isLoggedIn && authMode !== "reset_password" ? (
           /* Logged In View */
           <div className="space-y-4 pt-5">
-            <div className="p-4 rounded-xl border border-[#334155] bg-[#2C3531] flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1E293B] border border-[#334155] text-[#D1E8E2] font-semibold text-sm flex items-center justify-center shrink-0">
+            <div className="p-4 rounded-xl border border-[#30362E] bg-[#0D0F0D] flex items-center gap-3 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
+              <div className="w-10 h-10 rounded-full bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] font-semibold text-sm flex items-center justify-center shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-sm text-[#F1F5F9] truncate">{user.name}</h3>
-                <p className="text-xs text-[#94A3B8] truncate">{user.email}</p>
+                <h3 className="font-semibold text-sm text-[#F7F8F5] truncate">{user.name}</h3>
+                <p className="text-xs text-[#A5AAA1] truncate">{user.email}</p>
               </div>
             </div>
 
@@ -311,7 +319,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                       type="button"
                       onClick={handleResendVerification}
                       disabled={resendingVerification}
-                      className="inline-flex items-center gap-1 text-xs text-white hover:underline font-medium cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs text-[#B7F36B] hover:underline font-medium cursor-pointer"
                     >
                       <RotateCw className={`w-3 h-3 ${resendingVerification ? "animate-spin" : ""}`} />
                       <span>{resendingVerification ? "Sending..." : "Resend confirmation email"}</span>
@@ -323,8 +331,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
 
             {/* Success Banner */}
             {successMessage && (
-              <div className="p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-xs flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="p-3 rounded-xl border border-[#B7F36B]/40 bg-[#B7F36B]/10 text-[#B7F36B] text-xs flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p>{successMessage}</p>
                 </div>
@@ -338,7 +346,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                   type="button"
                   onClick={handleGoogleAuth}
                   disabled={isSubmitting}
-                  className="w-full py-2.5 px-4 rounded-xl border border-[#334155] bg-[#2C3531] hover:bg-[#334155] text-[#F1F5F9] font-medium text-xs flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] font-medium text-xs flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                 >
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                     <path
@@ -362,8 +370,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                 </button>
 
                 <div className="relative flex items-center justify-center my-1">
-                  <div className="border-t border-[#334155] w-full" />
-                  <span className="bg-[#1E293B] px-2 text-[11px] text-[#94A3B8]">or</span>
+                  <div className="border-t border-[#30362E] w-full" />
+                  <span className="bg-[#141714] px-2 text-[11px] text-[#777E74]">or</span>
                 </div>
               </div>
             )}
@@ -372,9 +380,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
               {/* Name field (register only) */}
               {authMode === "register" && (
                 <div className="space-y-1 text-xs">
-                  <label className="font-medium text-[#94A3B8]">Name</label>
+                  <label className="font-medium text-[#A5AAA1]">Name</label>
                   <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
                     <input
                       type="text"
                       value={name}
@@ -382,7 +390,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                       placeholder="Your name"
                       disabled={isSubmitting}
                       required
-                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                     />
                   </div>
                 </div>
@@ -391,9 +399,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
               {/* Email field */}
               {authMode !== "reset_password" && (
                 <div className="space-y-1 text-xs">
-                  <label className="font-medium text-[#94A3B8]">Email</label>
+                  <label className="font-medium text-[#A5AAA1]">Email</label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
                     <input
                       type="email"
                       value={email}
@@ -401,7 +409,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                       placeholder="you@example.com"
                       disabled={isSubmitting}
                       required
-                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                     />
                   </div>
                 </div>
@@ -411,21 +419,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
               {(authMode === "login" || authMode === "register" || authMode === "reset_password") && (
                 <div className="space-y-1 text-xs">
                   <div className="flex items-center justify-between">
-                    <label className="font-medium text-[#94A3B8]">
+                    <label className="font-medium text-[#A5AAA1]">
                       {authMode === "reset_password" ? "New password" : "Password"}
                     </label>
                     {authMode === "login" && (
                       <button
                         type="button"
                         onClick={() => handleModeChange("forgot_password")}
-                        className="text-[11px] text-[#94A3B8] hover:text-[#D1E8E2] transition-colors cursor-pointer"
+                        className="text-[11px] text-[#A5AAA1] hover:text-[#B7F36B] transition-colors cursor-pointer"
                       >
                         Forgot password?
                       </button>
                     )}
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
@@ -433,12 +441,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                       placeholder="••••••••"
                       disabled={isSubmitting}
                       required
-                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
+                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#F1F5F9] cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777E74] hover:text-[#F7F8F5] cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -449,9 +457,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
               {/* Confirm password field (register and reset_password) */}
               {(authMode === "register" || authMode === "reset_password") && (
                 <div className="space-y-1 text-xs">
-                  <label className="font-medium text-[#94A3B8]">Confirm password</label>
+                  <label className="font-medium text-[#A5AAA1]">Confirm password</label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
@@ -459,12 +467,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                       placeholder="••••••••"
                       disabled={isSubmitting}
                       required
-                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#334155] bg-[#2C3531] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
+                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#F1F5F9] cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777E74] hover:text-[#F7F8F5] cursor-pointer"
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -476,11 +484,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2 shadow-md shadow-[#116466]/20"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
               >
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-[#10130D]/30 border-t-[#10130D] rounded-full animate-spin" />
                     <span>Please wait...</span>
                   </span>
                 ) : (
@@ -498,12 +506,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
 
               {/* Mode switch links */}
               {authMode === "login" && (
-                <div className="text-center pt-2 text-xs text-[#94A3B8]">
+                <div className="text-center pt-2 text-xs text-[#A5AAA1]">
                   Don't have an account?{" "}
                   <button
                     type="button"
                     onClick={() => handleModeChange("register")}
-                    className="text-[#D1E8E2] hover:underline font-semibold cursor-pointer"
+                    className="text-[#B7F36B] hover:underline font-semibold cursor-pointer"
                   >
                     Sign up
                   </button>
@@ -511,12 +519,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
               )}
 
               {authMode === "register" && (
-                <div className="text-center pt-2 text-xs text-[#94A3B8]">
+                <div className="text-center pt-2 text-xs text-[#A5AAA1]">
                   Already have an account?{" "}
                   <button
                     type="button"
                     onClick={() => handleModeChange("login")}
-                    className="text-[#D1E8E2] hover:underline font-semibold cursor-pointer"
+                    className="text-[#B7F36B] hover:underline font-semibold cursor-pointer"
                   >
                     Sign in
                   </button>
@@ -528,7 +536,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, addToast, onSignu
                   <button
                     type="button"
                     onClick={() => handleModeChange("login")}
-                    className="inline-flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-[#F1F5F9] transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#A5AAA1] hover:text-[#F7F8F5] transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Back to Sign in</span>

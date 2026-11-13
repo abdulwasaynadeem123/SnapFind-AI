@@ -1,88 +1,88 @@
 /**
  * SnapFind AI - Centralized Design Tokens & Color System
  *
- * Official Palette (Darkened Cyber Teal & Deep Forest Slate):
- * - Deep Forest Slate: #1A2220 — deep dark page background
- * - Cyber Teal (Darkened): #0A383A — rich dark cyber teal for landing background
- * - Cyber Teal Brand Accent: #116466 — brand highlights, buttons, selected states
- * - Soft Mint: #D1E8E2 — subtle highlights and light accent surfaces
- * - Charcoal Card: #16202C — cards, sidebars, modals, and search panels
- * - Frost White: #F1F5F9 — primary text
- * - Shadow Gray: #273548 — borders and dividers
- * - Warm Beige: #D9B08C — optional, restrained secondary highlights
+ * Official Palette (Dark Claymorphism & Lime Green Accent):
+ * - Main background: #080908
+ * - Secondary background: #0D0F0D
+ * - Card background: #141714
+ * - Elevated surface: #1B1F1A
+ * - Hover surface: #222720
+ * - Primary text: #F7F8F5
+ * - Secondary text: #A5AAA1
+ * - Muted text: #777E74
+ * - Borders: #30362E
+ * - Primary green: #B7F36B
+ * - Green hover: #A5E65A
  */
 
 export const SnapFindTokens = {
   colors: {
-    // Official Forest Slate & Cyber Teal Palette (Darkened)
-    forestSlate: "#1A2220",
-    onyx: "#141B19",
-    cyberTealDark: "#0A383A",
-    cyberTealDeep: "#062122",
-    cyberTeal: "#116466",
-    cyberTealHover: "#157F81",
-    cyberTealLight: "#208E90",
-    softMint: "#D1E8E2",
-    charcoal: "#16202C",
-    charcoalElevated: "#1D2A3A",
-    charcoalHover: "#233346",
-    frostWhite: "#F1F5F9",
-    shadowGray: "#273548",
-    shadowGrayLight: "#334155",
-    warmBeige: "#D9B08C",
+    // 11-Color System
+    mainBg: "#080908",
+    secondaryBg: "#0D0F0D",
+    cardBg: "#141714",
+    elevatedSurface: "#1B1F1A",
+    hoverSurface: "#222720",
+    primaryText: "#F7F8F5",
+    secondaryText: "#A5AAA1",
+    mutedText: "#777E74",
+    border: "#30362E",
+    primaryGreen: "#B7F36B",
+    greenHover: "#A5E65A",
 
     // Structural Mappings
-    bg: "#1A2220",
-    bgFrom: "#18211E",
-    bgTo: "#0A3638",
-    bgGradient: "linear-gradient(135deg, #18211E 0%, #0A3638 100%)",
-    landingBg: "#0A383A",
-    landingBgGradient: "linear-gradient(160deg, #062122 0%, #0A383A 50%, #041617 100%)",
-    surface: "#16202C",
-    surfaceElevated: "#1D2A3A",
-    surfaceHover: "#233346",
-    border: "#273548",
-    borderHover: "#334155",
+    bg: "#080908",
+    bgFrom: "#080908",
+    bgTo: "#080908",
+    bgGradient: "#080908",
+    landingBg: "#080908",
+    landingBgGradient: "#080908",
+    surface: "#141714",
+    surfaceElevated: "#1B1F1A",
+    surfaceHover: "#222720",
+    borderHover: "#B7F36B",
 
     // Interactive & Brand Accents
-    primary: "#116466",
-    primaryHover: "#157F81",
-    primaryLight: "rgba(17, 100, 102, 0.18)",
-    secondary: "#1E293B",
-    secondaryHover: "#243347",
-    accent: "#116466",
-    accentHover: "#157F81",
-    accentMint: "#D1E8E2",
+    primary: "#B7F36B",
+    primaryHover: "#A5E65A",
+    primaryLight: "rgba(183, 243, 107, 0.15)",
+    secondary: "#1B1F1A",
+    secondaryHover: "#222720",
+    accent: "#B7F36B",
+    accentHover: "#A5E65A",
+    accentMint: "#B7F36B",
 
     // Semantic States
-    ai: "#116466",
-    aiHover: "#157F81",
-    aiNeon: "#D1E8E2",
-    success: "#10B981",
-    warning: "#D9B08C",
-    attention: "#D9B08C",
-    highlight: "#D1E8E2",
+    ai: "#B7F36B",
+    aiHover: "#A5E65A",
+    aiNeon: "#B7F36B",
+    success: "#B7F36B",
+    warning: "#B7F36B",
+    attention: "#B7F36B",
+    highlight: "#B7F36B",
     error: "#EF4444",
     danger: "#EF4444",
 
     // Typography
-    textPrimary: "#F1F5F9",
-    textSecondary: "#94A3B8",
-    textMint: "#D1E8E2",
-    textMuted: "#64748B",
-    textDisabled: "#475569",
+    textPrimary: "#F7F8F5",
+    textSecondary: "#A5AAA1",
+    textMint: "#B7F36B",
+    textMuted: "#777E74",
+    textDisabled: "#777E74",
   },
   gradients: {
-    primary: "linear-gradient(180deg, #243347 0%, #1E293B 100%)",
-    ai: "linear-gradient(135deg, #116466 0%, #157F81 100%)",
-    aiSubtle: "linear-gradient(180deg, rgba(17, 100, 102, 0.20) 0%, rgba(17, 100, 102, 0.04) 100%)",
-    cardGlow: "0 0 24px -4px rgba(17, 100, 102, 0.25)",
+    primary: "#141714",
+    ai: "#B7F36B",
+    aiSubtle: "rgba(183, 243, 107, 0.1)",
+    cardGlow: "0 0 24px -4px rgba(0, 0, 0, 0.6)",
   },
   shadows: {
-    primary: "0 2px 14px rgba(17, 100, 102, 0.30)",
-    card: "0 4px 20px rgba(11, 15, 25, 0.8)",
-    elevated: "0 8px 32px rgba(11, 15, 25, 0.95)",
-    tealGlow: "0 0 20px rgba(17, 100, 102, 0.40)",
+    clayCard: "6px 6px 16px rgba(0,0,0,0.65), -2px -2px 8px rgba(255,255,255,0.025)",
+    clayInset: "inset 3px 3px 6px rgba(0,0,0,0.65), inset -2px -2px 5px rgba(255,255,255,0.02)",
+    claySurface: "4px 4px 12px rgba(0,0,0,0.6), -2px -2px 6px rgba(255,255,255,0.02)",
+    primary: "2px 2px 8px rgba(0,0,0,0.4)",
+    card: "6px 6px 16px rgba(0,0,0,0.65)",
+    elevated: "8px 8px 24px rgba(0,0,0,0.85)",
   },
 } as const;
 

@@ -245,10 +245,10 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         isDark={isDark}
         actions={
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 bg-[#1E293B] px-3 py-1.5 rounded-xl border border-[#334155]">
+            <div className="flex items-center gap-1.5 text-[11px] text-[#A5AAA1] bg-[#141714] px-3 py-1.5 rounded-xl border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
               <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#116466] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#D1E8E2]"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#B7F36B] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#B7F36B]"></span>
               </span>
               <span>{isLive ? "Live Realtime Sync" : "Authoritative Sync"}</span>
             </div>
@@ -257,9 +257,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 id="admin-review-payments-btn"
                 type="button"
                 onClick={() => setShowAdminModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] border border-[#334155] transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-[#D1E8E2]" />
+                <ShieldCheck className="w-3.5 h-3.5 text-[#B7F36B]" />
                 <span>Admin Review</span>
               </button>
             )}
@@ -271,30 +271,30 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
       {user && user.id !== "guest" && (
         <div
           id="current-plan-status-bar"
-          className="max-w-4xl mx-auto p-4 sm:p-5 rounded-2xl bg-[#1E293B] border border-[#334155] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-xl"
+          className="max-w-4xl mx-auto p-4 sm:p-5 rounded-2xl bg-[#141714] border border-[#30362E] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]"
         >
           <div className="flex items-center gap-3.5">
             {isFounder ? (
-              <div className="w-11 h-11 rounded-xl bg-[#D9B08C]/15 border border-[#D9B08C]/35 flex items-center justify-center text-[#D9B08C] shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/35 flex items-center justify-center text-amber-300 shrink-0">
                 <Crown className="w-6 h-6" />
               </div>
             ) : isPaidLifetimePro ? (
-              <div className="w-11 h-11 rounded-xl bg-[#116466]/25 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2] shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-[#B7F36B]/15 border border-[#B7F36B]/35 flex items-center justify-center text-[#B7F36B] shrink-0">
                 <Gem className="w-6 h-6" />
               </div>
             ) : isPaidYearlyPro || isPaidMonthlyPro ? (
-              <div className="w-11 h-11 rounded-xl bg-[#116466]/25 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2] shrink-0">
-                <Zap className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl bg-[#B7F36B]/15 border border-[#B7F36B]/35 flex items-center justify-center text-[#B7F36B] shrink-0">
+                <Zap className="w-6 h-6 stroke-[2.5]" />
               </div>
             ) : (
-              <div className="w-11 h-11 rounded-xl bg-[#2C3531] border border-[#334155] flex items-center justify-center text-slate-400 shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center text-[#777E74] shrink-0">
                 <InfinityIcon className="w-6 h-6" />
               </div>
             )}
 
             <div>
               <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                <span className="text-sm font-bold text-white">
+                <span className="text-sm font-bold text-[#F7F8F5]">
                   {isFounder
                     ? `👑 Founder #${founderNumber || 1}`
                     : isPaidLifetimePro
@@ -308,16 +308,16 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 <span
                   className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                     isFounder
-                      ? "bg-[#D9B08C]/20 text-[#D9B08C] border border-[#D9B08C]/40"
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                       : isPro
-                      ? "bg-[#116466]/25 text-[#D1E8E2] border border-[#116466]/40"
-                      : "bg-[#2C3531] text-slate-400 border border-[#334155]"
+                      ? "bg-[#B7F36B]/15 text-[#B7F36B] border border-[#B7F36B]/30"
+                      : "bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E]"
                   }`}
                 >
                   {isFounder ? "Permanent Founder VIP" : isPro ? "Active Pro" : "Active Plan"}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[#A5AAA1] mt-0.5">
                 {isFounder
                   ? "150,000 AI-indexed screenshots • Lifetime Free Founder VIP • AI Multimodal Search"
                   : isPaidLifetimePro
@@ -333,17 +333,17 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
 
           <div className="flex items-center gap-2 text-xs font-semibold">
             {isFounder ? (
-              <span className="text-[#D9B08C] flex items-center gap-1.5 bg-[#D9B08C]/15 px-3 py-1.5 rounded-xl border border-[#D9B08C]/30">
-                <Crown className="w-3.5 h-3.5 text-[#D9B08C]" />
+              <span className="text-amber-300 flex items-center gap-1.5 bg-amber-500/15 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
                 Permanent Founder VIP
               </span>
             ) : isPro ? (
-              <span className="text-[#D1E8E2] flex items-center gap-1.5 bg-[#116466]/25 px-3 py-1.5 rounded-xl border border-[#116466]/40">
-                <Check className="w-3.5 h-3.5 text-[#D1E8E2]" />
+              <span className="text-[#B7F36B] flex items-center gap-1.5 bg-[#B7F36B]/15 px-3 py-1.5 rounded-xl border border-[#B7F36B]/30">
+                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                 Active Pro
               </span>
             ) : (
-              <span className="text-slate-400 bg-[#2C3531] px-3 py-1.5 rounded-xl border border-[#334155]">
+              <span className="text-[#A5AAA1] bg-[#1B1F1A] px-3 py-1.5 rounded-xl border border-[#30362E]">
                 250 Lifetime AI-Indexed Screenshots Quota
               </span>
             )}
@@ -353,14 +353,14 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
 
       {/* 3. Billing Selector Filter Tabs */}
       <div className="flex items-center justify-center">
-        <div className="inline-flex p-1 rounded-2xl bg-[#2C3531] border border-[#334155] text-xs font-semibold">
+        <div className="inline-flex p-1 rounded-2xl bg-[#141714] border border-[#30362E] text-xs font-semibold shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
           <button
             type="button"
             onClick={() => setBillingTab("all")}
             className={`px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer ${
               billingTab === "all"
-                ? "bg-[#116466] text-white font-bold shadow-md"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                : "text-[#A5AAA1] hover:text-[#F7F8F5]"
             }`}
           >
             All Plans
@@ -370,8 +370,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             onClick={() => setBillingTab("monthly")}
             className={`px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer ${
               billingTab === "monthly"
-                ? "bg-[#116466] text-white font-bold shadow-md"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                : "text-[#A5AAA1] hover:text-[#F7F8F5]"
             }`}
           >
             Monthly
@@ -381,14 +381,14 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             onClick={() => setBillingTab("yearly")}
             className={`px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
               billingTab === "yearly"
-                ? "bg-[#116466] text-white font-bold shadow-md"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                : "text-[#A5AAA1] hover:text-[#F7F8F5]"
             }`}
           >
             <span>Yearly</span>
             <span
               className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                billingTab === "yearly" ? "bg-[#D1E8E2] text-[#2C3531] font-bold" : "bg-[#1E293B] text-slate-300"
+                billingTab === "yearly" ? "bg-[#10130D] text-[#B7F36B] font-bold" : "bg-[#1B1F1A] text-[#A5AAA1]"
               }`}
             >
               Save PKR {yearlySavings.toLocaleString()}
@@ -399,8 +399,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             onClick={() => setBillingTab("lifetime")}
             className={`px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer ${
               billingTab === "lifetime"
-                ? "bg-[#116466] text-white font-bold shadow-md"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                : "text-[#A5AAA1] hover:text-[#F7F8F5]"
             }`}
           >
             Lifetime &amp; Founder
@@ -414,20 +414,20 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         {(billingTab === "all" || billingTab === "monthly") && (
           <div
             id="plan-card-free"
-            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#1E293B] transition-all relative ${
+            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all relative ${
               isFreeUser
-                ? "border-[#116466] ring-1 ring-[#116466]/40 shadow-xl"
-                : "border-[#334155] hover:border-[#116466]/50"
+                ? "border-[#B7F36B]/50 ring-1 ring-[#B7F36B]/20"
+                : "border-[#30362E] hover:border-[#30362E]/80"
             }`}
           >
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">FREE</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Best for trying SnapFind</p>
+                  <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">FREE</h3>
+                  <p className="text-xs text-[#A5AAA1] mt-0.5">Best for trying SnapFind</p>
                 </div>
                 {isFreeUser && (
-                  <span className="px-2.5 py-1 rounded-md bg-[#2C3531] border border-[#334155] text-[10px] font-bold text-[#D1E8E2]">
+                  <span className="px-2.5 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[10px] font-bold text-[#B7F36B]">
                     ✓ Current Plan
                   </span>
                 )}
@@ -435,43 +435,43 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
 
               {/* Price */}
               <div className="space-y-1">
-                <div className="text-3xl sm:text-4xl font-black text-white">PKR 0</div>
-                <p className="text-xs text-slate-400">Free forever • No credit card required</p>
+                <div className="text-3xl sm:text-4xl font-bold text-[#F7F8F5]">PKR 0</div>
+                <p className="text-xs text-[#A5AAA1]">Free forever • No credit card required</p>
               </div>
 
               {/* Benefits */}
-              <div className="pt-4 border-t border-[#334155] space-y-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Included Benefits</p>
-                <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
+              <div className="pt-4 border-t border-[#30362E] space-y-3">
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Included Benefits</p>
+                <ul className="space-y-2.5 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">250 lifetime AI-indexed screenshots</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">250 lifetime AI-indexed screenshots</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>On-device OCR text extraction</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Natural language &amp; visual search</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Collections &amp; smart albums</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Trash &amp; restore management</span>
                   </li>
                 </ul>
               </div>
 
               {/* Limitations */}
-              <div className="pt-3 border-t border-[#334155] space-y-2">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Plan Limit</p>
-                <ul className="space-y-1.5 text-xs text-slate-400">
+              <div className="pt-3 border-t border-[#30362E] space-y-2">
+                <p className="text-[11px] font-semibold text-[#777E74] uppercase tracking-wider">Plan Limit</p>
+                <ul className="space-y-1.5 text-xs text-[#777E74]">
                   <li className="flex items-start gap-2">
-                    <span className="text-slate-400 font-bold">•</span>
+                    <span className="text-[#777E74] font-bold">•</span>
                     <span>250 lifetime AI-indexed screenshots limit</span>
                   </li>
                 </ul>
@@ -485,7 +485,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   id="free-plan-current-btn"
                   type="button"
                   disabled
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#2C3531] border border-[#334155] text-slate-400 text-xs font-bold text-center cursor-default"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#777E74] text-xs font-bold text-center cursor-default"
                 >
                   ✓ Current Plan
                 </button>
@@ -496,7 +496,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   onClick={() => {
                     if (onNavigate) onNavigate("gallery");
                   }}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#2C3531] hover:bg-[#116466]/20 border border-[#334155] text-[#F1F5F9] text-xs font-bold transition cursor-pointer"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-xs font-bold transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
                 >
                   Included in Your Account
                 </button>
@@ -509,25 +509,25 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         {(billingTab === "all" || billingTab === "monthly") && (
           <div
             id="plan-card-pro-monthly"
-            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#1E293B] transition-all relative ${
+            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all relative ${
               isPaidMonthlyPro
-                ? "border-[#116466] ring-1 ring-[#116466]/40 shadow-xl"
-                : "border-[#334155] hover:border-[#116466]/50 shadow-md"
+                ? "border-[#B7F36B] ring-1 ring-[#B7F36B]/40"
+                : "border-[#30362E] hover:border-[#30362E]/80"
             }`}
           >
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-white tracking-tight">PRO MONTHLY</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-[#D9B08C]/15 border border-[#D9B08C]/30 text-[10px] font-black text-[#D9B08C] uppercase tracking-wider">
+                    <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">PRO MONTHLY</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-[#1B1F1A] border border-[#30362E] text-[10px] font-bold text-[#B7F36B] uppercase tracking-wider">
                       Coming Soon
                     </span>
                   </div>
-                  <p className="text-xs text-[#D1E8E2] mt-0.5">Best for flexible monthly usage</p>
+                  <p className="text-xs text-[#A5AAA1] mt-0.5">Best for flexible monthly usage</p>
                 </div>
                 {isPaidMonthlyPro && (
-                  <span className="px-2.5 py-1 rounded-md bg-[#116466]/25 border border-[#116466]/40 text-[10px] font-bold text-[#D1E8E2]">
+                  <span className="px-2.5 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[10px] font-bold text-[#B7F36B]">
                     ✓ Current Plan
                   </span>
                 )}
@@ -536,49 +536,49 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               {/* Price */}
               <div className="space-y-1">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-black text-white">PKR {monthlyPrice.toLocaleString()}</span>
-                  <span className="text-xs text-slate-400">/ month</span>
+                  <span className="text-3xl sm:text-4xl font-bold text-[#F7F8F5]">PKR {monthlyPrice.toLocaleString()}</span>
+                  <span className="text-xs text-[#A5AAA1]">/ month</span>
                 </div>
-                <p className="text-xs text-slate-400">Recurring monthly • Cancel anytime</p>
+                <p className="text-xs text-[#777E74]">Recurring monthly • Cancel anytime</p>
               </div>
 
               {/* Benefits */}
-              <div className="pt-4 border-t border-[#334155] space-y-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pro Monthly Features</p>
-                <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
+              <div className="pt-4 border-t border-[#30362E] space-y-3">
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Pro Monthly Features</p>
+                <ul className="space-y-2.5 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">2,500 AI-indexed screenshots / month</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">2,500 AI-indexed screenshots / month</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Natural language multimodal AI search</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Natural language multimodal AI search</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Advanced search filters &amp; date range</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>QR, Barcode &amp; URL auto-intelligence</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Cloud sync &amp; multi-device backup</span>
                   </li>
                 </ul>
               </div>
 
               {/* Limitations */}
-              <div className="pt-3 border-t border-[#334155] space-y-2">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Billing Terms</p>
-                <ul className="space-y-1.5 text-xs text-slate-400">
+              <div className="pt-3 border-t border-[#30362E] space-y-2">
+                <p className="text-[11px] font-semibold text-[#777E74] uppercase tracking-wider">Billing Terms</p>
+                <ul className="space-y-1.5 text-xs text-[#777E74]">
                   <li className="flex items-start gap-2">
-                    <span className="text-slate-400 font-bold">•</span>
+                    <span className="text-[#777E74] font-bold">•</span>
                     <span>2,500 AI-indexed screenshots per month quota</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-slate-400 font-bold">•</span>
+                    <span className="text-[#777E74] font-bold">•</span>
                     <span>Recurring monthly billing</span>
                   </li>
                 </ul>
@@ -591,7 +591,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 <button
                   type="button"
                   disabled
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#116466]/25 border border-[#116466]/40 text-[#D1E8E2] text-xs font-bold text-center cursor-default"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] text-xs font-bold text-center cursor-default"
                 >
                   ✓ Current Plan Active
                 </button>
@@ -600,9 +600,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   id="subscribe-monthly-btn"
                   type="button"
                   onClick={() => handlePaidPlanClick("Pro Monthly (PKR 249/mo)")}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#2C3531] hover:bg-[#1E293B] border border-[#D9B08C]/35 hover:border-[#D9B08C]/60 text-[#D9B08C] text-xs font-black transition cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] hover:text-[#B7F36B] text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
                 >
-                  <Clock className="w-4 h-4 text-[#D9B08C]" />
+                  <Clock className="w-4 h-4 text-[#B7F36B]" />
                   <span>Coming Soon • PKR {monthlyPrice.toLocaleString()}/mo</span>
                 </button>
               )}
@@ -614,15 +614,15 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         {(billingTab === "all" || billingTab === "yearly") && (
           <div
             id="plan-card-pro-yearly"
-            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#1E293B] transition-all relative ${
+            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all relative ${
               isPaidYearlyPro
-                ? "border-[#116466] ring-2 ring-[#116466]/40 shadow-2xl"
-                : "border-[#116466]/50 hover:border-[#116466] shadow-lg shadow-[#116466]/10"
+                ? "border-[#B7F36B] ring-1 ring-[#B7F36B]/40"
+                : "border-[#30362E] hover:border-[#30362E]/80"
             }`}
           >
             {/* Top Badge: BEST VALUE */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#116466] text-[#D1E8E2] text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md border border-[#116466]/40">
-              <Star className="w-3 h-3 fill-[#D1E8E2]" />
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#B7F36B] text-[#10130D] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]">
+              <Star className="w-3 h-3 fill-current" />
               <span>BEST VALUE • SAVE PKR {yearlySavings.toLocaleString()}</span>
             </div>
 
@@ -630,15 +630,15 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-white tracking-tight">PRO YEARLY</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-[#D9B08C]/15 border border-[#D9B08C]/30 text-[10px] font-black text-[#D9B08C] uppercase tracking-wider">
+                    <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">PRO YEARLY</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-[#1B1F1A] border border-[#30362E] text-[10px] font-bold text-[#B7F36B] uppercase tracking-wider">
                       Coming Soon
                     </span>
                   </div>
-                  <p className="text-xs text-[#D1E8E2] mt-0.5 font-medium">Best value for regular users</p>
+                  <p className="text-xs text-[#A5AAA1] mt-0.5 font-medium">Best value for regular users</p>
                 </div>
                 {isPaidYearlyPro && (
-                  <span className="px-2.5 py-1 rounded-md bg-[#116466]/25 border border-[#116466]/40 text-[10px] font-bold text-[#D1E8E2]">
+                  <span className="px-2.5 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[10px] font-bold text-[#B7F36B]">
                     ✓ Current Plan
                   </span>
                 )}
@@ -647,60 +647,60 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               {/* Price */}
               <div className="space-y-1">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-black text-white">PKR {yearlyPrice.toLocaleString()}</span>
-                  <span className="text-xs text-slate-400">/ year</span>
+                  <span className="text-3xl sm:text-4xl font-bold text-[#F7F8F5]">PKR {yearlyPrice.toLocaleString()}</span>
+                  <span className="text-xs text-[#A5AAA1]">/ year</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#D1E8E2] font-semibold">
+                  <span className="text-xs text-[#B7F36B] font-semibold">
                     ~PKR {Math.round(yearlyPrice / 12)}/mo
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-[#777E74]">
                     (Saves PKR {yearlySavings.toLocaleString()} vs monthly)
                   </span>
                 </div>
               </div>
 
               {/* Benefits */}
-              <div className="pt-4 border-t border-[#334155] space-y-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Yearly Benefits</p>
-                <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
+              <div className="pt-4 border-t border-[#30362E] space-y-3">
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Yearly Benefits</p>
+                <ul className="space-y-2.5 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">30,000 AI-indexed screenshots / year</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">30,000 AI-indexed screenshots / year</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Everything in Pro Monthly</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Everything in Pro Monthly</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Priority AI vision processing</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Priority AI vision processing</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Priority OCR &amp; search indexing</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Full cloud backup &amp; multi-device sync</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Priority customer support</span>
                   </li>
                 </ul>
               </div>
 
               {/* Limitations */}
-              <div className="pt-3 border-t border-[#334155] space-y-2">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Billing Terms</p>
-                <ul className="space-y-1.5 text-xs text-slate-400">
+              <div className="pt-3 border-t border-[#30362E] space-y-2">
+                <p className="text-[11px] font-semibold text-[#777E74] uppercase tracking-wider">Billing Terms</p>
+                <ul className="space-y-1.5 text-xs text-[#777E74]">
                   <li className="flex items-start gap-2">
-                    <span className="text-slate-400 font-bold">•</span>
+                    <span className="text-[#777E74] font-bold">•</span>
                     <span>30,000 annual AI-indexed screenshots allowance</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-slate-400 font-bold">•</span>
+                    <span className="text-[#777E74] font-bold">•</span>
                     <span>Recurring yearly payment</span>
                   </li>
                 </ul>
@@ -713,7 +713,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 <button
                   type="button"
                   disabled
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#116466]/25 border border-[#116466]/40 text-[#D1E8E2] text-xs font-bold text-center cursor-default"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] text-xs font-bold text-center cursor-default"
                 >
                   ✓ Current Plan Active
                 </button>
@@ -722,9 +722,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   id="subscribe-yearly-btn"
                   type="button"
                   onClick={() => handlePaidPlanClick("Pro Yearly (PKR 1,999/yr)")}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#2C3531] hover:bg-[#1E293B] border border-[#D9B08C]/35 hover:border-[#D9B08C]/60 text-[#D9B08C] text-xs font-black transition cursor-pointer shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] hover:text-[#B7F36B] text-xs font-bold transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)] flex items-center justify-center gap-2"
                 >
-                  <Clock className="w-4 h-4 text-[#D9B08C]" />
+                  <Clock className="w-4 h-4 text-[#B7F36B]" />
                   <span>Coming Soon • PKR {yearlyPrice.toLocaleString()}/yr</span>
                 </button>
               )}
@@ -736,15 +736,15 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         {(billingTab === "all" || billingTab === "lifetime") && (
           <div
             id="plan-card-pro-lifetime"
-            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#1E293B] transition-all relative ${
+            className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all relative ${
               isPaidLifetimePro
-                ? "border-[#116466] ring-1 ring-[#116466]/40 shadow-xl"
-                : "border-[#334155] hover:border-[#116466]/50 shadow-md"
+                ? "border-[#B7F36B] ring-1 ring-[#B7F36B]/40"
+                : "border-[#30362E] hover:border-[#30362E]/80"
             }`}
           >
             {/* Top Pill */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-gradient-to-r from-[#116466] to-[#D1E8E2] text-[#2C3531] text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md">
-              <Gem className="w-3 h-3 fill-[#2C3531]" />
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]">
+              <Gem className="w-3 h-3 fill-current" />
               <span>ONE-TIME PAYMENT • PAY ONCE</span>
             </div>
 
@@ -752,15 +752,15 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-white tracking-tight">PRO LIFETIME</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-[#D9B08C]/15 border border-[#D9B08C]/30 text-[10px] font-black text-[#D9B08C] uppercase tracking-wider">
+                    <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">PRO LIFETIME</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-[#1B1F1A] border border-[#30362E] text-[10px] font-bold text-[#B7F36B] uppercase tracking-wider">
                       Coming Soon
                     </span>
                   </div>
-                  <p className="text-xs text-[#D1E8E2] mt-0.5">Best for users who want to pay once</p>
+                  <p className="text-xs text-[#A5AAA1] mt-0.5">Best for users who want to pay once</p>
                 </div>
                 {isPaidLifetimePro && (
-                  <span className="px-2.5 py-1 rounded-md bg-[#116466]/25 border border-[#116466]/40 text-[10px] font-bold text-[#D1E8E2]">
+                  <span className="px-2.5 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[10px] font-bold text-[#B7F36B]">
                     💎 Active
                   </span>
                 )}
@@ -768,53 +768,53 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
 
               {/* Price */}
               <div className="space-y-1">
-                <div className="text-3xl sm:text-4xl font-black text-white">
+                <div className="text-3xl sm:text-4xl font-bold text-[#F7F8F5]">
                   PKR {lifetimePrice.toLocaleString()}
                 </div>
-                <p className="text-xs text-slate-400">One-time payment • No recurring fees forever</p>
+                <p className="text-xs text-[#777E74]">One-time payment • No recurring fees forever</p>
               </div>
 
               {/* Benefits */}
-              <div className="pt-4 border-t border-[#334155] space-y-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lifetime Inclusions</p>
-                <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
+              <div className="pt-4 border-t border-[#30362E] space-y-3">
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Lifetime Inclusions</p>
+                <ul className="space-y-2.5 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">100,000 AI-indexed screenshots</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">100,000 AI-indexed screenshots</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Everything in Pro</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Everything in Pro</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">No recurring fees forever</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">No recurring fees forever</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Permanent Lifetime Pro access</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Permanent Lifetime Pro access</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Future Pro features included</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D1E8E2] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Permanently tied to user account</span>
                   </li>
                 </ul>
               </div>
 
               {/* Limitations */}
-              <div className="pt-3 border-t border-[#334155] space-y-2">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Terms</p>
-                <ul className="space-y-1.5 text-xs text-slate-400">
+              <div className="pt-3 border-t border-[#30362E] space-y-2">
+                <p className="text-[11px] font-semibold text-[#777E74] uppercase tracking-wider">Terms</p>
+                <ul className="space-y-1.5 text-xs text-[#777E74]">
                   <li className="flex items-start gap-2">
-                    <span className="text-slate-400 font-bold">•</span>
+                    <span className="text-[#777E74] font-bold">•</span>
                     <span>100,000 lifetime AI-indexed screenshots quota</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-slate-400 font-bold">•</span>
+                    <span className="text-[#777E74] font-bold">•</span>
                     <span>One-time payment • No recurring subscriptions</span>
                   </li>
                 </ul>
@@ -827,7 +827,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 <button
                   type="button"
                   disabled
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#116466]/25 border border-[#116466]/40 text-[#D1E8E2] text-xs font-bold text-center cursor-default"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] text-xs font-bold text-center cursor-default"
                 >
                   💎 Lifetime Pro Active
                 </button>
@@ -836,9 +836,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   id="get-pro-lifetime-btn"
                   type="button"
                   onClick={() => handlePaidPlanClick("Pro Lifetime (PKR 5,999 once)")}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-[#2C3531] hover:bg-[#1E293B] border border-[#D9B08C]/35 hover:border-[#D9B08C]/60 text-[#D9B08C] text-xs font-black transition cursor-pointer shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] hover:text-[#B7F36B] text-xs font-bold transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)] flex items-center justify-center gap-2"
                 >
-                  <Clock className="w-4 h-4 text-[#D9B08C]" />
+                  <Clock className="w-4 h-4 text-[#B7F36B]" />
                   <span>Coming Soon • PKR {lifetimePrice.toLocaleString()}</span>
                 </button>
               )}
@@ -849,17 +849,17 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         {/* ================= PLAN 5: FOUNDER PLAN (FREE 150K QUOTA - 50 SEATS) ================= */}
         <div
           id="plan-card-founder"
-          className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#1E293B] transition-all relative ${
+          className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all relative ${
             billingTab === "all" ? "md:col-span-2 lg:col-span-2" : ""
           } ${
             isFounder
-              ? "border-[#D9B08C] ring-2 ring-[#D9B08C]/40 shadow-2xl shadow-[#D9B08C]/10"
-              : "border-[#D9B08C]/40 hover:border-[#D9B08C]/80 shadow-xl shadow-[#D9B08C]/5"
+              ? "border-[#B7F36B] ring-1 ring-[#B7F36B]/40"
+              : "border-[#30362E] hover:border-[#30362E]/80"
           }`}
         >
           {/* Top Pill */}
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#D9B08C] text-[#2C3531] text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md">
-            <Crown className="w-3.5 h-3.5 fill-[#2C3531]" />
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#B7F36B] text-[#10130D] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]">
+            <Crown className="w-3.5 h-3.5 fill-current" />
             <span>👑 FOUNDER • 100% FREE • MAXIMUM 50 SEATS</span>
           </div>
 
@@ -867,16 +867,16 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-white tracking-tight">FOUNDER PLAN</h3>
-                  <Crown className="w-5 h-5 text-[#D9B08C]" />
+                  <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">FOUNDER PLAN</h3>
+                  <Crown className="w-5 h-5 text-[#B7F36B]" />
                 </div>
-                <p className="text-xs text-[#D9B08C] mt-0.5 font-medium">
+                <p className="text-xs text-[#A5AAA1] mt-0.5 font-medium">
                   Strictly limited to the first 50 early founding supporters • 100% Free Lifetime VIP
                 </p>
               </div>
               {isFounder && (
-                <span className="px-3 py-1 rounded-md bg-[#D9B08C]/20 border border-[#D9B08C]/40 text-xs font-black text-[#D9B08C] flex items-center gap-1.5">
-                  <Crown className="w-3.5 h-3.5 fill-[#D9B08C]" />
+                <span className="px-3 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-xs font-bold text-[#B7F36B] flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5 fill-[#B7F36B]" />
                   <span>👑 Founder #{founderNumber || 1} Active</span>
                 </span>
               )}
@@ -885,14 +885,14 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             {/* Price */}
             <div className="space-y-1">
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl font-black text-[#D9B08C]">
+                <span className="text-3xl sm:text-4xl font-bold text-[#B7F36B]">
                   FREE (PKR 0)
                 </span>
-                <span className="text-xs font-bold text-[#D1E8E2] bg-[#116466]/20 px-2.5 py-0.5 rounded-full border border-[#116466]/40">
+                <span className="text-xs font-bold text-[#B7F36B] bg-[#1B1F1A] px-2.5 py-0.5 rounded-full border border-[#30362E]">
                   No Payment Required
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#777E74]">
                 Lifetime Free for Founder • Maximum 50 seats • Instant 1-click allocation
               </p>
             </div>
@@ -900,20 +900,20 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             {/* REAL DATABASE-BACKED FOUNDER COUNTER */}
             <div
               id="founder-availability-tracker"
-              className="p-4 rounded-2xl bg-[#2C3531] border border-[#334155] space-y-2.5"
+              className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)] space-y-2.5"
             >
               <div className="flex items-center justify-between text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#D9B08C]" />
-                  <span className="font-bold text-white">
+                  <Activity className="w-4 h-4 text-[#B7F36B]" />
+                  <span className="font-bold text-[#F7F8F5]">
                     {spotsClaimed} / {totalFounderSpots} Founder seats claimed
                   </span>
                 </div>
                 <span
-                  className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
+                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                     spotsRemaining > 0
-                      ? "bg-[#D9B08C]/20 text-[#D9B08C] border border-[#D9B08C]/30"
-                      : "bg-red-500/20 text-red-400 border border-red-500/30"
+                      ? "bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]"
+                      : "bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E]"
                   }`}
                 >
                   {founderSeatAvailabilityLabel}
@@ -921,14 +921,14 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               </div>
 
               {/* Progress Bar */}
-              <div className="w-full h-2 rounded-full bg-[#1E293B] overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-[#141714] overflow-hidden p-0.5 border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.6)]">
                 <div
-                  className="h-full bg-gradient-to-r from-[#116466] to-[#D9B08C] rounded-full transition-all duration-500"
+                  className="h-full bg-[#B7F36B] rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(183,243,107,0.4)]"
                   style={{ width: `${Math.min(100, (spotsClaimed / totalFounderSpots) * 100)}%` }}
                 />
               </div>
 
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[#A5AAA1]">
                 {spotsRemaining > 0
                   ? `Real-time availability calculated from live database. ${spotsRemaining} spots remaining.`
                   : "All 50 Founder seats have been claimed. Thank you to our 50 founding members!"}
@@ -936,46 +936,46 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             </div>
 
             {/* Grid of Founder Inclusions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#334155]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#30362E]">
               <div className="space-y-2.5">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Founder Inclusions</p>
-                <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Founder Inclusions</p>
+                <ul className="space-y-2 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">150,000 AI-indexed screenshots lifetime</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">150,000 AI-indexed screenshots lifetime</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Lifetime Free Pro access (No payment required)</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Lifetime Free Pro access (No payment required)</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Permanent Founder badge (👑 #1–50)</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Permanent Founder badge (👑 #1–50)</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white">Permanent Founder VIP status</span>
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                    <span className="font-semibold text-[#F7F8F5]">Permanent Founder VIP status</span>
                   </li>
                 </ul>
               </div>
 
               <div className="space-y-2.5">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Exclusive Privileges</p>
-                <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Exclusive Privileges</p>
+                <ul className="space-y-2 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Early access to major new features</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Founder recognition &amp; VIP crown badge</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Founder-exclusive priority queue</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#D9B08C] shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Direct priority customer support</span>
                   </li>
                 </ul>
@@ -983,9 +983,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             </div>
 
             {/* Potential Limitations */}
-            <div className="pt-2 border-t border-[#334155] space-y-1.5">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Eligibility Limits</p>
-              <p className="text-xs text-slate-400">
+            <div className="pt-2 border-t border-[#30362E] space-y-1.5">
+              <p className="text-[11px] font-semibold text-[#777E74] uppercase tracking-wider">Eligibility Limits</p>
+              <p className="text-xs text-[#777E74]">
                 • Hard maximum of 50 founder seats. Allocation is atomic, real-time, and verified securely on the database.
               </p>
             </div>
@@ -994,18 +994,18 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           {/* Founder CTA Button */}
           <div className="pt-6">
             {isFounder ? (
-              <div className="p-3.5 rounded-2xl bg-[#D9B08C]/15 border border-[#D9B08C]/35 text-center space-y-0.5">
-                <div className="text-xs font-black text-[#D9B08C] flex items-center justify-center gap-1.5">
-                  <Crown className="w-4 h-4 fill-[#D9B08C]" />
+              <div className="p-3.5 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-center space-y-0.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)]">
+                <div className="text-xs font-bold text-[#B7F36B] flex items-center justify-center gap-1.5">
+                  <Crown className="w-4 h-4 fill-[#B7F36B]" />
                   <span>👑 Founder #{founderNumber || 1} • Lifetime Free Pro Active</span>
                 </div>
-                <p className="text-[11px] text-slate-400">150,000 AI-indexed screenshots • Permanent VIP Rank</p>
+                <p className="text-[11px] text-[#A5AAA1]">150,000 AI-indexed screenshots • Permanent VIP Rank</p>
               </div>
             ) : spotsRemaining <= 0 ? (
               <button
                 type="button"
                 disabled
-                className="w-full py-3.5 px-4 rounded-2xl bg-[#2C3531] text-slate-500 text-xs font-bold text-center cursor-not-allowed border border-[#334155]"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] text-[#777E74] text-xs font-bold text-center cursor-not-allowed border border-[#30362E]"
               >
                 Founder Seats Sold Out
               </button>
@@ -1015,16 +1015,16 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 type="button"
                 onClick={handleClaimFreeFounder}
                 disabled={isClaimingFounder}
-                className="w-full py-3.5 px-4 rounded-2xl bg-[#116466] hover:bg-[#16787b] text-white text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-[#116466]/30 disabled:opacity-50"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)] disabled:opacity-50"
               >
                 {isClaimingFounder ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#10130D]" />
                     <span>Claiming your Free Founder Seat...</span>
                   </>
                 ) : (
                   <>
-                    <Crown className="w-4 h-4 text-[#D9B08C] fill-[#D9B08C]" />
+                    <Crown className="w-4 h-4 text-[#10130D] fill-current" />
                     <span>👑 Claim Free Founder Seat ({spotsRemaining} Left)</span>
                   </>
                 )}
@@ -1037,120 +1037,120 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
       {/* 5. Complete Plan Comparison Matrix Table */}
       <div id="plan-comparison-section" className="space-y-6 pt-6">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#F7F8F5] tracking-tight">
             Detailed Plan Comparison
           </h2>
-          <p className="text-xs sm:text-sm text-[#94A3B8]">
+          <p className="text-xs sm:text-sm text-[#A5AAA1]">
             Compare all features across Free, Monthly, Yearly, Lifetime, and Founder tiers.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-2xl">
+        <div className="rounded-3xl border border-[#30362E] bg-[#141714] overflow-hidden shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse min-w-[700px]">
               <thead>
-                <tr className="border-b border-[#334155] bg-[#2C3531]/90 text-[#F1F5F9]">
-                  <th className="p-4 sm:p-5 font-bold text-xs uppercase tracking-wider text-slate-400 sticky left-0 bg-[#2C3531] z-10">
+                <tr className="border-b border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5]">
+                  <th className="p-4 sm:p-5 font-bold text-xs uppercase tracking-wider text-[#A5AAA1] sticky left-0 bg-[#0D0F0D] z-10">
                     Feature
                   </th>
                   <th className="p-4 sm:p-5 font-bold text-center">
                     <div>Free</div>
-                    <div className="text-[10px] text-slate-400 font-normal">PKR 0</div>
+                    <div className="text-[10px] text-[#777E74] font-normal">PKR 0</div>
                   </th>
                   <th className="p-4 sm:p-5 font-bold text-center">
                     <div>Monthly</div>
-                    <div className="text-[10px] text-[#D9B08C] font-bold">PKR 249 / mo (Coming Soon)</div>
+                    <div className="text-[10px] text-[#A5AAA1] font-bold">PKR 249 / mo (Coming Soon)</div>
                   </th>
-                  <th className="p-4 sm:p-5 font-bold text-center bg-[#116466]/10 border-x border-[#116466]/20">
-                    <div className="text-[#D1E8E2]">Yearly</div>
-                    <div className="text-[10px] text-[#D9B08C] font-bold">PKR 1,999 / yr (Coming Soon)</div>
+                  <th className="p-4 sm:p-5 font-bold text-center bg-[#1B1F1A]/80 border-x border-[#30362E]">
+                    <div className="text-[#B7F36B]">Yearly</div>
+                    <div className="text-[10px] text-[#B7F36B] font-bold">PKR 1,999 / yr (Coming Soon)</div>
                   </th>
                   <th className="p-4 sm:p-5 font-bold text-center">
                     <div>Lifetime</div>
-                    <div className="text-[10px] text-[#D9B08C] font-bold">PKR 5,999 once (Coming Soon)</div>
+                    <div className="text-[10px] text-[#A5AAA1] font-bold">PKR 5,999 once (Coming Soon)</div>
                   </th>
-                  <th className="p-4 sm:p-5 font-bold text-center bg-[#D9B08C]/10 border-l border-[#D9B08C]/20">
-                    <div className="text-[#D9B08C]">👑 Founder</div>
-                    <div className="text-[10px] text-[#D9B08C] font-bold">FREE (First 50 Users)</div>
+                  <th className="p-4 sm:p-5 font-bold text-center bg-[#1B1F1A]/80 border-l border-[#30362E]">
+                    <div className="text-[#B7F36B]">👑 Founder</div>
+                    <div className="text-[10px] text-[#B7F36B] font-bold">FREE (First 50 Users)</div>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#334155]/60 text-slate-300">
+              <tbody className="divide-y divide-[#30362E] text-[#A5AAA1]">
                 {/* Row 1: Screenshot limit */}
                 <tr className="hover:bg-white/[0.02] transition">
-                  <td className="p-4 sm:p-5 font-semibold text-white sticky left-0 bg-[#1E293B] z-10">
+                  <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
                     AI-Indexed Screenshots Limit
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-slate-400 font-medium">250 lifetime</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">2,500 / month</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold bg-[#116466]/10 border-x border-[#116466]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#777E74] font-medium">250 lifetime</td>
+                  <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">2,500 / month</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-x border-[#30362E]">
                     30,000 / year
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">100,000 lifetime</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D9B08C] font-bold bg-[#D9B08C]/10 border-l border-[#D9B08C]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">100,000 lifetime</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
                     150,000 lifetime
                   </td>
                 </tr>
 
                 {/* Row 2: OCR Extraction */}
                 <tr className="hover:bg-white/[0.02] transition">
-                  <td className="p-4 sm:p-5 font-semibold text-white sticky left-0 bg-[#1E293B] z-10">
+                  <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
                     On-Device OCR Text Extraction
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold bg-[#116466]/10 border-x border-[#116466]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-x border-[#30362E]">
                     ✓ Included
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D9B08C] font-bold bg-[#D9B08C]/10 border-l border-[#D9B08C]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
                     ✓ Included
                   </td>
                 </tr>
 
                 {/* Row 3: Multimodal AI Search */}
                 <tr className="hover:bg-white/[0.02] transition">
-                  <td className="p-4 sm:p-5 font-semibold text-white sticky left-0 bg-[#1E293B] z-10">
+                  <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
                     Multimodal AI Search
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-slate-500">Basic only</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">✓ Full AI</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold bg-[#116466]/10 border-x border-[#116466]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#777E74]">Basic only</td>
+                  <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Full AI</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-x border-[#30362E]">
                     ✓ Full AI (Priority)
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">✓ Full AI</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D9B08C] font-bold bg-[#D9B08C]/10 border-l border-[#D9B08C]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Full AI</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
                     ✓ Full AI (Priority)
                   </td>
                 </tr>
 
                 {/* Row 4: Cloud Sync & Backup */}
                 <tr className="hover:bg-white/[0.02] transition">
-                  <td className="p-4 sm:p-5 font-semibold text-white sticky left-0 bg-[#1E293B] z-10">
+                  <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
                     Cloud Sync &amp; Multi-Device
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-slate-500">Local only</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold bg-[#116466]/10 border-x border-[#116466]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#777E74]">Local only</td>
+                  <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-x border-[#30362E]">
                     ✓ Included
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-[#D1E8E2] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D9B08C] font-bold bg-[#D9B08C]/10 border-l border-[#D9B08C]/20">
+                  <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
                     ✓ Included
                   </td>
                 </tr>
 
                 {/* Row 5: Founder Badge & Rank */}
                 <tr className="hover:bg-white/[0.02] transition">
-                  <td className="p-4 sm:p-5 font-semibold text-white sticky left-0 bg-[#1E293B] z-10">
+                  <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
                     Founder Badge &amp; VIP Rank
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-slate-500">—</td>
-                  <td className="p-4 sm:p-5 text-center text-slate-500">—</td>
-                  <td className="p-4 sm:p-5 text-center text-slate-500 bg-[#116466]/10 border-x border-[#116466]/20">—</td>
-                  <td className="p-4 sm:p-5 text-center text-slate-500">—</td>
-                  <td className="p-4 sm:p-5 text-center text-[#D9B08C] font-bold bg-[#D9B08C]/10 border-l border-[#D9B08C]/20">
-                    👑 Rank #1–50
+                  <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
+                  <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
+                  <td className="p-4 sm:p-5 text-center text-[#777E74] bg-[#1B1F1A]/40 border-x border-[#30362E]">-</td>
+                  <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
+                    Rank #1-50
                   </td>
                 </tr>
               </tbody>
@@ -1161,32 +1161,32 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
 
       {/* 6. Transparency & Trust FAQ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-        <div className="p-5 rounded-2xl bg-[#1E293B] border border-[#334155] space-y-2">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Lock className="w-4 h-4 text-[#D1E8E2]" />
+        <div className="p-5 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-2">
+          <div className="flex items-center gap-2 text-[#F7F8F5] font-bold text-sm">
+            <Lock className="w-4 h-4 text-[#B7F36B]" />
             <span>Secure &amp; Private</span>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-[#A5AAA1] leading-relaxed">
             All screenshot OCR indexing and processing happens locally on your device with high-grade privacy protection.
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#1E293B] border border-[#334155] space-y-2">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Clock className="w-4 h-4 text-[#D9B08C]" />
+        <div className="p-5 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-2">
+          <div className="flex items-center gap-2 text-[#F7F8F5] font-bold text-sm">
+            <Clock className="w-4 h-4 text-[#B7F36B]" />
             <span>Payment Gateway in Progress</span>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-[#A5AAA1] leading-relaxed">
             Paid checkouts are currently in preparation. Claim a free Founder seat or enjoy the generous 250 AI-indexed screenshot Free tier.
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#1E293B] border border-[#334155] space-y-2">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Crown className="w-4 h-4 text-[#D9B08C]" />
+        <div className="p-5 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-2">
+          <div className="flex items-center gap-2 text-[#F7F8F5] font-bold text-sm">
+            <Crown className="w-4 h-4 text-[#B7F36B]" />
             <span>Real Database Scarcity</span>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-[#A5AAA1] leading-relaxed">
             Founder spots are strictly limited to 50 members backed by atomic database verification.
           </p>
         </div>
@@ -1202,27 +1202,27 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
       {/* 8. Coming Soon Informational Modal for Paid Plans */}
       {showComingSoonModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl bg-[#1E293B] border border-[#334155] p-6 sm:p-7 text-center space-y-5 shadow-2xl relative">
+          <div className="w-full max-w-md rounded-3xl bg-[#141714] border border-[#30362E] p-6 sm:p-7 text-center space-y-5 shadow-[8px_8px_24px_rgba(0,0,0,0.85)] relative">
             <button
               type="button"
               onClick={() => setShowComingSoonModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition cursor-pointer"
               aria-label="Close dialog"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-14 h-14 rounded-2xl bg-[#D9B08C]/15 border border-[#D9B08C]/30 mx-auto flex items-center justify-center text-[#D9B08C]">
+            <div className="w-14 h-14 rounded-2xl bg-[#1B1F1A] border border-[#30362E] mx-auto flex items-center justify-center text-[#B7F36B] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
               <Clock className="w-7 h-7" />
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-lg font-bold text-white">Payment Integration Coming Soon</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Direct online payment for <span className="font-semibold text-white">{comingSoonPlanName}</span> is currently under active integration. No credit card charges or fake transactions are accepted.
+              <h3 className="text-lg font-bold text-[#F7F8F5]">Payment Integration Coming Soon</h3>
+              <p className="text-xs text-[#A5AAA1] leading-relaxed">
+                Direct online payment for <span className="font-semibold text-[#F7F8F5]">{comingSoonPlanName}</span> is currently under active integration. No credit card charges or fake transactions are accepted.
               </p>
-              <p className="text-xs text-[#D1E8E2] bg-[#116466]/20 p-3 rounded-xl border border-[#116466]/40 leading-relaxed font-medium">
-                💡 Good news: You can claim a <span className="font-bold text-white">Free Founder Seat</span> right now ({spotsRemaining} remaining) for permanent 150,000 AI-indexed screenshots with zero payment required!
+              <p className="text-xs text-[#B7F36B] bg-[#1B1F1A] p-3 rounded-xl border border-[#30362E] leading-relaxed font-medium">
+                💡 Good news: You can claim a <span className="font-bold text-[#F7F8F5]">Free Founder Seat</span> right now ({spotsRemaining} remaining) for permanent 150,000 AI-indexed screenshots with zero payment required!
               </p>
             </div>
 
@@ -1234,9 +1234,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     setShowComingSoonModal(false);
                     handleClaimFreeFounder();
                   }}
-                  className="w-full py-3 px-4 rounded-xl bg-[#116466] hover:bg-[#16787b] text-white text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-[#116466]/30"
+                  className="w-full py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                 >
-                  <Crown className="w-4 h-4 text-[#D9B08C] fill-[#D9B08C]" />
+                  <Crown className="w-4 h-4 text-[#10130D] fill-current" />
                   <span>👑 Claim Free Founder Seat ({spotsRemaining} Left)</span>
                 </button>
               )}
@@ -1244,7 +1244,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowComingSoonModal(false)}
-                className="w-full py-3 px-4 rounded-xl bg-[#2C3531] hover:bg-[#1E293B] text-[#F1F5F9] border border-[#334155] text-xs font-bold transition cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] text-xs font-bold transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
               >
                 Back to Plans
               </button>
@@ -1256,24 +1256,24 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
       {/* 9. Auth Required Modal for Unauthenticated Users */}
       {showAuthRequiredModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl bg-[#1E293B] border border-[#334155] p-6 sm:p-7 text-center space-y-5 shadow-2xl relative">
+          <div className="w-full max-w-md rounded-3xl bg-[#141714] border border-[#30362E] p-6 sm:p-7 text-center space-y-5 shadow-[8px_8px_24px_rgba(0,0,0,0.85)] relative">
             <button
               type="button"
               onClick={() => setShowAuthRequiredModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
+              className="absolute top-4 right-4 p-2 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition cursor-pointer"
               aria-label="Close auth required dialog"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-14 h-14 rounded-2xl bg-[#116466]/20 border border-[#116466]/40 mx-auto flex items-center justify-center text-[#D1E8E2]">
+            <div className="w-14 h-14 rounded-2xl bg-[#1B1F1A] border border-[#30362E] mx-auto flex items-center justify-center text-[#B7F36B] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
               <Lock className="w-7 h-7" />
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-lg font-bold text-white">Sign In Required</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Please sign in to continue with your purchase of the <span className="font-semibold text-white">{authModalPlanName}</span>. Your subscription will be securely linked to your account.
+              <h3 className="text-lg font-bold text-[#F7F8F5]">Sign In Required</h3>
+              <p className="text-xs text-[#A5AAA1] leading-relaxed">
+                Please sign in to continue with your purchase of the <span className="font-semibold text-[#F7F8F5]">{authModalPlanName}</span>. Your subscription will be securely linked to your account.
               </p>
             </div>
 
@@ -1284,7 +1284,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   setShowAuthRequiredModal(false);
                   if (onOpenAuth) onOpenAuth();
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-[#116466] hover:bg-[#16787b] text-white text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-[#116466]/30"
+                className="w-full py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Sign In</span>
@@ -1296,9 +1296,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   setShowAuthRequiredModal(false);
                   if (onOpenAuth) onOpenAuth();
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-[#2C3531] hover:bg-[#1E293B] text-[#F1F5F9] border border-[#334155] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
               >
-                <UserPlus className="w-4 h-4 text-[#D1E8E2]" />
+                <UserPlus className="w-4 h-4 text-[#B7F36B]" />
                 <span>Create Account</span>
               </button>
             </div>

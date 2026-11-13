@@ -277,8 +277,8 @@ export const Ai3dCanvas: React.FC<Ai3dCanvasProps> = ({
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
       {/* Floating 3D Badge Overlay */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/90 border border-zinc-700 backdrop-blur-md text-[10px] font-mono font-bold text-white shadow-xl">
-        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2 px-3 py-1 rounded-full bg-[#141714] border border-[#30362E] text-[10px] font-mono font-bold text-[#F7F8F5] shadow-xl">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#B7F36B]" />
         <span>NEURAL VISUAL ENGINE</span>
       </div>
     </div>

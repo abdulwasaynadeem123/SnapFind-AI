@@ -255,29 +255,29 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-md rounded-3xl bg-[#1E293B] border border-[#334155] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-md rounded-3xl bg-[#141714] border border-[#30362E] shadow-[8px_8px_24px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}
-        <div className="p-5 border-b border-[#334155] flex items-center justify-between bg-[#2C3531]">
+        <div className="p-5 border-b border-[#30362E] flex items-center justify-between bg-[#1B1F1A]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#116466]/20 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2]">
+            <div className="w-10 h-10 rounded-2xl bg-[#141714] border border-[#30362E] flex items-center justify-center text-[#B7F36B]">
               {modalMode === "unlock" ? (
-                <Lock className="w-5 h-5" />
+                <Lock className="w-5 h-5 stroke-[2.5]" />
               ) : modalMode === "remove" ? (
                 <Trash2 className="w-5 h-5 text-red-400" />
               ) : modalMode === "change" ? (
-                <RefreshCw className="w-5 h-5 text-[#D1E8E2]" />
+                <RefreshCw className="w-5 h-5 text-[#B7F36B]" />
               ) : (
-                <Shield className="w-5 h-5" />
+                <Shield className="w-5 h-5 stroke-[2.5]" />
               )}
             </div>
             <div>
-              <h2 className="font-bold text-base text-[#F1F5F9]">
+              <h2 className="font-bold text-base text-[#F7F8F5]">
                 {modalMode === "unlock"
                   ? "Collection Locked"
                   : modalMode === "change"
@@ -288,14 +288,14 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   ? "Security Settings"
                   : "Enable Security Lock"}
               </h2>
-              <p className="text-xs text-[#94A3B8] truncate max-w-[240px]">
+              <p className="text-xs text-[#A5AAA1] truncate max-w-[240px]">
                 {collectionName}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] transition-colors"
+            className="p-2 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#222720] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -308,12 +308,12 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
           {/* ======================================================== */}
           {modalMode === "unlock" && (
             <div className="space-y-4">
-              <p className="text-xs text-[#94A3B8] text-center leading-relaxed">
+              <p className="text-xs text-[#A5AAA1] text-center leading-relaxed">
                 This collection is protected. Enter your credentials to view and search its contents.
               </p>
 
               {lockoutTimer > 0 ? (
-                <div className="p-4 rounded-2xl bg-[#D9B08C]/15 border border-[#D9B08C]/30 flex items-center gap-3 text-[#D9B08C] text-xs">
+                <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center gap-3 text-amber-300 text-xs">
                   <Clock className="w-5 h-5 shrink-0" />
                   <div>
                     <span className="font-semibold block">Security Lockout Active</span>
@@ -325,7 +325,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   {/* Pattern Lock */}
                   {currentLockType === "pattern" && (
                     <div className="flex flex-col items-center">
-                      <span className="text-xs text-[#D1E8E2] font-medium mb-3">
+                      <span className="text-xs text-[#B7F36B] font-medium mb-3">
                         Draw your unlock pattern:
                       </span>
                       <PatternLock
@@ -339,7 +339,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   {currentLockType === "pin" && (
                     <form onSubmit={handleUnlockPinSubmit} className="space-y-4">
                       <div className="flex flex-col items-center gap-2">
-                        <span className="text-xs text-[#D1E8E2] font-medium">
+                        <span className="text-xs text-[#A5AAA1] font-medium">
                           Enter your {isVault ? "Vault" : "Collection"} PIN
                         </span>
                         <input
@@ -351,7 +351,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                           value={enteredPin}
                           onChange={(e) => setEnteredPin(e.target.value.replace(/\D/g, ""))}
                           placeholder="••••"
-                          className="text-center font-mono tracking-[0.4em] text-2xl w-48 py-3 rounded-2xl bg-[#2C3531] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466]"
+                          className="text-center font-mono tracking-[0.4em] text-2xl w-48 py-3 rounded-2xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                         />
                       </div>
 
@@ -362,7 +362,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                             key={n}
                             type="button"
                             onClick={() => setEnteredPin((prev) => (prev.length < 8 ? prev + n : prev))}
-                            className="py-3 rounded-xl bg-[#2C3531] hover:bg-[#243347] border border-[#334155] text-lg font-semibold text-[#F1F5F9] active:scale-95 transition-all"
+                            className="py-3 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-lg font-semibold text-[#F7F8F5] active:scale-95 transition-all shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
                           >
                             {n}
                           </button>
@@ -370,21 +370,21 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setEnteredPin("")}
-                          className="py-3 rounded-xl bg-[#2C3531] hover:bg-[#243347] border border-[#334155] text-xs font-semibold text-[#94A3B8] active:scale-95 transition-all"
+                          className="py-3 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-xs font-semibold text-[#A5AAA1] active:scale-95 transition-all shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
                         >
                           Clear
                         </button>
                         <button
                           type="button"
                           onClick={() => setEnteredPin((prev) => (prev.length < 8 ? prev + "0" : prev))}
-                          className="py-3 rounded-xl bg-[#2C3531] hover:bg-[#243347] border border-[#334155] text-lg font-semibold text-[#F1F5F9] active:scale-95 transition-all"
+                          className="py-3 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-lg font-semibold text-[#F7F8F5] active:scale-95 transition-all shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
                         >
                           0
                         </button>
                         <button
                           type="button"
                           onClick={() => setEnteredPin((prev) => prev.slice(0, -1))}
-                          className="py-3 rounded-xl bg-[#2C3531] hover:bg-[#243347] border border-[#334155] text-xs font-semibold text-[#94A3B8] active:scale-95 transition-all"
+                          className="py-3 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-xs font-semibold text-[#A5AAA1] active:scale-95 transition-all shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
                         >
                           ⌫
                         </button>
@@ -393,7 +393,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                       <button
                         type="submit"
                         disabled={enteredPin.length < 4}
-                        className="w-full py-3 rounded-2xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-[#116466]/25"
+                        className="w-full py-3 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                       >
                         Unlock Collection
                       </button>
@@ -404,7 +404,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   {currentLockType === "password" && (
                     <form onSubmit={handleUnlockPasswordSubmit} className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs text-[#D1E8E2] font-medium">
+                        <label className="text-xs text-[#A5AAA1] font-medium">
                           Password
                         </label>
                         <div className="relative">
@@ -414,12 +414,12 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                             onChange={(e) => setEnteredPassword(e.target.value)}
                             placeholder="Enter password"
                             autoFocus
-                            className="w-full px-4 py-3 rounded-2xl bg-[#2C3531] border border-[#334155] text-[#F1F5F9] pr-10 focus:outline-none focus:border-[#116466] text-sm"
+                            className="w-full px-4 py-3 rounded-2xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] pr-10 focus:outline-none focus:border-[#B7F36B] text-sm shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-3 text-[#94A3B8] hover:text-[#F1F5F9]"
+                            className="absolute right-3 top-3 text-[#777E74] hover:text-[#F7F8F5]"
                           >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
@@ -429,7 +429,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                       <button
                         type="submit"
                         disabled={!enteredPassword}
-                        className="w-full py-3 rounded-2xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-[#116466]/25"
+                        className="w-full py-3 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                       >
                         Unlock Collection
                       </button>
@@ -452,16 +452,16 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
           {/* ======================================================== */}
           {(modalMode === "change" || modalMode === "remove") && isAlreadyLocked && !currentSecretVerified && (
             <div className="space-y-4">
-              <div className="p-3.5 rounded-2xl bg-[#2C3531] border border-[#334155] flex items-center gap-3">
-                <Shield className="w-5 h-5 text-[#D1E8E2] shrink-0" />
-                <p className="text-xs text-[#94A3B8] leading-relaxed">
+              <div className="p-3.5 rounded-2xl bg-[#0D0F0D] border border-[#30362E] flex items-center gap-3 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.5)]">
+                <Shield className="w-5 h-5 text-[#B7F36B] shrink-0" />
+                <p className="text-xs text-[#A5AAA1] leading-relaxed">
                   Enter your current {currentLockType.toUpperCase()} credential to confirm identity before {modalMode === "change" ? "changing" : "removing"} security lock.
                 </p>
               </div>
 
               {currentLockType === "pattern" && (
                 <div className="flex flex-col items-center space-y-2">
-                  <span className="text-xs text-[#D1E8E2] font-medium">
+                  <span className="text-xs text-[#F7F8F5] font-medium">
                     Draw current unlock pattern:
                   </span>
                   <PatternLock
@@ -482,7 +482,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   className="space-y-4"
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <span className="text-xs text-[#D1E8E2] font-medium">
+                    <span className="text-xs text-[#F7F8F5] font-medium">
                       Enter Current PIN
                     </span>
                     <input
@@ -494,14 +494,14 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                       value={enteredPin}
                       onChange={(e) => setEnteredPin(e.target.value.replace(/\D/g, ""))}
                       placeholder="••••"
-                      className="text-center font-mono tracking-[0.4em] text-2xl w-48 py-3 rounded-2xl bg-[#2C3531] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466]"
+                      className="text-center font-mono tracking-[0.4em] text-2xl w-48 py-3 rounded-2xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={enteredPin.length < 4}
-                    className="w-full py-3 rounded-2xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-[#116466]/25"
+                    className="w-full py-3 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
                     Confirm & Proceed
                   </button>
@@ -519,7 +519,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   className="space-y-4"
                 >
                   <div className="space-y-1.5">
-                    <label className="text-xs text-[#D1E8E2] font-medium">
+                    <label className="text-xs text-[#F7F8F5] font-medium">
                       Current Password
                     </label>
                     <input
@@ -528,14 +528,14 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                       value={enteredPassword}
                       onChange={(e) => setEnteredPassword(e.target.value)}
                       placeholder="Enter current password"
-                      className="w-full px-4 py-3 rounded-2xl bg-[#2C3531] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466] text-sm"
+                      className="w-full px-4 py-3 rounded-2xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] text-sm shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={!enteredPassword}
-                    className="w-full py-3 rounded-2xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-[#116466]/25"
+                    className="w-full py-3 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
                     Confirm & Proceed
                   </button>
@@ -558,7 +558,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
             <div className="space-y-4">
               {/* Lock Type Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-[#F1F5F9]">
+                <label className="text-xs font-semibold text-[#F7F8F5]">
                   Choose Lock Method
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -572,11 +572,11 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                     }}
                     className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                       selectedLockType === "pin"
-                        ? "bg-[#243347] border-[#116466] text-[#D1E8E2] shadow-[0_0_15px_rgba(17,100,102,0.3)]"
-                        : "bg-[#2C3531] border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9]"
+                        ? "bg-[#1B1F1A] border-[#B7F36B] text-[#F7F8F5] shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                        : "bg-[#141714] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5]"
                     }`}
                   >
-                    <KeyRound className="w-5 h-5" />
+                    <KeyRound className="w-5 h-5 text-[#B7F36B]" />
                     <span className="text-xs font-semibold">PIN</span>
                   </button>
 
@@ -590,11 +590,11 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                     }}
                     className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                       selectedLockType === "pattern"
-                        ? "bg-[#243347] border-[#116466] text-[#D1E8E2] shadow-[0_0_15px_rgba(17,100,102,0.3)]"
-                        : "bg-[#2C3531] border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9]"
+                        ? "bg-[#1B1F1A] border-[#B7F36B] text-[#F7F8F5] shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                        : "bg-[#141714] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5]"
                     }`}
                   >
-                    <Grid className="w-5 h-5" />
+                    <Grid className="w-5 h-5 text-[#B7F36B]" />
                     <span className="text-xs font-semibold">Pattern</span>
                   </button>
 
@@ -608,24 +608,24 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                     }}
                     className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                       selectedLockType === "password"
-                        ? "bg-[#243347] border-[#116466] text-[#D1E8E2] shadow-[0_0_15px_rgba(17,100,102,0.3)]"
-                        : "bg-[#2C3531] border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9]"
+                        ? "bg-[#1B1F1A] border-[#B7F36B] text-[#F7F8F5] shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                        : "bg-[#141714] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5]"
                     }`}
                   >
-                    <Lock className="w-5 h-5" />
+                    <Lock className="w-5 h-5 text-[#B7F36B]" />
                     <span className="text-xs font-semibold">Password</span>
                   </button>
                 </div>
               </div>
 
               {/* Step indicator */}
-              <div className="flex items-center justify-between text-xs text-[#94A3B8] border-t border-[#334155] pt-3">
+              <div className="flex items-center justify-between text-xs text-[#A5AAA1] border-t border-[#30362E] pt-3">
                 <span>
                   {configStep === "enter"
                     ? `Step 1: Choose ${selectedLockType.toUpperCase()}`
                     : `Step 2: Confirm ${selectedLockType.toUpperCase()}`}
                 </span>
-                <span className="text-[#D1E8E2] font-medium">
+                <span className="text-[#B7F36B] font-medium">
                   {configStep === "enter" ? "1 / 2" : "2 / 2"}
                 </span>
               </div>
@@ -633,7 +633,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
               {/* Configure Pattern */}
               {selectedLockType === "pattern" && (
                 <div className="flex flex-col items-center space-y-2">
-                  <span className="text-xs text-[#D1E8E2] font-medium">
+                  <span className="text-xs text-[#A5AAA1] font-medium">
                     {configStep === "enter"
                       ? "Draw your desired 3x3 pattern"
                       : "Draw the pattern again to confirm"}
@@ -649,7 +649,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
               {selectedLockType === "pin" && (
                 <form onSubmit={handleConfigureSecretSubmit} className="space-y-4">
                   <div className="flex flex-col items-center gap-2">
-                    <span className="text-xs text-[#D1E8E2] font-medium">
+                    <span className="text-xs text-[#A5AAA1] font-medium">
                       {configStep === "enter" ? "Enter 4 to 8 digit PIN" : "Re-enter PIN to confirm"}
                     </span>
                     <input
@@ -665,14 +665,14 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                         else setConfirmSecret(val);
                       }}
                       placeholder="••••"
-                      className="text-center font-mono tracking-[0.4em] text-2xl w-48 py-3 rounded-2xl bg-[#2C3531] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466]"
+                      className="text-center font-mono tracking-[0.4em] text-2xl w-48 py-3 rounded-2xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={configStep === "enter" ? firstSecret.length < 4 : confirmSecret.length < 4}
-                    className="w-full py-3 rounded-2xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-[#116466]/25"
+                    className="w-full py-3 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
                     {configStep === "enter" ? "Continue to Confirm" : "Save Security Lock"}
                   </button>
@@ -683,7 +683,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
               {selectedLockType === "password" && (
                 <form onSubmit={handleConfigureSecretSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs text-[#D1E8E2] font-medium">
+                    <label className="text-xs text-[#A5AAA1] font-medium">
                       {configStep === "enter" ? "New Password" : "Confirm Password"}
                     </label>
                     <input
@@ -695,14 +695,14 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                       }}
                       placeholder={configStep === "enter" ? "At least 4 characters" : "Repeat password"}
                       autoFocus
-                      className="w-full px-4 py-3 rounded-2xl bg-[#2C3531] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466] text-sm"
+                      className="w-full px-4 py-3 rounded-2xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] text-sm shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={configStep === "enter" ? firstSecret.length < 4 : confirmSecret.length < 4}
-                    className="w-full py-3 rounded-2xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-[#116466]/25"
+                    className="w-full py-3 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
                     {configStep === "enter" ? "Continue to Confirm" : "Save Security Lock"}
                   </button>
@@ -710,14 +710,14 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
               )}
 
               {/* Auto-Lock Duration Setting */}
-              <div className="border-t border-[#334155] pt-3 space-y-1.5">
-                <label className="text-xs font-semibold text-[#F1F5F9]">
+              <div className="border-t border-[#30362E] pt-3 space-y-1.5">
+                <label className="text-xs font-semibold text-[#F7F8F5]">
                   Auto-Lock Timeout
                 </label>
                 <select
                   value={autoLockDuration}
                   onChange={(e) => handleSaveAutoLockSetting(e.target.value as AutoLockDuration)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#2C3531] border border-[#334155] text-sm text-[#F1F5F9] focus:outline-none focus:border-[#116466]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-sm text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                 >
                   <option value="immediately">Immediately</option>
                   <option value="1m">1 minute</option>
@@ -725,7 +725,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   <option value="15m">15 minutes</option>
                   <option value="session">Until app closes</option>
                 </select>
-                <p className="text-[11px] text-[#94A3B8]">
+                <p className="text-[11px] text-[#A5AAA1]">
                   Automatically locks after the chosen period of inactivity.
                 </p>
               </div>
@@ -745,29 +745,29 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
           {modalMode === "settings" && (
             <div className="space-y-4">
               {/* Security Status Card */}
-              <div className="p-4 rounded-2xl bg-[#2C3531] border border-[#334155] space-y-3">
+              <div className="p-4 rounded-2xl bg-[#141714] border border-[#30362E] space-y-3 shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     {isAlreadyLocked ? (
                       isCurrentlyLocked ? (
-                        <div className="w-7 h-7 rounded-lg bg-[#D9B08C]/20 text-[#D9B08C] flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center">
                           <Lock className="w-4 h-4" />
                         </div>
                       ) : (
-                        <div className="w-7 h-7 rounded-lg bg-[#116466]/30 text-[#D1E8E2] flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-[#B7F36B]/20 text-[#B7F36B] flex items-center justify-center">
                           <Unlock className="w-4 h-4" />
                         </div>
                       )
                     ) : (
-                      <div className="w-7 h-7 rounded-lg bg-[#1E293B] text-[#94A3B8] flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-lg bg-[#1B1F1A] text-[#A5AAA1] flex items-center justify-center">
                         <Shield className="w-4 h-4" />
                       </div>
                     )}
                     <div>
-                      <span className="text-xs font-semibold text-[#F1F5F9] block">
+                      <span className="text-xs font-semibold text-[#F7F8F5] block">
                         Security Status
                       </span>
-                      <span className="text-[11px] text-[#94A3B8]">
+                      <span className="text-[11px] text-[#A5AAA1]">
                         {isAlreadyLocked
                           ? `${currentLockType.toUpperCase()} Lock (${isCurrentlyLocked ? "🔒 Locked" : "🔓 Unlocked"})`
                           : "No lock configured (Optional)"}
@@ -778,7 +778,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   {isAlreadyLocked && isCurrentlyLocked && (
                     <button
                       onClick={() => setModalMode("unlock")}
-                      className="px-3 py-1.5 rounded-xl bg-[#116466] text-[#F1F5F9] font-bold text-xs hover:bg-[#116466]/90 transition-colors cursor-pointer shadow-sm"
+                      className="px-3 py-1.5 rounded-xl bg-[#B7F36B] text-[#10130D] font-bold text-xs hover:bg-[#A5E65A] transition-colors cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                     >
                       Unlock
                     </button>
@@ -787,15 +787,15 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
 
                 {/* Management Action Buttons */}
                 {isAlreadyLocked ? (
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#334155]">
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#30362E]">
                     <button
                       onClick={() => {
                         setModalMode("change");
                         setCurrentSecretVerified(false);
                       }}
-                      className="py-2.5 px-3 rounded-xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#334155]"
+                      className="py-2.5 px-3 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#30362E] shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
                     >
-                      <RefreshCw className="w-3.5 h-3.5 text-[#D1E8E2]" />
+                      <RefreshCw className="w-3.5 h-3.5 text-[#B7F36B]" />
                       <span>Change Lock</span>
                     </button>
 
@@ -813,24 +813,24 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                 ) : (
                   <button
                     onClick={() => setModalMode("configure")}
-                    className="w-full py-2.5 rounded-xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-[#116466]/20"
+                    className="w-full py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
-                    <Shield className="w-3.5 h-3.5" />
+                    <Shield className="w-3.5 h-3.5 stroke-[2.5]" />
                     <span>Set Security Lock</span>
                   </button>
                 )}
               </div>
 
               {/* Auto-Lock Section */}
-              <div className="space-y-2 p-4 rounded-2xl bg-[#2C3531] border border-[#334155]">
+              <div className="space-y-2 p-4 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[4px_4px_12px_rgba(0,0,0,0.6)]">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#D1E8E2]" />
-                  <span className="text-xs font-semibold text-[#F1F5F9]">Auto-Lock</span>
+                  <Clock className="w-4 h-4 text-[#B7F36B]" />
+                  <span className="text-xs font-semibold text-[#F7F8F5]">Auto-Lock</span>
                 </div>
                 <select
                   value={autoLockDuration}
                   onChange={(e) => handleSaveAutoLockSetting(e.target.value as AutoLockDuration)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#1E293B] border border-[#334155] text-xs text-[#F1F5F9] focus:outline-none focus:border-[#116466]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-xs text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]"
                 >
                   <option value="immediately">Immediately</option>
                   <option value="1m">1 minute</option>
@@ -838,7 +838,7 @@ export const SecurityLockModal: React.FC<SecurityLockModalProps> = ({
                   <option value="15m">15 minutes</option>
                   <option value="session">Until app closes</option>
                 </select>
-                <p className="text-[10px] text-[#94A3B8]">
+                <p className="text-[10px] text-[#A5AAA1]">
                   Applies automatically when switching views or after inactivity.
                 </p>
               </div>

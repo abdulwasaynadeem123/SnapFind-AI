@@ -8,9 +8,9 @@ interface OfflineBannerProps {
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({ isDark }) => {
   return (
     <div
-      className={`px-4 py-2.5 rounded-2xl border text-xs flex items-center justify-between shadow-sm animate-pulse transition-all ${
+      className={`px-4 py-2.5 rounded-2xl border text-xs flex items-center justify-between shadow-sm transition-all ${
         isDark
-          ? "bg-amber-950/40 border-amber-800/60 text-amber-200"
+          ? "bg-[#1B1F1A] border-[#30362E] text-[#F7F8F5]"
           : "bg-amber-50 border-amber-200 text-amber-800"
       }`}
     >

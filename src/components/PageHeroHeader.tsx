@@ -28,7 +28,7 @@ export const PageHeroHeader: React.FC<PageHeroHeaderProps> = ({
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-5 border-b ${
-        isDark ? "border-[#273548]" : "border-slate-200"
+        isDark ? "border-[#30362E]" : "border-slate-200"
       } ${className}`}
     >
       {/* Left: Clean Badge + Single-Line Title & Subtitle */}
@@ -39,7 +39,7 @@ export const PageHeroHeader: React.FC<PageHeroHeaderProps> = ({
           <div className="flex items-center gap-2 min-w-0">
             <h1
               className={`text-lg sm:text-xl md:text-2xl font-bold tracking-tight truncate whitespace-nowrap ${
-                isDark ? "text-[#F1F5F9]" : "text-slate-900"
+                isDark ? "text-[#F7F8F5]" : "text-slate-900"
               }`}
             >
               {title}
@@ -50,7 +50,7 @@ export const PageHeroHeader: React.FC<PageHeroHeaderProps> = ({
           {displayDescription && (
             <div
               className={`text-xs sm:text-sm font-normal truncate whitespace-nowrap mt-0.5 ${
-                isDark ? "text-[#94A3B8]" : "text-slate-600"
+                isDark ? "text-[#A5AAA1]" : "text-slate-600"
               }`}
             >
               {displayDescription}

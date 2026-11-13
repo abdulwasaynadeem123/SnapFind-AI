@@ -332,23 +332,23 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         actions={
           <div className="w-full lg:w-auto flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
             {/* View Mode Switcher */}
-            <div className="inline-flex items-center p-1 rounded-2xl bg-[#1E293B] border border-[#334155]">
+            <div className="inline-flex items-center p-1 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
               <button
                 onClick={() => setGroupMode("month_year")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   groupMode === "month_year"
-                    ? "bg-[#116466] text-[#F1F5F9] shadow-sm"
-                    : "text-[#D1E8E2]/70 hover:text-white"
+                    ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                    : "text-[#A5AAA1] hover:text-[#F7F8F5]"
                 }`}
               >
-                Month & Year
+                Month &amp; Year
               </button>
               <button
                 onClick={() => setGroupMode("day")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   groupMode === "day"
-                    ? "bg-[#116466] text-[#F1F5F9] shadow-sm"
-                    : "text-[#D1E8E2]/70 hover:text-white"
+                    ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                    : "text-[#A5AAA1] hover:text-[#F7F8F5]"
                 }`}
               >
                 Day by Day
@@ -357,8 +357,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                 onClick={() => setGroupMode("smart_buckets")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   groupMode === "smart_buckets"
-                    ? "bg-[#116466] text-[#F1F5F9] shadow-sm"
-                    : "text-[#D1E8E2]/70 hover:text-white"
+                    ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                    : "text-[#A5AAA1] hover:text-[#F7F8F5]"
                 }`}
               >
                 Smart Buckets
@@ -369,38 +369,38 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
       />
 
       {/* Filter & Jump Toolbar */}
-      <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 space-y-3 shadow-lg">
+      <div className="rounded-2xl border border-[#30362E] bg-[#141714] p-4 space-y-3 shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-[#D1E8E2]/50 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#777E74] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search timeline photos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 rounded-xl text-xs bg-[#0B0F19] border border-[#334155] text-[#F1F5F9] placeholder-[#D1E8E2]/40 focus:outline-none focus:border-[#116466] focus:ring-1 focus:ring-[#116466] transition"
+              className="w-full pl-10 pr-3 py-2 rounded-xl text-xs bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] focus:outline-none focus:border-[#B7F36B] transition shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
             />
           </div>
 
           {/* Jump to Date */}
           <div className="relative flex items-center gap-2">
-            <label className="text-[11px] font-medium text-[#D1E8E2]/70 shrink-0">Jump to:</label>
+            <label className="text-[11px] font-medium text-[#A5AAA1] shrink-0">Jump to:</label>
             <input
               type="date"
               value={jumpDate}
               onChange={(e) => handleJumpToDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl text-xs bg-[#0B0F19] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466] cursor-pointer"
+              className="w-full px-3 py-2 rounded-xl text-xs bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] cursor-pointer shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
             />
           </div>
 
           {/* Category Dropdown */}
           <div className="relative flex items-center gap-2">
-            <label className="text-[11px] font-medium text-[#D1E8E2]/70 shrink-0">Category:</label>
+            <label className="text-[11px] font-medium text-[#A5AAA1] shrink-0">Category:</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value as CategoryType | "All")}
-              className="w-full px-3 py-2 rounded-xl text-xs bg-[#0B0F19] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466] cursor-pointer"
+              className="w-full px-3 py-2 rounded-xl text-xs bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] cursor-pointer shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
             >
               <option value="All">All Categories</option>
               <option value="Receipt & Invoice">Receipt & Invoice</option>
@@ -420,11 +420,11 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
           {/* Source App Filter */}
           <div className="relative flex items-center gap-2">
-            <label className="text-[11px] font-medium text-[#D1E8E2]/70 shrink-0">App:</label>
+            <label className="text-[11px] font-medium text-[#A5AAA1] shrink-0">App:</label>
             <select
               value={selectedSourceApp}
               onChange={(e) => setSelectedSourceApp(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl text-xs bg-[#0B0F19] border border-[#334155] text-[#F1F5F9] focus:outline-none focus:border-[#116466] cursor-pointer"
+              className="w-full px-3 py-2 rounded-xl text-xs bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B] cursor-pointer shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
             >
               <option value="All">All Apps</option>
               {availableSourceApps.map((app) => (
@@ -437,29 +437,29 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         </div>
 
         {/* Date Range & Clear Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#334155]/50">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#30362E]/60">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] text-[#D1E8E2]/60">Date Range:</span>
+            <span className="text-[11px] text-[#A5AAA1]">Date Range:</span>
             <input
               type="date"
               placeholder="From"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="px-2.5 py-1 rounded-lg text-xs bg-[#0B0F19] border border-[#334155] text-[#F1F5F9]"
+              className="px-2.5 py-1 rounded-lg text-xs bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]"
             />
-            <span className="text-xs text-[#D1E8E2]/40">to</span>
+            <span className="text-xs text-[#777E74]">to</span>
             <input
               type="date"
               placeholder="To"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="px-2.5 py-1 rounded-lg text-xs bg-[#0B0F19] border border-[#334155] text-[#F1F5F9]"
+              className="px-2.5 py-1 rounded-lg text-xs bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]"
             />
 
             {hasActiveFilters && (
               <button
                 onClick={handleClearFilters}
-                className="px-2.5 py-1 rounded-lg text-xs bg-[#334155]/60 hover:bg-[#334155] text-[#D1E8E2] flex items-center gap-1 transition cursor-pointer"
+                className="px-2.5 py-1 rounded-lg text-xs bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#A5AAA1] flex items-center gap-1 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Reset</span>
@@ -469,20 +469,20 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
           {/* Selection Actions */}
           {selectedIds.length > 0 && (
-            <div className="flex items-center gap-2 p-1 rounded-xl bg-[#116466]/20 border border-[#116466]/40">
-              <span className="text-xs font-bold text-[#D1E8E2] px-2">
+            <div className="flex items-center gap-2 p-1 rounded-xl bg-[#141714] border border-[#30362E]">
+              <span className="text-xs font-bold text-[#B7F36B] px-2">
                 {selectedIds.length} Selected
               </span>
               <button
                 onClick={handleBatchCopyOCR}
-                className="px-2.5 py-1 rounded-lg bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] text-xs font-semibold flex items-center gap-1 shadow-sm cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center gap-1 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] cursor-pointer"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Copy OCR</span>
               </button>
               <button
                 onClick={() => setSelectedIds([])}
-                className="px-2 py-1 text-xs text-[#D1E8E2]/60 hover:text-white"
+                className="px-2 py-1 text-xs text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
               >
                 Clear
               </button>
@@ -493,16 +493,16 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
       {/* Main Timeline Stream */}
       {groups.length === 0 ? (
-        <div className="p-12 rounded-3xl border border-dashed border-[#334155] text-center space-y-3 bg-[#1E293B]/40">
-          <ImageIcon className="w-10 h-10 text-[#D1E8E2]/30 mx-auto" />
-          <h3 className="text-sm font-semibold text-[#F1F5F9]">No screenshots found in this timeline</h3>
-          <p className="text-xs text-[#D1E8E2]/60 max-w-sm mx-auto">
+        <div className="p-12 rounded-3xl border border-dashed border-[#30362E] text-center space-y-3 bg-[#141714]">
+          <ImageIcon className="w-10 h-10 text-[#777E74] mx-auto" />
+          <h3 className="text-sm font-semibold text-[#F7F8F5]">No screenshots found in this timeline</h3>
+          <p className="text-xs text-[#A5AAA1] max-w-sm mx-auto">
             Try adjusting your search query, date range, or app filter.
           </p>
           {hasActiveFilters && (
             <button
               onClick={handleClearFilters}
-              className="px-3.5 py-1.5 rounded-xl bg-[#116466] text-[#F1F5F9] text-xs font-semibold hover:bg-[#116466]/80 transition cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-[#B7F36B] text-[#10130D] text-xs font-bold hover:bg-[#A5E65A] transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
             >
               Clear All Filters
             </button>
@@ -520,20 +520,20 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                 id={`timeline-group-${group.id}`}
                 className="space-y-4 scroll-mt-24"
               >
-                {/* STICKY DATE HEADER (Google Photos / Cyber Teal Style) */}
-                <div className="sticky top-0 z-30 px-5 py-3.5 rounded-2xl border border-[#334155] bg-[#0B0F19]/90 backdrop-blur-xl shadow-lg flex items-center justify-between transition-all">
+                {/* STICKY DATE HEADER (Claymorphic Style) */}
+                <div className="sticky top-0 z-30 px-5 py-3.5 rounded-2xl border border-[#30362E] bg-[#0D0F0D]/95 backdrop-blur-xl shadow-[4px_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-between transition-all">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-[#116466]/20 border border-[#116466]/40 text-[#D1E8E2]">
+                    <div className="p-2 rounded-xl bg-[#141714] border border-[#30362E] text-[#B7F36B]">
                       <IconComponent className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h2 className="text-base font-bold text-[#F1F5F9] tracking-tight">{group.title}</h2>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#116466]/30 text-[#D1E8E2] border border-[#116466]/50">
+                        <h2 className="text-base font-bold text-[#F7F8F5] tracking-tight">{group.title}</h2>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#B7F36B]/15 text-[#B7F36B] border border-[#B7F36B]/30">
                           {group.items.length} {group.items.length === 1 ? "item" : "items"}
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#D1E8E2]/60 font-medium">{group.subtitle}</p>
+                      <p className="text-[11px] text-[#A5AAA1] font-medium">{group.subtitle}</p>
                     </div>
                   </div>
 
@@ -549,9 +549,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                           setSelectedIds((prev) => Array.from(new Set([...prev, ...groupItemIds])));
                         }
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[#1E293B] hover:bg-[#334155] border border-[#334155] text-xs font-semibold text-[#D1E8E2] flex items-center gap-1.5 transition cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-xs font-semibold text-[#F7F8F5] flex items-center gap-1.5 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                     >
-                      <CheckSquare className="w-3.5 h-3.5 text-[#116466]" />
+                      <CheckSquare className="w-3.5 h-3.5 text-[#B7F36B]" />
                       <span className="hidden sm:inline">Select Group</span>
                     </button>
                   )}
@@ -606,7 +606,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
       {/* Floating Scroll to Top button */}
       <button
         onClick={scrollToTop}
-        className="fixed bottom-20 right-6 z-40 p-3 rounded-full bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] shadow-2xl shadow-[#116466]/50 transition-all cursor-pointer hover:scale-110"
+        className="fixed bottom-20 right-6 z-40 p-3 rounded-full bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] shadow-[2px_2px_12px_rgba(0,0,0,0.6)] transition-all cursor-pointer hover:scale-110"
         title="Scroll to top"
       >
         <ArrowUp className="w-5 h-5" />

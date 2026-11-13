@@ -6,7 +6,6 @@ import {
   Grid,
   List,
   Filter,
-  Sparkles,
   ArrowUpDown,
   Bookmark,
   CheckCircle2,
@@ -143,11 +142,11 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
       {/* Header Banner */}
       <PageHeroHeader
         type="favorites"
-        title="Favorites"
+        title="Your favourites"
         isDark={isDark}
         actions={
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+            <span className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-[#141714] text-[#B7F36B] border border-[#30362E] shadow-sm">
               {allFavorites.length} {allFavorites.length === 1 ? "Item" : "Items"}
             </span>
           </div>
@@ -159,22 +158,18 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           {/* Search Input for Favorites */}
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#777E74]" />
             <input
               type="text"
               placeholder="Search inside favorites (OCR text, title, tags, category)..."
               value={favoriteSearchQuery}
               onChange={(e) => setFavoriteSearchQuery(e.target.value)}
-              className={`w-full pl-11 pr-10 py-3 rounded-2xl text-xs sm:text-sm font-medium border transition-all ${
-                isDark
-                  ? "bg-[#0D1117] border-white/[0.08] text-slate-100 placeholder-slate-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
-                  : "bg-white border-slate-200 text-slate-800 placeholder-slate-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
-              }`}
+              className="w-full pl-11 pr-10 py-3 rounded-2xl text-xs sm:text-sm font-medium border transition-all bg-[#0D0F0D] border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.6)] focus:border-[#B7F36B] outline-none"
             />
             {favoriteSearchQuery && (
               <button
                 onClick={() => setFavoriteSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-200 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#A5AAA1] hover:text-[#F7F8F5] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -188,17 +183,13 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
               <select
                 value={sortBy}
                 onChange={(e: any) => setSortBy(e.target.value)}
-                className={`px-3 py-2.5 rounded-2xl text-xs font-semibold border appearance-none pr-8 cursor-pointer ${
-                  isDark
-                    ? "bg-[#0D1117] border-white/[0.08] text-slate-200 hover:border-white/15"
-                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
-                }`}
+                className="px-3.5 py-2.5 rounded-2xl text-xs font-semibold border appearance-none pr-8 cursor-pointer bg-[#141714] border-[#30362E] text-[#F7F8F5] hover:border-[#B7F36B] focus:border-[#B7F36B] outline-none"
               >
                 <option value="newest">Newest Favorited</option>
                 <option value="oldest">Oldest Favorited</option>
                 <option value="title">Title A-Z</option>
               </select>
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#777E74] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             {/* Selection Mode Button */}
@@ -207,12 +198,10 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
                 setIsSelectionMode(!isSelectionMode);
                 if (isSelectionMode) setSelectedIds([]);
               }}
-              className={`px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 isSelectionMode
-                  ? "bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/20"
-                  : isDark
-                  ? "bg-[#0D1117] border-white/[0.08] text-slate-300 hover:bg-[#18202B]"
-                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                  ? "bg-[#B7F36B] text-[#10130D] border-[#B7F36B] shadow-[2px_2px_8px_rgba(0,0,0,0.5)]"
+                  : "bg-[#141714] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:border-[#B7F36B]"
               }`}
             >
               <CheckCircle2 className="w-4 h-4" />
@@ -233,20 +222,16 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
                   isActive
-                    ? "bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-md shadow-rose-600/20"
-                    : isDark
-                    ? "bg-[#0D1117] border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-[#18202B]"
-                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#B7F36B] text-[#10130D] border border-[#B7F36B] shadow-[2px_2px_8px_rgba(0,0,0,0.5)]"
+                    : "bg-[#141714] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:border-[#B7F36B]"
                 }`}
               >
                 <span>{cat}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                     isActive
-                      ? "bg-white/20 text-white"
-                      : isDark
-                      ? "bg-[#18202B] text-slate-400"
-                      : "bg-slate-100 text-slate-600"
+                      ? "bg-[#10130D]/20 text-[#10130D]"
+                      : "bg-[#0D0F0D] text-[#A5AAA1] border border-[#30362E]"
                   }`}
                 >
                   {count}
@@ -307,9 +292,9 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Favorites Content Grid / Empty States */}
+      {/* Favorites Content Grid / Empty States (1, 2, or 4 columns - NO 3-card rows) */}
       {filteredFavorites.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
           {filteredFavorites.map((item) => (
             <ScreenshotCard
               key={item.id}
@@ -327,17 +312,13 @@ export const FavoritesView: React.FC<FavoritesViewProps> = ({
           ))}
         </div>
       ) : (
-        <div
-          className={`p-12 sm:p-16 text-center rounded-3xl border flex flex-col items-center justify-center space-y-4 ${
-            isDark ? "bg-slate-900/40 border-slate-800/80" : "bg-slate-50 border-slate-200"
-          }`}
-        >
-          <div className="p-4 rounded-3xl bg-rose-500/10 border border-rose-500/20 text-rose-500">
-            <Heart className="w-12 h-12 fill-current animate-bounce" />
+        <div className="p-12 sm:p-16 text-center rounded-2xl border flex flex-col items-center justify-center space-y-4 bg-[#141714] border-[#30362E] shadow-[4px_4px_16px_rgba(0,0,0,0.6)]">
+          <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B]">
+            <Heart className="w-10 h-10 fill-current" />
           </div>
 
           <div className="max-w-md space-y-2">
-            <h3 className="text-xl font-bold tracking-tight text-slate-100">
+            <h3 className="text-xl font-bold tracking-tight text-[#F7F8F5]">
               {allFavorites.length === 0
                 ? "No Favorites Bookmarked Yet"
                 : "No Matching Favorites Found"}

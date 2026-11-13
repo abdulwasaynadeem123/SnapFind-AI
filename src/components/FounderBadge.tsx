@@ -101,7 +101,7 @@ export const FounderBadge: React.FC<FounderBadgeProps> = ({
       onClick={onClick}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      title="SnapFind Founder 100 — Lifetime Pro Access"
+      title="SnapFind Founder 100 - Lifetime Pro Access"
       className={`inline-flex items-center justify-center rounded-full tracking-wide transition-all select-none ${
         sizeClasses[size]
       } ${variantClasses[resolvedVariant]} ${

@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   Menu,
   Search,
-  Sparkles,
   X,
   SlidersHorizontal,
 } from "lucide-react";
@@ -88,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b select-none bg-[#141B19]/95 backdrop-blur-md border-[#273548] text-[#F1F5F9]">
+    <header className="sticky top-0 z-40 border-b select-none bg-[#0D0F0D] border-[#30362E] text-[#F7F8F5]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
         {/* Left: Hamburger (Mobile) + Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
@@ -98,46 +97,42 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={onToggleMobileMenu}
               title="Open Navigation Menu"
-              className="lg:hidden p-2 rounded-xl text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#16202C] transition-colors cursor-pointer"
+              className="lg:hidden p-2 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] transition-colors cursor-pointer"
             >
               <Menu className="w-5 h-5" />
             </button>
           )}
 
           <div
-            onClick={() => setActiveView("dashboard")}
+            onClick={() => setActiveView("landing")}
             className="flex items-center gap-2 cursor-pointer group shrink-0"
           >
             <div className="relative">
-              <SnapFindLogo className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-contain border border-[#273548] bg-[#16202C] transition-colors group-hover:border-[#116466]" />
+              <SnapFindLogo className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-contain border border-[#30362E] bg-[#141714] transition-colors group-hover:border-[#B7F36B]" />
             </div>
             <div className="hidden sm:flex items-center gap-1">
-              <span className="font-extrabold text-base sm:text-lg tracking-tight text-[#F1F5F9]">
+              <span className="font-extrabold text-base sm:text-lg tracking-tight text-[#F7F8F5]">
                 SnapFind
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-[#1E293B] text-[#D1E8E2] border border-[#334155] ml-1">
+              <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-[#141714] text-[#B7F36B] border border-[#30362E] ml-1">
                 AI
               </span>
             </div>
           </div>
         </div>
 
-        {/* Center: Prominent Futuristic AI Search Bar */}
+        {/* Center: Recessed Claymorphic AI Search Bar */}
         <div className="flex-1 max-w-xl mx-2 sm:mx-4">
           <form onSubmit={handleSearchSubmit} className="relative w-full">
             <div
               className={`relative flex items-center rounded-xl border transition-all duration-200 ${
                 isSearchFocused
-                  ? "bg-[#1E293B] border-[#116466] ring-1 ring-[#116466]/60 shadow-[0_0_16px_rgba(17,100,102,0.3)]"
-                  : "bg-[#1E293B]/90 border-[#334155] hover:border-[#475569] hover:bg-[#1E293B]"
+                  ? "bg-[#080908] border-[#B7F36B] shadow-[inset_3px_3px_8px_rgba(0,0,0,0.7),0_0_0_1px_rgba(183,243,107,0.3)]"
+                  : "bg-[#080908] border-[#30362E] hover:border-[#3A4038] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65),inset_-2px_-2px_4px_rgba(255,255,255,0.02)]"
               }`}
             >
-              <div className="pl-3 text-[#94A3B8] flex items-center pointer-events-none">
-                {isSearchFocused ? (
-                  <Sparkles className="w-4 h-4 text-[#D1E8E2] animate-pulse" />
-                ) : (
-                  <Search className="w-4 h-4 text-[#94A3B8]" />
-                )}
+              <div className="pl-3 text-[#A5AAA1] flex items-center pointer-events-none">
+                <Search className={`w-4 h-4 transition-colors ${isSearchFocused ? "text-[#B7F36B]" : "text-[#A5AAA1]"}`} />
               </div>
 
               <input
@@ -147,8 +142,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onChange={(e) => onSearchChange(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                placeholder="Ask AI or search: passport, flight, receipt, code..."
-                className="w-full pl-2.5 pr-20 py-1.5 sm:py-2 text-xs sm:text-sm bg-transparent text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:outline-none"
+                placeholder="Search screenshots: passport, receipt, ticket..."
+                className="w-full pl-2.5 pr-20 py-1.5 sm:py-2 text-xs sm:text-sm bg-transparent text-[#F7F8F5] placeholder-[#777E74] focus:outline-none"
               />
 
               {/* Right tools inside search input */}
@@ -160,7 +155,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onSearchChange("");
                       if (onExecuteSearch) onExecuteSearch("");
                     }}
-                    className="p-1 rounded-md text-[#94A3B8] hover:text-[#F1F5F9] cursor-pointer"
+                    className="p-1 rounded-md text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -171,13 +166,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     type="button"
                     onClick={onOpenFilters}
                     title="Filters"
-                    className="hidden sm:flex items-center p-1 rounded-md text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] transition-colors cursor-pointer"
+                    className="hidden sm:flex items-center p-1 rounded-md text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
                   </button>
                 )}
 
-                <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-[#334155] bg-[#2C3531] text-[10px] font-mono text-[#94A3B8] select-none">
+                <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-[#30362E] bg-[#141714] text-[10px] font-mono text-[#A5AAA1] select-none">
                   ⌘K
                 </kbd>
               </div>
@@ -189,24 +184,24 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Sync indicator */}
           {syncState.isSyncing && (
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono text-[#D1E8E2] bg-[#1E293B] border border-[#334155]">
-              <RefreshCw className="w-3 h-3 animate-spin text-[#D1E8E2]" />
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono text-[#F7F8F5] bg-[#141714] border border-[#30362E]">
+              <RefreshCw className="w-3 h-3 animate-spin text-[#B7F36B]" />
               <span>SYNCING</span>
             </div>
           )}
           {syncState.lastError && (
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono text-[#D9B08C] bg-[#1E293B] border border-[#334155]">
-              <AlertTriangle className="w-3 h-3 text-[#D9B08C]" />
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono text-[#A5AAA1] bg-[#141714] border border-[#30362E]">
+              <AlertTriangle className="w-3 h-3 text-[#A5AAA1]" />
               <span>OFFLINE</span>
             </div>
           )}
 
-          {/* Import screenshots button */}
+          {/* Import screenshots button - Lime Green Primary Button */}
           <button
             onClick={onOpenImport}
             id="import-btn-header"
             type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#116466] hover:bg-[#157F81] active:scale-98 text-[#F1F5F9] text-xs font-bold transition-all cursor-pointer shadow-[0_0_14px_rgba(17,100,102,0.3)] border border-[#116466]"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] active:scale-98 text-[#10130D] text-xs font-bold transition-all cursor-pointer shadow-[3px_3px_8px_rgba(0,0,0,0.45),-1px_-1px_3px_rgba(255,255,255,0.05)] border border-[#B7F36B]"
           >
             <UploadCloud className="w-4 h-4 stroke-[2.5]" />
             <span className="hidden sm:inline">Import</span>
@@ -218,11 +213,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="notification-center-btn"
             type="button"
             title="Notifications"
-            className="relative p-2 rounded-xl text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1E293B] border border-transparent hover:border-[#334155] transition-colors cursor-pointer"
+            className="relative p-2 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] border border-transparent hover:border-[#30362E] transition-colors cursor-pointer"
           >
             <Bell className="w-4 h-4" />
             {unreadNotificationCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#D9B08C] ring-2 ring-[#2C3531]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#B7F36B]" />
             )}
           </button>
 
@@ -232,7 +227,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="user-profile-btn"
             type="button"
             title={user.isLoggedIn ? user.name : "Sign In"}
-            className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl border border-[#334155] hover:border-[#116466] bg-[#1E293B] hover:bg-[#243347] transition-all cursor-pointer text-xs font-medium text-[#F1F5F9]"
+            className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl border border-[#30362E] hover:border-[#B7F36B] bg-[#141714] hover:bg-[#1B1F1A] shadow-[4px_4px_10px_rgba(0,0,0,0.5),-2px_-2px_6px_rgba(255,255,255,0.02)] transition-all cursor-pointer text-xs font-medium text-[#F7F8F5]"
           >
             {user.avatarUrl && user.isLoggedIn && !avatarError ? (
               <img
@@ -240,10 +235,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 alt={user.name}
                 referrerPolicy="no-referrer"
                 onError={() => setAvatarError(true)}
-                className="w-5 h-5 rounded-lg object-cover shrink-0 ring-1 ring-[#334155]"
+                className="w-5 h-5 rounded-lg object-cover shrink-0 ring-1 ring-[#30362E]"
               />
             ) : (
-              <div className="w-5 h-5 rounded-lg bg-[#2C3531] border border-[#334155] flex items-center justify-center text-[#94A3B8]">
+              <div className="w-5 h-5 rounded-lg bg-[#0D0F0D] border border-[#30362E] flex items-center justify-center text-[#A5AAA1]">
                 <User className="w-3.5 h-3.5" />
               </div>
             )}

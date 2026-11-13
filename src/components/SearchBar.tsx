@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Search,
   X,
-  Sparkles,
+  Loader2,
   Mic,
   Volume2,
   Clock,
@@ -218,27 +218,23 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       <div
         className={`relative flex items-center w-full rounded-2xl border transition-all duration-300 ${
           isFocused
-            ? "bg-[#1E293B] border-[#116466] ring-1 ring-[#116466]/60 shadow-[0_0_24px_rgba(17,100,102,0.25)]"
-            : "bg-[#1E293B]/90 border-[#334155] hover:border-[#475569] hover:bg-[#1E293B] shadow-lg"
+            ? "bg-[#0D0F0D] border-[#B7F36B] shadow-[inset_3px_3px_8px_rgba(0,0,0,0.7),inset_-2px_-2px_5px_rgba(255,255,255,0.02)]"
+            : "bg-[#0D0F0D] border-[#30362E] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65),inset_-2px_-2px_5px_rgba(255,255,255,0.02)] hover:border-[#B7F36B]/60"
         }`}
       >
-        {/* Subtle AI Searching animated glow beam at bottom of bar */}
+        {/* Subtle searching indicator bar */}
         {isSearching && (
-          <div className="absolute inset-x-4 -bottom-px h-[2px] bg-gradient-to-r from-transparent via-[#116466] to-[#D1E8E2] animate-pulse rounded-full" />
+          <div className="absolute inset-x-4 -bottom-px h-[2px] bg-[#B7F36B] rounded-full" />
         )}
 
         {/* Left Search Icon */}
-        <div className="pl-4 pr-3 text-[#94A3B8] flex items-center shrink-0">
+        <div className="pl-4 pr-3 text-[#777E74] flex items-center shrink-0">
           {isSearching ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
-              className="text-[#D1E8E2]"
-            >
-              <Sparkles className="w-5 h-5" />
-            </motion.div>
+            <div className="text-[#B7F36B]">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
           ) : (
-            <Search className={`w-5 h-5 transition-colors ${isFocused ? "text-[#D1E8E2]" : "text-[#94A3B8]"}`} />
+            <Search className={`w-5 h-5 transition-colors ${isFocused ? "text-[#B7F36B]" : "text-[#777E74]"}`} />
           )}
         </div>
 
@@ -255,12 +251,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           onFocus={() => setIsFocused(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || ROTATING_PLACEHOLDERS[placeholderIdx]}
-          className="w-full bg-transparent border-none outline-none text-sm sm:text-base font-normal placeholder:text-[#94A3B8]/60 text-[#F1F5F9] py-3.5 sm:py-4 pr-2"
+          className="w-full bg-transparent border-none outline-none text-sm sm:text-base font-normal placeholder:text-[#777E74] text-[#F7F8F5] py-3.5 sm:py-4 pr-2"
         />
 
         {/* Voice Listening indicator */}
         {isVoiceListening && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#1E293B] border border-[#D9B08C] text-[#D9B08C] text-xs mr-2 animate-pulse font-mono font-semibold">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#141714] border border-[#B7F36B] text-[#B7F36B] text-xs mr-2 font-mono font-semibold">
             <Volume2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">LISTENING...</span>
           </div>
@@ -276,7 +272,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               onExecuteSearch("");
               inputRef.current?.focus();
             }}
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#94A3B8] hover:text-[#F1F5F9] mr-1 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-white/10 text-[#A5AAA1] hover:text-[#F7F8F5] mr-1 transition-colors cursor-pointer"
             title="Clear search"
           >
             <X className="w-4 h-4" />
@@ -288,8 +284,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           id="snapfind-voice-search-btn"
           type="button"
           onClick={startVoiceSearch}
-          className={`p-2 rounded-xl text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] transition-colors cursor-pointer mr-1.5 ${
-            isVoiceListening ? "text-[#D1E8E2] bg-[#243347]" : ""
+          className={`p-2 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer mr-1.5 ${
+            isVoiceListening ? "text-[#B7F36B] bg-[#1B1F1A]" : ""
           }`}
           title="Voice Search"
         >
@@ -305,7 +301,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             setIsFocused(false);
           }}
           disabled={isSearching}
-          className="mr-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-[#116466] hover:bg-[#157F81] active:scale-98 text-[#F1F5F9] border border-[#116466] font-bold text-xs sm:text-sm shadow-[0_0_12px_rgba(17,100,102,0.3)] transition-all shrink-0 cursor-pointer disabled:opacity-50"
+          className="mr-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] active:scale-98 text-[#10130D] border border-[#B7F36B] font-bold text-xs sm:text-sm shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all shrink-0 cursor-pointer disabled:opacity-50"
         >
           <span>Search</span>
         </button>
@@ -319,21 +315,21 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 p-2 rounded-2xl border border-[#334155] bg-[#1E293B]/95 backdrop-blur-md text-[#F1F5F9] shadow-2xl z-50 max-h-[320px] overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-2 p-2 rounded-2xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[8px_8px_24px_rgba(0,0,0,0.85),-2px_-2px_8px_rgba(255,255,255,0.02)] z-50 max-h-[320px] overflow-y-auto"
           >
             {suggestions.history.length > 0 && (
               <div className="space-y-0.5">
-                <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#94A3B8]/70">
+                <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#777E74]">
                   Recent Searches
                 </div>
                 {suggestions.history.map((h) => (
                   <div
                     key={h.id}
                     onClick={() => handleSelectSuggestion(h.text)}
-                    className="px-3 py-2 rounded-xl text-xs flex items-center justify-between cursor-pointer hover:bg-[#243347] text-[#94A3B8] hover:text-[#F1F5F9] border border-transparent hover:border-[#334155] transition-colors"
+                    className="px-3 py-2 rounded-xl text-xs flex items-center justify-between cursor-pointer hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-transparent hover:border-[#30362E] transition-colors"
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <Clock className="w-3.5 h-3.5 text-[#94A3B8]/70 shrink-0" />
+                      <Clock className="w-3.5 h-3.5 text-[#777E74] shrink-0" />
                       <span className="truncate">{h.text}</span>
                     </div>
                     {onDeleteHistoryItem && (
@@ -343,7 +339,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                           e.stopPropagation();
                           onDeleteHistoryItem(h.id);
                         }}
-                        className="p-1 rounded hover:bg-[#2C3531] text-[#94A3B8] hover:text-[#F1F5F9]"
+                        className="p-1 rounded hover:bg-[#1B1F1A] text-[#777E74] hover:text-[#F7F8F5]"
                         title="Remove"
                       >
                         <X className="w-3 h-3" />
@@ -356,16 +352,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
             {suggestions.screenshots.length > 0 && (
               <div className="space-y-0.5 mt-1">
-                <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#94A3B8]/70">
+                <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#777E74]">
                   Matching Screenshots
                 </div>
                 {suggestions.screenshots.map((s) => (
                   <div
                     key={s.id}
                     onClick={() => handleSelectSuggestion(s.text)}
-                    className="px-3 py-2 rounded-xl text-xs flex items-center gap-2.5 cursor-pointer hover:bg-[#243347] text-[#94A3B8] hover:text-[#D1E8E2] border border-transparent hover:border-[#334155] transition-colors"
+                    className="px-3 py-2 rounded-xl text-xs flex items-center gap-2.5 cursor-pointer hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#B7F36B] border border-transparent hover:border-[#30362E] transition-colors"
                   >
-                    <Search className="w-3.5 h-3.5 text-[#D1E8E2] shrink-0" />
+                    <Search className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
                     <span className="truncate">{s.text}</span>
                   </div>
                 ))}

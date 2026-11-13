@@ -113,11 +113,11 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
       )}
 
       {/* Main Feedback Form Card */}
-      <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl space-y-6">
+      <div className="bg-[#141714] rounded-2xl p-6 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* 1. Feedback Type Selection */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#A5AAA1]">
               Feedback Type
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -131,8 +131,8 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
                     onClick={() => setSelectedType(item.id)}
                     className={`flex items-center justify-center gap-2 py-3 px-3.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-[#116466] border-[#116466] text-[#F1F5F9] shadow-md shadow-[#116466]/25"
-                        : "bg-[#0B0F19]/60 border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#0B0F19]"
+                        ? "bg-[#B7F36B] border-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                        : "bg-[#1B1F1A] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#222720]"
                     }`}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
@@ -145,7 +145,7 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
 
           {/* 2. Message Textarea */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#A5AAA1]">
               Message
             </label>
             <textarea
@@ -153,7 +153,7 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Tell us what happened, what worked well, or what you'd like to see improved..."
-              className="w-full px-4 py-3 rounded-xl bg-[#0B0F19]/80 border border-[#334155] focus:border-[#116466] focus:ring-1 focus:ring-[#116466] text-sm text-[#F1F5F9] placeholder-[#94A3B8]/60 transition-colors outline-none resize-y"
+              className="w-full px-4 py-3 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] text-sm text-[#F7F8F5] placeholder-[#777E74] transition-colors outline-none resize-y shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
               required
             />
           </div>
@@ -161,7 +161,7 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
           {/* 3. Contact Email (Optional if not logged in) */}
           {!currentUser?.isLoggedIn && (
             <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#A5AAA1]">
                 Your Email (Optional)
               </label>
               <input
@@ -169,7 +169,7 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com for follow-up"
-                className="w-full px-4 py-2.5 rounded-xl bg-[#0B0F19]/80 border border-[#334155] focus:border-[#116466] focus:ring-1 focus:ring-[#116466] text-xs text-[#F1F5F9] placeholder-[#94A3B8]/60 transition-colors outline-none"
+                className="w-full px-4 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] text-xs text-[#F7F8F5] placeholder-[#777E74] transition-colors outline-none shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
               />
             </div>
           )}
@@ -186,7 +186,7 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !message.trim()}
-              className="px-6 py-2.5 rounded-xl bg-[#116466] hover:bg-[#116466]/90 disabled:opacity-50 disabled:pointer-events-none text-[#F1F5F9] text-xs font-bold transition-all shadow-md shadow-[#116466]/30 flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] disabled:opacity-50 disabled:pointer-events-none text-[#10130D] text-xs font-bold transition-all shadow-[2px_2px_8px_rgba(0,0,0,0.4)] flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
@@ -195,7 +195,7 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 stroke-[2.5]" />
                   <span>Submit Feedback</span>
                 </>
               )}
@@ -207,24 +207,24 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
       {/* 5. Past Feedback Submissions (if any) */}
       {pastFeedback.length > 0 && (
         <div className="space-y-3 pt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#A5AAA1]">
             Your Previous Submissions
           </h3>
           <div className="space-y-2.5">
             {pastFeedback.slice(0, 5).map((item) => (
               <div
                 key={item.id}
-                className="p-4 rounded-xl bg-[#1E293B]/70 border border-[#334155] text-xs space-y-1.5"
+                className="p-4 rounded-xl bg-[#141714] border border-[#30362E] text-xs space-y-1.5 shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#116466]/20 text-[#D1E8E2] border border-[#116466]/40">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#B7F36B]/15 text-[#B7F36B] border border-[#B7F36B]/30">
                     {item.type}
                   </span>
-                  <span className="text-[#94A3B8] text-[10px]">
+                  <span className="text-[#777E74] text-[10px]">
                     {new Date(item.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                <p className="text-[#F1F5F9] leading-relaxed line-clamp-2">
+                <p className="text-[#F7F8F5] leading-relaxed line-clamp-2">
                   {item.description}
                 </p>
               </div>

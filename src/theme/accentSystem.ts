@@ -2,16 +2,20 @@
  * SnapFind AI - Accent Theme System
  *
  * Official Palette:
- * - Forest Slate: #2C3531 — main backgrounds & deep surfaces
- * - Cyber Teal: #116466 — brand accents, gradient tone, selected navigation, and highlights
- * - Soft Mint: #D1E8E2 — subtle highlights and light accent surfaces
- * - Charcoal Card: #1E293B — cards, sidebars, modals, and search panels
- * - Frost White: #F1F5F9 — primary text
- * - Shadow Gray: #334155 — borders and dividers
- * - Warm Beige: #D9B08C — optional, restrained secondary highlights
+ * - Main background: #080908
+ * - Secondary background: #0D0F0D
+ * - Card background: #141714
+ * - Elevated surface: #1B1F1A
+ * - Hover surface: #222720
+ * - Primary text: #F7F8F5
+ * - Secondary text: #A5AAA1
+ * - Muted text: #777E74
+ * - Borders: #30362E
+ * - Primary green: #B7F36B
+ * - Green hover: #A5E65A
  */
 
-export type AccentToneId = "cyber-teal" | "soft-mint" | "warm-beige" | "monochrome";
+export type AccentToneId = "lime-green" | "minimal-white" | "stealth" | "cyber-teal";
 
 export interface AccentThemeConfig {
   id: AccentToneId;
@@ -29,73 +33,73 @@ export interface AccentThemeConfig {
 }
 
 export const ACCENT_THEMES: Record<string, AccentThemeConfig> = {
+  "lime-green": {
+    id: "lime-green",
+    label: "Lime Green (Default)",
+    name: "Lime Green",
+    primary: "#B7F36B",
+    hover: "#A5E65A",
+    soft: "rgba(183, 243, 107, 0.15)",
+    border: "#30362E",
+    glow: "rgba(183, 243, 107, 0.35)",
+    text: "#B7F36B",
+    ring: "rgba(183, 243, 107, 0.55)",
+    badgeBg: "rgba(183, 243, 107, 0.15)",
+    badgeText: "#B7F36B",
+  },
   "cyber-teal": {
     id: "cyber-teal",
-    label: "Cyber Teal (Default)",
-    name: "Cyber Teal",
-    primary: "#116466",
-    hover: "#157F81",
-    soft: "rgba(17, 100, 102, 0.18)",
-    border: "#334155",
-    glow: "rgba(17, 100, 102, 0.35)",
-    text: "#D1E8E2",
-    ring: "rgba(17, 100, 102, 0.55)",
-    badgeBg: "rgba(17, 100, 102, 0.28)",
-    badgeText: "#D1E8E2",
+    label: "Lime Green",
+    name: "Lime Green",
+    primary: "#B7F36B",
+    hover: "#A5E65A",
+    soft: "rgba(183, 243, 107, 0.15)",
+    border: "#30362E",
+    glow: "rgba(183, 243, 107, 0.35)",
+    text: "#B7F36B",
+    ring: "rgba(183, 243, 107, 0.55)",
+    badgeBg: "rgba(183, 243, 107, 0.15)",
+    badgeText: "#B7F36B",
   },
-  "soft-mint": {
-    id: "soft-mint",
-    label: "Soft Mint",
-    name: "Soft Mint",
-    primary: "#D1E8E2",
-    hover: "#B9DFD6",
-    soft: "rgba(209, 232, 226, 0.15)",
-    border: "#334155",
-    glow: "rgba(209, 232, 226, 0.30)",
-    text: "#D1E8E2",
-    ring: "rgba(209, 232, 226, 0.45)",
-    badgeBg: "rgba(209, 232, 226, 0.18)",
-    badgeText: "#D1E8E2",
+  "minimal-white": {
+    id: "minimal-white",
+    label: "Minimal White",
+    name: "Minimal White",
+    primary: "#F7F8F5",
+    hover: "#E2E5DF",
+    soft: "rgba(247, 248, 245, 0.12)",
+    border: "#30362E",
+    glow: "rgba(247, 248, 245, 0.25)",
+    text: "#F7F8F5",
+    ring: "rgba(247, 248, 245, 0.45)",
+    badgeBg: "rgba(247, 248, 245, 0.12)",
+    badgeText: "#F7F8F5",
   },
-  "warm-beige": {
-    id: "warm-beige",
-    label: "Warm Beige",
-    name: "Warm Beige",
-    primary: "#D9B08C",
-    hover: "#E5C2A2",
-    soft: "rgba(217, 176, 140, 0.15)",
-    border: "#334155",
-    glow: "rgba(217, 176, 140, 0.30)",
-    text: "#D9B08C",
-    ring: "rgba(217, 176, 140, 0.45)",
-    badgeBg: "rgba(217, 176, 140, 0.18)",
-    badgeText: "#D9B08C",
-  },
-  monochrome: {
-    id: "monochrome",
-    label: "Cyber Teal High-Contrast",
-    name: "Cyber Teal High-Contrast",
-    primary: "#116466",
-    hover: "#157F81",
-    soft: "rgba(17, 100, 102, 0.18)",
-    border: "#334155",
-    glow: "rgba(17, 100, 102, 0.35)",
-    text: "#D1E8E2",
-    ring: "rgba(17, 100, 102, 0.55)",
-    badgeBg: "rgba(17, 100, 102, 0.28)",
-    badgeText: "#D1E8E2",
+  stealth: {
+    id: "stealth",
+    label: "Stealth Charcoal",
+    name: "Stealth Charcoal",
+    primary: "#A5AAA1",
+    hover: "#C2C7BD",
+    soft: "rgba(165, 170, 161, 0.15)",
+    border: "#30362E",
+    glow: "rgba(165, 170, 161, 0.25)",
+    text: "#F7F8F5",
+    ring: "rgba(165, 170, 161, 0.45)",
+    badgeBg: "rgba(165, 170, 161, 0.15)",
+    badgeText: "#F7F8F5",
   },
 };
 
-const ACCENT_STORAGE_KEY = "snapfind_accent_tone_cyber_v1";
+const ACCENT_STORAGE_KEY = "snapfind_accent_tone_v2";
 
 /**
  * Apply accent variables directly to document.documentElement
  */
-export function applyAccentTheme(accentId: string = "cyber-teal"): void {
+export function applyAccentTheme(accentId: string = "lime-green"): void {
   if (typeof document === "undefined") return;
 
-  const theme = ACCENT_THEMES[accentId] || ACCENT_THEMES["cyber-teal"];
+  const theme = ACCENT_THEMES[accentId] || ACCENT_THEMES["lime-green"];
   const root = document.documentElement;
 
   root.style.setProperty("--accent-primary", theme.primary);
@@ -107,8 +111,8 @@ export function applyAccentTheme(accentId: string = "cyber-teal"): void {
   root.style.setProperty("--accent-ring", theme.ring);
   root.style.setProperty("--accent-badge-bg", theme.badgeBg);
   root.style.setProperty("--accent-badge-text", theme.badgeText);
-  root.style.setProperty("--accent-beige", "#D9B08C");
-  root.style.setProperty("--accent-mint", "#D1E8E2");
+  root.style.setProperty("--accent-green", "#B7F36B");
+  root.style.setProperty("--accent-green-hover", "#A5E65A");
 
   root.setAttribute("data-accent", theme.id);
 
@@ -123,7 +127,7 @@ export function applyAccentTheme(accentId: string = "cyber-teal"): void {
  * Get currently stored accent tone
  */
 export function getStoredAccentTheme(): string {
-  if (typeof localStorage === "undefined") return "cyber-teal";
+  if (typeof localStorage === "undefined") return "lime-green";
   try {
     const stored = localStorage.getItem(ACCENT_STORAGE_KEY);
     if (stored && ACCENT_THEMES[stored]) {
@@ -132,5 +136,5 @@ export function getStoredAccentTheme(): string {
   } catch (e) {
     // ignore
   }
-  return "cyber-teal";
+  return "lime-green";
 }

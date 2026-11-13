@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Folder,
   FolderPlus,
-  Sparkles,
   Layers,
   Edit2,
   Trash2,
@@ -66,104 +65,45 @@ interface CollectionsViewProps {
 const getCategoryTheme = (name: string, description?: string) => {
   const text = `${name} ${description || ""}`.toLowerCase();
 
+  let icon = Folder;
+  let label = "Vault Collection";
+
   if (text.includes("flight") || text.includes("travel") || text.includes("passport") || text.includes("visa")) {
-    return {
-      icon: Plane,
-      gradient: "from-sky-950 via-blue-900/60 to-indigo-950",
-      accent: "text-sky-400",
-      badgeBg: "bg-sky-500/20 text-sky-300 border-sky-500/30",
-      label: "Travel & Identity",
-      patternIcon: Plane,
-    };
-  }
-  if (text.includes("bill") || text.includes("electric") || text.includes("power") || text.includes("utility")) {
-    return {
-      icon: Zap,
-      gradient: "from-amber-950 via-orange-950/70 to-yellow-950/50",
-      accent: "text-amber-400",
-      badgeBg: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-      label: "Utility Bills",
-      patternIcon: Zap,
-    };
-  }
-  if (text.includes("education") || text.includes("pass") || text.includes("cert") || text.includes("school") || text.includes("degree")) {
-    return {
-      icon: GraduationCap,
-      gradient: "from-indigo-950 via-purple-950/70 to-blue-950/60",
-      accent: "text-indigo-400",
-      badgeBg: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-      label: "Education & Passes",
-      patternIcon: BookOpen,
-    };
-  }
-  if (text.includes("food") || text.includes("recipe") || text.includes("cook") || text.includes("meal") || text.includes("restaurant")) {
-    return {
-      icon: Utensils,
-      gradient: "from-emerald-950 via-teal-950/70 to-green-950/50",
-      accent: "text-emerald-400",
-      badgeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-      label: "Food & Recipes",
-      patternIcon: Utensils,
-    };
-  }
-  if (text.includes("receipt") || text.includes("invoice") || text.includes("shop") || text.includes("order") || text.includes("purchase")) {
-    return {
-      icon: Receipt,
-      gradient: "from-teal-950 via-cyan-950/70 to-slate-950",
-      accent: "text-teal-400",
-      badgeBg: "bg-teal-500/20 text-teal-300 border-teal-500/30",
-      label: "Receipts & Shopping",
-      patternIcon: ShoppingBag,
-    };
-  }
-  if (text.includes("code") || text.includes("dev") || text.includes("program") || text.includes("terminal") || text.includes("git")) {
-    return {
-      icon: Code,
-      gradient: "from-violet-950 via-purple-950/70 to-slate-950",
-      accent: "text-violet-400",
-      badgeBg: "bg-violet-500/20 text-violet-300 border-violet-500/30",
-      label: "Development & Code",
-      patternIcon: Code,
-    };
-  }
-  if (text.includes("chat") || text.includes("message") || text.includes("convo") || text.includes("whatsapp") || text.includes("slack")) {
-    return {
-      icon: MessageSquare,
-      gradient: "from-blue-950 via-sky-950/70 to-slate-950",
-      accent: "text-blue-400",
-      badgeBg: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-      label: "Chats & Messages",
-      patternIcon: MessageSquare,
-    };
-  }
-  if (text.includes("finance") || text.includes("bank") || text.includes("statement") || text.includes("crypto") || text.includes("money")) {
-    return {
-      icon: DollarSign,
-      gradient: "from-emerald-950 via-slate-900 to-teal-950",
-      accent: "text-emerald-400",
-      badgeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-      label: "Financial Statements",
-      patternIcon: CreditCard,
-    };
-  }
-  if (text.includes("idea") || text.includes("note") || text.includes("draft") || text.includes("memo")) {
-    return {
-      icon: Lightbulb,
-      gradient: "from-amber-950 via-yellow-950/60 to-slate-950",
-      accent: "text-amber-300",
-      badgeBg: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-      label: "Ideas & Notes",
-      patternIcon: Lightbulb,
-    };
+    icon = Plane;
+    label = "Travel & Identity";
+  } else if (text.includes("bill") || text.includes("electric") || text.includes("power") || text.includes("utility")) {
+    icon = Zap;
+    label = "Utility Bills";
+  } else if (text.includes("education") || text.includes("pass") || text.includes("cert") || text.includes("school") || text.includes("degree")) {
+    icon = GraduationCap;
+    label = "Education & Passes";
+  } else if (text.includes("food") || text.includes("recipe") || text.includes("cook") || text.includes("meal") || text.includes("restaurant")) {
+    icon = Utensils;
+    label = "Food & Recipes";
+  } else if (text.includes("receipt") || text.includes("invoice") || text.includes("shop") || text.includes("order") || text.includes("purchase")) {
+    icon = Receipt;
+    label = "Receipts & Shopping";
+  } else if (text.includes("code") || text.includes("dev") || text.includes("program") || text.includes("terminal") || text.includes("git")) {
+    icon = Code;
+    label = "Development & Code";
+  } else if (text.includes("chat") || text.includes("message") || text.includes("convo") || text.includes("whatsapp") || text.includes("slack")) {
+    icon = MessageSquare;
+    label = "Chats & Messages";
+  } else if (text.includes("finance") || text.includes("bank") || text.includes("statement") || text.includes("crypto") || text.includes("money")) {
+    icon = DollarSign;
+    label = "Financial Statements";
+  } else if (text.includes("idea") || text.includes("note") || text.includes("draft") || text.includes("memo")) {
+    icon = Lightbulb;
+    label = "Ideas & Notes";
   }
 
   return {
-    icon: Folder,
-    gradient: "from-slate-900 via-[#18181B] to-slate-950",
-    accent: "text-slate-400",
-    badgeBg: "bg-slate-500/20 text-slate-300 border-slate-500/30",
-    label: "Vault Collection",
-    patternIcon: Folder,
+    icon,
+    gradient: "from-[#141714] to-[#0D0F0D]",
+    accent: "text-[#B7F36B]",
+    badgeBg: "bg-[#1B1F1A] text-[#F7F8F5] border-[#30362E]",
+    label,
+    patternIcon: icon,
   };
 };
 
@@ -478,21 +418,21 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
           {/* Album Hero Card */}
           <div
-            className="p-6 sm:p-8 rounded-3xl border relative overflow-hidden backdrop-blur-2xl shadow-2xl bg-[#1E293B] border-[#334155] text-[#F1F5F9]"
+            className="p-6 sm:p-8 rounded-2xl border relative overflow-hidden shadow-[4px_4px_16px_rgba(0,0,0,0.6)] bg-[#141714] border-[#30362E] text-[#F7F8F5]"
           >
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
               <div className="space-y-2 max-w-xl">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#116466]/30 text-[#D1E8E2] border border-[#116466]/50 inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-[#D1E8E2]" />
-                    {activeCollectionObj?.isAiGenerated ? "AI Auto Album" : "Custom Album"}
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E] inline-flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-[#B7F36B]" />
+                    {activeCollectionObj?.isAiGenerated ? "Smart Collection" : "Custom Collection"}
                   </span>
-                  <span className="text-xs text-[#94A3B8] font-medium">
+                  <span className="text-xs text-[#A5AAA1] font-medium">
                     {activeScreenshots.length} Screenshots
                   </span>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-black text-[#F1F5F9] tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-[#F7F8F5] tracking-tight">
                   {selectedCollectionName}
                 </h1>
 
@@ -506,23 +446,25 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
               {/* Batch Action Toolbar when items selected */}
               {selectedPhotoIds.length > 0 && (
                 <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-blue-600/30 border border-blue-500/50 backdrop-blur-xl shadow-xl"
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-[#141714] border border-[#B7F36B] shadow-[6px_6px_16px_rgba(0,0,0,0.65)]"
                 >
-                  <span className="text-xs font-bold text-blue-200 pl-1">
+                  <span className="text-xs font-bold text-[#B7F36B] pl-1">
                     {selectedPhotoIds.length} Selected
                   </span>
                   <button
+                    type="button"
                     onClick={() => setIsMoveModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-blue-500/30"
+                    className="px-3 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Move className="w-3.5 h-3.5" />
                     <span>Move to Album</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSelectedPhotoIds([])}
-                    className="p-1.5 rounded-xl hover:bg-white/10 text-slate-300"
+                    className="p-1.5 rounded-xl hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -533,29 +475,30 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
           {/* Grid of screenshots in this album */}
           {activeScreenshots.length === 0 ? (
-            <div className="text-center py-16 p-8 rounded-3xl border border-dashed border-white/10">
-              <Layers className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-slate-300">No screenshots in this album</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Move screenshots here or upload new ones to populate this AI collection.
+            <div className="text-center py-16 p-8 rounded-3xl border border-dashed border-[#30362E]">
+              <Layers className="w-12 h-12 text-[#777E74] mx-auto mb-3" />
+              <h3 className="text-base font-bold text-[#F7F8F5]">No screenshots in this album</h3>
+              <p className="text-xs text-[#A5AAA1] mt-1">
+                Move screenshots here or upload new ones to populate this collection.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
               {activeScreenshots.map((item) => {
                 const isSelected = selectedPhotoIds.includes(item.id);
                 return (
                   <div key={item.id} className="relative group">
                     {/* Batch Selection Checkbox overlay */}
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleSelectPhoto(item.id);
                       }}
-                      className={`absolute top-3 left-3 z-30 p-1.5 rounded-xl backdrop-blur-md transition-all cursor-pointer ${
+                      className={`absolute top-3 left-3 z-30 p-1.5 rounded-xl transition-all cursor-pointer ${
                         isSelected
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/50"
-                          : "bg-black/40 hover:bg-black/70 text-white/70 border border-white/20 opacity-0 group-hover:opacity-100"
+                          ? "bg-[#B7F36B] text-[#10130D] border border-[#B7F36B]"
+                          : "bg-[#080908] hover:bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E] opacity-0 group-hover:opacity-100"
                       }`}
                     >
                       {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
@@ -592,7 +535,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
           {/* Header Banner */}
           <PageHeroHeader
             type="collections"
-            title="Collections"
+            title="Your collections"
             isDark={isDark}
             actions={
               <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
@@ -604,9 +547,9 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     }
                     setMergeModalOpen(true);
                   }}
-                  className="px-3.5 py-2 min-h-[44px] rounded-xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] border border-[#334155] hover:border-[#116466] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-3.5 py-2 min-h-[44px] rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] hover:border-[#B7F36B] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
                 >
-                  <Merge className="w-4 h-4 text-[#94A3B8] shrink-0" />
+                  <Merge className="w-4 h-4 text-[#A5AAA1] shrink-0" />
                   <span className="truncate whitespace-nowrap">Merge</span>
                   {!isPro && !isFounder && <ProBadge size="xs" variant="pill" />}
                 </button>
@@ -619,7 +562,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     }
                     setIsCreateOpen(true);
                   }}
-                  className="px-4 py-2 min-h-[44px] rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_12px_rgba(17,100,102,0.3)] border border-[#116466] active:scale-98"
+                  className="px-4 py-2 min-h-[44px] rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)] border border-[#B7F36B] active:scale-98"
                 >
                   <Plus className="w-4 h-4 stroke-[2.5] shrink-0" />
                   <span className="truncate whitespace-nowrap">New Collection</span>
@@ -631,18 +574,18 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
           {/* Search Bar for Collections */}
           <div className="relative max-w-md">
-            <Search className="w-4 h-4 text-[#94A3B8] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#A5AAA1] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search album collections..."
+              placeholder="Search collections..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs border border-[#334155] bg-[#1E293B] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:outline-none focus:border-[#116466] focus:ring-1 focus:ring-[#116466]/40 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.65)] focus:outline-none focus:border-[#B7F36B] transition-all"
             />
           </div>
 
-          {/* Collection Card Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {/* Collection Card Grid (1, 2, or 4 columns - NO 3-card rows) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
             {filteredCollections.map((col) => {
               const thumbs = getRepresentativeStackThumbnails(col.name);
               const mainThumb = thumbs[0] || "";
@@ -655,19 +598,19 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                   whileHover={{ y: -4 }}
                   transition={{ duration: 0.2 }}
                   onClick={() => handleCollectionClick(col)}
-                  className="group relative rounded-3xl border border-[#334155] p-4 cursor-pointer transition-all duration-200 bg-[#1E293B]/95 hover:bg-[#243347] hover:border-[#116466] shadow-[0_0_14px_rgba(0,0,0,0.5)]"
+                  className="group relative rounded-3xl border border-[#30362E] p-4 cursor-pointer transition-all duration-200 bg-[#141714] hover:bg-[#1B1F1A] hover:border-[#B7F36B]/60 shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.02)]"
                 >
                   {/* Apple Photos Overlapping Stack Image Effect */}
-                  <div className="relative w-full aspect-[4/3] rounded-2xl mb-4 overflow-hidden bg-[#2C3531] border border-[#334155] shadow-inner">
+                  <div className="relative w-full aspect-[4/3] rounded-2xl mb-4 overflow-hidden bg-[#0D0F0D] border border-[#30362E] shadow-[inset_2px_2px_6px_rgba(0,0,0,0.65)]">
                     {/* Background Stack Layer 2 */}
                     {thumbs[2] && (
-                      <div className="absolute inset-0 scale-[0.88] translate-y-[-8px] opacity-40 rounded-2xl overflow-hidden border border-[#334155] shadow-md">
+                      <div className="absolute inset-0 scale-[0.88] translate-y-[-8px] opacity-40 rounded-2xl overflow-hidden border border-[#30362E] shadow-md">
                         <img src={thumbs[2]} alt="" className="w-full h-full object-cover" />
                       </div>
                     )}
                     {/* Background Stack Layer 1 */}
                     {thumbs[1] && (
-                      <div className="absolute inset-0 scale-[0.94] translate-y-[-4px] opacity-70 rounded-2xl overflow-hidden border border-[#334155] shadow-md">
+                      <div className="absolute inset-0 scale-[0.94] translate-y-[-4px] opacity-70 rounded-2xl overflow-hidden border border-[#30362E] shadow-md">
                         <img src={thumbs[1]} alt="" className="w-full h-full object-cover" />
                       </div>
                     )}
@@ -680,13 +623,11 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 relative z-10"
                       />
                     ) : (
-                      <div
-                        className={`w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br ${theme.gradient} relative z-10`}
-                      >
-                        <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                          <ThemeIcon className={`w-8 h-8 ${theme.accent}`} />
+                      <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-[#0D0F0D] relative z-10">
+                        <div className="p-3.5 rounded-2xl bg-[#1B1F1A] border border-[#30362E] shadow-[2px_2px_6px_rgba(0,0,0,0.4)] group-hover:scale-110 transition-transform duration-300">
+                          <ThemeIcon className="w-8 h-8 text-[#B7F36B]" />
                         </div>
-                        <span className="mt-2 text-[10px] font-bold tracking-wider uppercase text-slate-300/80">
+                        <span className="mt-2 text-[10px] font-bold tracking-wider uppercase text-[#A5AAA1]">
                           {theme.label}
                         </span>
                       </div>
@@ -694,39 +635,39 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
                     {/* Security Lock Overlay if locked */}
                     {collectionSecurity.isCollectionLocked(col.name) && (
-                      <div className="absolute inset-0 bg-[#2C3531]/80 backdrop-blur-md z-20 flex flex-col items-center justify-center p-4 text-center">
-                        <div className="w-10 h-10 rounded-2xl bg-[#D9B08C]/20 border border-[#D9B08C]/40 flex items-center justify-center text-[#D9B08C] mb-2 shadow-lg">
+                      <div className="absolute inset-0 bg-[#0D0F0D]/95 z-20 flex flex-col items-center justify-center p-4 text-center">
+                        <div className="w-10 h-10 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center text-[#B7F36B] mb-2 shadow-[2px_2px_6px_rgba(0,0,0,0.5)]">
                           <Lock className="w-5 h-5" />
                         </div>
-                        <span className="text-xs font-bold text-[#F1F5F9]">Album Locked</span>
-                        <span className="text-[10px] text-[#94A3B8] mt-0.5">Tap to unlock</span>
+                        <span className="text-xs font-bold text-[#F7F8F5]">Album Locked</span>
+                        <span className="text-[10px] text-[#A5AAA1] mt-0.5">Tap to unlock</span>
                       </div>
                     )}
 
-                    {/* Gradient Overlay & Badge */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#2C3531]/90 via-[#2C3531]/20 to-transparent z-10 flex flex-col justify-between p-3 pointer-events-none">
+                    {/* Overlay Badges (Solid surface badges) */}
+                    <div className="absolute inset-0 z-10 flex flex-col justify-between p-3 pointer-events-none">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {col.isAiGenerated ? (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#1E293B] text-[#D1E8E2] backdrop-blur-md border border-[#116466]/50 flex items-center gap-1 shadow-md">
-                              <Sparkles className="w-2.5 h-2.5 text-[#D1E8E2]" />
-                              AI Classified
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E] flex items-center gap-1 shadow-[2px_2px_4px_rgba(0,0,0,0.4)]">
+                              <Layers className="w-2.5 h-2.5 text-[#B7F36B]" />
+                              Categorized
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#1E293B] text-[#F1F5F9] backdrop-blur-md border border-[#334155] shadow-md">
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#1B1F1A] text-[#F7F8F5] border border-[#30362E] shadow-[2px_2px_4px_rgba(0,0,0,0.4)]">
                               Custom Album
                             </span>
                           )}
 
                           {collectionSecurity.hasCollectionLock(col.name) && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#1E293B] text-[#D9B08C] backdrop-blur-md border border-[#D9B08C]/50 flex items-center gap-1 shadow-md">
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E] flex items-center gap-1 shadow-[2px_2px_4px_rgba(0,0,0,0.4)]">
                               <Lock className="w-2.5 h-2.5" />
                               <span>{collectionSecurity.isCollectionLocked(col.name) ? "Locked" : "Unlocked"}</span>
                             </span>
                           )}
                         </div>
 
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#2C3531]/80 text-[#D1E8E2] backdrop-blur-md border border-[#334155] shadow-md">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#0D0F0D] text-[#A5AAA1] border border-[#30362E] shadow-[2px_2px_4px_rgba(0,0,0,0.4)]">
                           {col.itemCount || 0} items
                         </span>
                       </div>
@@ -736,11 +677,11 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                   {/* Album Info & Action Dropdown */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1 min-w-0 flex-1">
-                      <h3 className="text-sm font-extrabold text-[#F1F5F9] group-hover:text-[#D1E8E2] transition-colors truncate">
+                      <h3 className="text-sm font-extrabold text-[#F7F8F5] group-hover:text-[#B7F36B] transition-colors truncate">
                         {col.name}
                       </h3>
                       {col.description && (
-                        <p className="text-[11px] text-[#94A3B8] line-clamp-1">{col.description}</p>
+                        <p className="text-[11px] text-[#A5AAA1] line-clamp-1">{col.description}</p>
                       )}
                     </div>
 
@@ -760,21 +701,23 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                       {activeMenuCollection === col.name && (
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-8 z-50 w-44 rounded-2xl bg-[#0D1117] border border-white/[0.08] shadow-2xl p-1.5 space-y-1 backdrop-blur-2xl"
+                          className="absolute right-0 top-8 z-50 w-44 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[8px_8px_20px_rgba(0,0,0,0.85)] p-1.5 space-y-1"
                         >
                           <button
+                            type="button"
                             onClick={() => {
                               setActiveMenuCollection(null);
                               setRenameTarget(col.name);
                               setRenameValue(col.name);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-blue-600/20 hover:text-blue-300 rounded-xl transition-all"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#A5AAA1] hover:bg-[#1B1F1A] hover:text-[#F7F8F5] rounded-xl transition-colors cursor-pointer"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                             <span>Rename</span>
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => {
                               setActiveMenuCollection(null);
                               if (collectionSecurity.isCollectionLocked(col.name)) {
@@ -798,20 +741,21 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                                 });
                               }
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-amber-300 hover:bg-amber-600/20 rounded-xl transition-all"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#B7F36B] hover:bg-[#1B1F1A] rounded-xl transition-colors cursor-pointer"
                           >
-                            <Shield className="w-3.5 h-3.5 text-amber-400" />
+                            <Shield className="w-3.5 h-3.5 text-[#B7F36B]" />
                             <span>{collectionSecurity.hasCollectionLock(col.name) ? "Lock Settings" : "Protect with Lock"}</span>
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => {
                               setActiveMenuCollection(null);
                               setSelectedMergeSources([col.name]);
                               setTargetMergeName(col.name);
                               setMergeModalOpen(true);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-purple-600/20 hover:text-purple-300 rounded-xl transition-all"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#A5AAA1] hover:bg-[#1B1F1A] hover:text-[#F7F8F5] rounded-xl transition-colors cursor-pointer"
                           >
                             <Merge className="w-3.5 h-3.5" />
                             <span>Merge</span>
@@ -841,23 +785,22 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
       {/* MODAL 1: Create Custom Collection */}
       <AnimatePresence>
         {isCreateOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-              }`}
+              className="w-full max-w-md p-6 rounded-3xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-5"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FolderPlus className="w-5 h-5 text-blue-400" />
+                  <FolderPlus className="w-5 h-5 text-[#B7F36B]" />
                   <h3 className="text-lg font-bold">New Custom Collection</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="p-1 rounded-xl hover:bg-white/10 text-slate-400"
+                  className="p-1.5 rounded-xl hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -865,7 +808,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
               <form onSubmit={handleCreateSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-[#A5AAA1] mb-1.5 uppercase tracking-wider">
                     Album Name
                   </label>
                   <input
@@ -874,12 +817,12 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     placeholder="e.g. Tax Returns 2026, Gym Workouts"
                     value={newColName}
                     onChange={(e) => setNewColName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border bg-slate-900/80 border-white/10 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl border bg-[#0D0F0D] border-[#30362E] text-xs text-[#F7F8F5] placeholder-[#777E74] focus:outline-none focus:border-[#B7F36B]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-[#A5AAA1] mb-1.5 uppercase tracking-wider">
                     Description (Optional)
                   </label>
                   <input
@@ -887,21 +830,21 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     placeholder="Brief description of this collection..."
                     value={newColDesc}
                     onChange={(e) => setNewColDesc(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border bg-slate-900/80 border-white/10 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl border bg-[#0D0F0D] border-[#30362E] text-xs text-[#F7F8F5] placeholder-[#777E74] focus:outline-none focus:border-[#B7F36B]"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#30362E]">
                   <button
                     type="button"
                     onClick={() => setIsCreateOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 text-slate-400"
+                    className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-500/20"
+                    className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold cursor-pointer"
                   >
                     Create Collection
                   </button>
@@ -915,23 +858,22 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
       {/* MODAL 2: Rename Collection */}
       <AnimatePresence>
         {renameTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-              }`}
+              className="w-full max-w-md p-6 rounded-3xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-5"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Edit2 className="w-5 h-5 text-blue-400" />
+                  <Edit2 className="w-5 h-5 text-[#B7F36B]" />
                   <h3 className="text-lg font-bold">Rename Collection</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setRenameTarget(null)}
-                  className="p-1 rounded-xl hover:bg-white/10 text-slate-400"
+                  className="p-1.5 rounded-xl hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -939,7 +881,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
               <form onSubmit={handleRenameSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-[#A5AAA1] mb-1.5 uppercase tracking-wider">
                     New Name for "{renameTarget}"
                   </label>
                   <input
@@ -947,21 +889,21 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     required
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border bg-slate-900/80 border-white/10 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl border bg-[#0D0F0D] border-[#30362E] text-xs text-[#F7F8F5] focus:outline-none focus:border-[#B7F36B]"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#30362E]">
                   <button
                     type="button"
                     onClick={() => setRenameTarget(null)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 text-slate-400"
+                    className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-500/20"
+                    className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold cursor-pointer"
                   >
                     Save Rename
                   </button>
@@ -975,42 +917,40 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
       {/* MODAL 3: Delete Collection */}
       <AnimatePresence>
         {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-              }`}
+              className="w-full max-w-md p-6 rounded-3xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-5"
             >
               <div className="flex items-center gap-3 text-rose-400">
                 <Trash2 className="w-6 h-6" />
-                <h3 className="text-lg font-bold">Delete Collection "{deleteTarget}"?</h3>
+                <h3 className="text-lg font-bold text-[#F7F8F5]">Delete Collection "{deleteTarget}"?</h3>
               </div>
 
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-[#A5AAA1] leading-relaxed">
                 Choose how you would like to handle the screenshots currently inside this collection:
               </p>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/80 border border-white/10 cursor-pointer hover:border-blue-500/50">
+                <label className="flex items-center gap-3 p-3 rounded-2xl bg-[#0D0F0D] border border-[#30362E] cursor-pointer hover:border-[#B7F36B]">
                   <input
                     type="radio"
                     name="deleteOption"
                     checked={!deleteWithPhotos}
                     onChange={() => setDeleteWithPhotos(false)}
-                    className="accent-blue-500"
+                    className="accent-[#B7F36B]"
                   />
                   <div>
-                    <p className="text-xs font-bold text-white">Keep photos, unassign album</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-xs font-bold text-[#F7F8F5]">Keep photos, unassign album</p>
+                    <p className="text-[10px] text-[#A5AAA1]">
                       Move screenshots to "General Vault" without deleting photos.
                     </p>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-3 p-3 rounded-2xl bg-rose-950/30 border border-rose-500/30 cursor-pointer hover:border-rose-500/50">
+                <label className="flex items-center gap-3 p-3 rounded-2xl bg-[#1B1F1A] border border-rose-500/40 cursor-pointer hover:border-rose-500">
                   <input
                     type="radio"
                     name="deleteOption"
@@ -1020,23 +960,25 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                   />
                   <div>
                     <p className="text-xs font-bold text-rose-300">Delete album AND all screenshots</p>
-                    <p className="text-[10px] text-rose-400/80">
+                    <p className="text-[10px] text-rose-300/80">
                       Permanently delete all screenshots inside this album.
                     </p>
                   </div>
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#30362E]">
                 <button
+                  type="button"
                   onClick={() => setDeleteTarget(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 text-slate-400"
+                  className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleDeleteSubmit}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-500/20"
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer"
                 >
                   Confirm Delete
                 </button>
@@ -1049,23 +991,22 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
       {/* MODAL 4: Merge Collections */}
       <AnimatePresence>
         {mergeModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-              }`}
+              className="w-full max-w-lg p-6 rounded-3xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-5"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Merge className="w-5 h-5 text-purple-400" />
+                  <Merge className="w-5 h-5 text-[#B7F36B]" />
                   <h3 className="text-lg font-bold">Merge Collections</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setMergeModalOpen(false)}
-                  className="p-1 rounded-xl hover:bg-white/10 text-slate-400"
+                  className="p-1.5 rounded-xl hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1073,10 +1014,10 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
               <form onSubmit={handleMergeSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-[#A5AAA1] mb-1.5 uppercase tracking-wider">
                     Select Source Collections to Merge
                   </label>
-                  <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 rounded-2xl bg-slate-900/80 border border-white/10">
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 rounded-2xl bg-[#0D0F0D] border border-[#30362E]">
                     {collections.map((c) => {
                       const isSelected = selectedMergeSources.includes(c.name);
                       return (
@@ -1090,14 +1031,14 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                                 : [...prev, c.name]
                             );
                           }}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                             isSelected
-                              ? "bg-purple-600/30 text-purple-300 border border-purple-500/50"
-                              : "hover:bg-white/5 text-slate-300"
+                              ? "bg-[#B7F36B] text-[#10130D] font-bold"
+                              : "hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5]"
                           }`}
                         >
                           <span>{c.name}</span>
-                          <span className="text-[10px] text-slate-500">{c.itemCount || 0} items</span>
+                          <span className="text-[10px] opacity-80">{c.itemCount || 0} items</span>
                         </button>
                       );
                     })}
@@ -1105,7 +1046,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-[#A5AAA1] mb-1.5 uppercase tracking-wider">
                     Merged Target Collection Name
                   </label>
                   <input
@@ -1114,22 +1055,22 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     placeholder="e.g. Combined Receipts & Bills"
                     value={targetMergeName}
                     onChange={(e) => setTargetMergeName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border bg-slate-900/80 border-white/10 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl border bg-[#0D0F0D] border-[#30362E] text-xs text-[#F7F8F5] placeholder-[#777E74] focus:outline-none focus:border-[#B7F36B]"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#30362E]">
                   <button
                     type="button"
                     onClick={() => setMergeModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 text-slate-400"
+                    className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={selectedMergeSources.length === 0 || !targetMergeName.trim()}
-                    className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-purple-500/20"
+                    className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] disabled:opacity-50 text-[#10130D] text-xs font-bold cursor-pointer"
                   >
                     Merge Albums
                   </button>
@@ -1143,64 +1084,66 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
       {/* MODAL 5: Move Screenshots to Target Album */}
       <AnimatePresence>
         {isMoveModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                isDark ? "bg-[#18181B] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-              }`}
+              className="w-full max-w-md p-6 rounded-3xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-5"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Move className="w-5 h-5 text-blue-400" />
+                  <Move className="w-5 h-5 text-[#B7F36B]" />
                   <h3 className="text-lg font-bold">Move {selectedPhotoIds.length} Photo(s)</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsMoveModalOpen(false)}
-                  className="p-1 rounded-xl hover:bg-white/10 text-slate-400"
+                  className="p-1.5 rounded-xl hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="space-y-3">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-[#A5AAA1] uppercase tracking-wider">
                   Select Target Destination Album
                 </label>
-                <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 rounded-2xl bg-slate-900/80 border border-white/10">
+                <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 rounded-2xl bg-[#0D0F0D] border border-[#30362E]">
                   {collections.map((c) => {
                     const isSelected = targetMoveCollection === c.name;
                     return (
                       <button
                         key={c.name}
+                        type="button"
                         onClick={() => setTargetMoveCollection(c.name)}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                           isSelected
-                            ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                            : "hover:bg-white/5 text-slate-300"
+                            ? "bg-[#B7F36B] text-[#10130D]"
+                            : "hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5]"
                         }`}
                       >
                         <span>{c.name}</span>
-                        <span className="text-[10px] opacity-70">{c.itemCount || 0} items</span>
+                        <span className="text-[10px] opacity-80">{c.itemCount || 0} items</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#30362E]">
                 <button
+                  type="button"
                   onClick={() => setIsMoveModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 text-slate-400"
+                  className="px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleBatchMoveSubmit}
                   disabled={!targetMoveCollection}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-blue-500/20"
+                  className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] disabled:opacity-50 text-[#10130D] text-xs font-bold cursor-pointer"
                 >
                   Confirm Move
                 </button>

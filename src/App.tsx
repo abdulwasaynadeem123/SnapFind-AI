@@ -223,6 +223,12 @@ function AppContent() {
   const [isStorageReady, setIsStorageReady] = useState(false);
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
+
+  const openAuthModal = (mode: "login" | "register" = "login") => {
+    setAuthModalMode(mode);
+    setIsAuthOpen(true);
+  };
 
   // Automatically show auth modal in reset-password mode if recovery flow is triggered
   useEffect(() => {
@@ -1188,27 +1194,11 @@ function AppContent() {
       style={
         isDark
           ? {
-              backgroundImage: isLandingView
-                ? "linear-gradient(160deg, #062122 0%, #0A383A 50%, #041617 100%)"
-                : "linear-gradient(135deg, #18211E 0%, #0A3638 100%)",
-              backgroundColor: isLandingView ? "#062122" : "#18211E",
-              backgroundAttachment: "fixed",
+              backgroundColor: "#080908",
             }
           : undefined
       }
     >
-      {/* Animated AI Ambient Background in Cyber Teal & Forest Slate */}
-      {isDark && (
-        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none">
-          {/* Subtle Cyber Teal ambient glow */}
-          <div className="absolute -top-32 left-1/4 w-[600px] h-[600px] rounded-full bg-[#116466]/15 blur-[150px]" />
-          {/* Subtle Deep Teal/Slate ambient glow */}
-          <div className="absolute top-1/3 -right-24 w-[600px] h-[600px] rounded-full bg-[#0A383A]/25 blur-[160px]" />
-          {/* Subtle lower depth glow */}
-          <div className="absolute -bottom-40 left-1/3 w-[550px] h-[550px] rounded-full bg-[#116466]/15 blur-[140px]" />
-        </div>
-      )}
-
       {/* Main App Workspace: Two-column layout on Desktop, stacked on Mobile */}
       <div className="relative z-10 flex flex-col lg:flex-row h-full w-full overflow-hidden">
         {/* LEFT: Fixed Sidebar (permanently visible on >= 1024px, 100vh, flex-shrink-0) */}
@@ -1237,7 +1227,7 @@ function AppContent() {
             settings={settings}
             onToggleTheme={handleToggleTheme}
             onOpenImport={() => setActiveView("import")}
-            onOpenAuth={() => setIsAuthOpen(true)}
+            onOpenAuth={() => openAuthModal("login")}
             totalIndexedCount={activeScreenshots.length}
             currentSearchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -1264,11 +1254,13 @@ function AppContent() {
           )}
 
           {/* Non-intrusive Founder feedback prompt for the first 50 users */}
-          <FounderFeedbackPrompt
-            isDark={isDark}
-            isFounder={Boolean(activeUser?.entitlement?.isFounder || activeUser?.plan === "Founder" || (activeUser?.entitlement?.founderNumber && activeUser.entitlement.founderNumber <= 50))}
-            onOpenFeedback={() => setActiveView("feedback")}
-          />
+          {activeView !== "landing" && (
+            <FounderFeedbackPrompt
+              isDark={isDark}
+              isFounder={Boolean(activeUser?.entitlement?.isFounder || activeUser?.plan === "Founder" || (activeUser?.entitlement?.founderNumber && activeUser.entitlement.founderNumber <= 50))}
+              onOpenFeedback={() => setActiveView("feedback")}
+            />
+          )}
 
           <AnimatePresence mode="wait">
             {/* Landing View (Public) */}
@@ -1281,16 +1273,10 @@ function AppContent() {
                 transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
                 <LandingScreen
-                  onGetStarted={() => setActiveView("dashboard")}
-                  onTrySearch={(q) => {
-                    handleExecuteSearch(q);
-                  }}
-                  onOpenDemo={(q) => {
-                    setDemoInitialQuery(q || "");
-                    setActiveView("demo");
-                  }}
-                  isDark={isDark}
-                  totalIndexed={activeScreenshots.length}
+                  onSignUp={() => openAuthModal("register")}
+                  onSignIn={() => openAuthModal("login")}
+                  onNavigateToSearch={() => setActiveView("search")}
+                  onNavigateToGallery={() => setActiveView("gallery")}
                 />
               </motion.div>
             )}
@@ -1442,7 +1428,7 @@ function AppContent() {
               </motion.div>
             )}
 
-            {/* Dedicated Trash View (Protected) */}
+            {/* Dedicated Recently Deleted View (Protected) */}
             {activeView === "trash" && (
               <motion.div
                 key="trash"
@@ -1452,9 +1438,9 @@ function AppContent() {
                 transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
                 <ProtectedRoute
-                  title="Sign in to access your trash"
+                  title="Sign in to access recently deleted screenshots"
                   heroType="trash"
-                  onOpenAuth={() => setIsAuthOpen(true)}
+                  onOpenAuth={() => openAuthModal("login")}
                   isDark={isDark}
                 >
                   <TrashView
@@ -1822,6 +1808,7 @@ function AppContent() {
         <AuthModal
           onClose={() => setIsAuthOpen(false)}
           isDark={isDark}
+          initialMode={authModalMode}
           addToast={addToast}
           onSignupSuccess={() => {
             addToast({

@@ -24,7 +24,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Screenshots": {
     icon: "Image",
-    color: "from-[#116466] to-[#0B0F19]",
+    color: "from-[#1B1F1A] to-[#0D0F0D]",
     description: "All captured device screenshots and visual clippings",
   },
   "Receipts": {
@@ -69,7 +69,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Important Information": {
     icon: "Sparkles",
-    color: "from-[#116466] to-cyan-700",
+    color: "from-[#1B1F1A] to-[#0D0F0D]",
     description: "Screenshots containing tracking numbers, phone numbers, codes, and key entities",
   },
   "Favorites": {

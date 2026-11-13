@@ -1002,7 +1002,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({
               <div className="flex items-center justify-between p-4 border-b border-slate-800">
                 <div>
                   <h3 className="text-sm font-bold text-slate-100">
-                    Receipt Proof — {zoomedReceiptReq.user_email || zoomedReceiptReq.userEmail}
+                    Receipt Proof - {zoomedReceiptReq.user_email || zoomedReceiptReq.userEmail}
                   </h3>
                   <p className="text-xs text-slate-400 font-mono">
                     Transaction ID: {zoomedReceiptReq.transaction_id || zoomedReceiptReq.transactionId}

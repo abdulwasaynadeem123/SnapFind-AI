@@ -7,7 +7,7 @@
     <link rel="shortcut icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080908" />
-    <title>SnapFind AI – AI Screenshot Search</title>
+    <title>SnapFind AI - Search your screenshots</title>
     <meta name="description" content="Search, organize and protect your screenshots with SnapFind AI." />
     <meta name="robots" id="sf-robots" content="index, follow" />
     <link rel="canonical" id="sf-canonical" href="https://snapfind.ai.studio/" />
@@ -17,22 +17,21 @@
     <!-- Open Graph Metadata -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SnapFind AI" />
-    <meta property="og:title" content="SnapFind AI – AI Screenshot Search" />
+    <meta property="og:title" content="SnapFind AI - Search your screenshots" />
     <meta property="og:description" content="Search, organize and protect your screenshots with SnapFind AI." />
     <meta property="og:url" content="https://snapfind.ai.studio/" />
-    <meta property="og:image" content="/logo.png" />
+    <meta property="og:image" content="/logo.svg" />
 
     <!-- Twitter Card Metadata -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="SnapFind AI – AI Screenshot Search" />
+    <meta name="twitter:title" content="SnapFind AI - Search your screenshots" />
     <meta name="twitter:description" content="Search, organize and protect your screenshots with SnapFind AI." />
-    <meta name="twitter:image" content="/logo.png" />
+    <meta name="twitter:image" content="/logo.svg" />
 
     <!-- Favicon & Icons -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/logo.png" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="shortcut icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
 
     <!-- SoftwareApplication Schema.org JSON-LD -->
     <script type="application/ld+json">
@@ -63,23 +62,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
-  <body style="margin: 0; background: linear-gradient(135deg, #080908 0%, #080908 100%) fixed; color: #F7F8F5; font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <body style="margin: 0; background-color: #080908; color: #F7F8F5; font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div id="root">
-      <!-- Safe Pre-React Brand Splash Loader (replaces blank white screen on startup) -->
-      <div id="sf-startup-loader" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(160deg, #080908 0%, #080908 50%, #080908 100%); padding: 24px; box-sizing: border-box; text-align: center;">
+      <!-- Safe Pre-React Brand Splash Loader -->
+      <div id="sf-startup-loader" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #080908; padding: 24px; box-sizing: border-box; text-align: center;">
         <div style="position: relative; margin-bottom: 24px;">
-          <div style="width: 72px; height: 72px; border-radius: 20px; background: #141714; border: 1px solid #30362E; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(6,33,34,0.8);">
+          <div style="width: 72px; height: 72px; border-radius: 16px; background-color: #141714; border: 1px solid #30362E; display: flex; align-items: center; justify-content: center; box-shadow: 4px 4px 12px rgba(0,0,0,0.6);">
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B7F36B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
               <circle cx="12" cy="13" r="3"></circle>
             </svg>
           </div>
-          <div style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background-color: #F7F8F5; border: 2px solid #0D0F0D;"></div>
+          <div style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background-color: #B7F36B; border: 2px solid #080908;"></div>
         </div>
         <h1 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800; letter-spacing: 0.05em; color: #F7F8F5;">SNAPFIND AI</h1>
-        <p style="margin: 0 0 24px 0; font-size: 12px; color: #A5AAA1; letter-spacing: 0.02em;">Loading visual memory engine...</p>
+        <p style="margin: 0 0 24px 0; font-size: 13px; color: #A5AAA1;">Search your screenshots</p>
         <div style="width: 140px; height: 3px; background-color: #30362E; border-radius: 9999px; overflow: hidden; position: relative;">
-          <div style="width: 50%; height: 100%; background: linear-gradient(90deg, #B7F36B, #A5E65A); border-radius: 9999px; animation: sf-indeterminate 1.5s infinite ease-in-out;"></div>
+          <div style="width: 50%; height: 100%; background-color: #B7F36B; border-radius: 9999px; animation: sf-indeterminate 1.5s infinite ease-in-out;"></div>
         </div>
         <style>
           @keyframes sf-indeterminate {
@@ -103,16 +102,16 @@
           var root = document.getElementById('root');
           if (!root) return;
           root.innerHTML = [
-            '<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #080908 0%, #080908 50%, #080908 100%); color: #F7F8F5; padding: 20px; font-family: system-ui, -apple-system, sans-serif; box-sizing: border-box;">',
-            '  <div style="max-width: 420px; width: 100%; background-color: #141714; border: 1px solid #30362E; border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 20px 40px rgba(6,33,34,0.8);">',
-            '    <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(217, 176, 140, 0.15); color: #A5AAA1; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 24px;">⚠</div>',
-            '    <h2 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: #F7F8F5;">Initialization Notice</h2>',
+            '<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #080908; color: #F7F8F5; padding: 20px; font-family: system-ui, -apple-system, sans-serif; box-sizing: border-box;">',
+            '  <div style="max-width: 420px; width: 100%; background-color: #141714; border: 1px solid #30362E; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 4px 4px 16px rgba(0,0,0,0.7);">',
+            '    <div style="width: 48px; height: 48px; border-radius: 12px; background-color: #1B1F1A; border: 1px solid #30362E; color: #B7F36B; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 20px;">!</div>',
+            '    <h2 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: #F7F8F5;">Notice</h2>',
             '    <p style="margin: 0 0 16px 0; font-size: 13px; color: #A5AAA1; line-height: 1.5;">SnapFind encountered a temporary startup issue. You can restart or reset local cache to continue.</p>',
             '    <div style="background-color: #0D0F0D; border: 1px solid #30362E; border-radius: 10px; padding: 10px; margin-bottom: 20px; text-align: left; font-family: monospace; font-size: 11px; color: #A5AAA1; max-height: 80px; overflow-y: auto; word-break: break-all;">',
             msg || 'Unknown startup error',
             '    </div>',
             '    <div style="display: flex; gap: 10px; justify-content: center;">',
-            '      <button onclick="window.location.reload()" style="flex: 1; padding: 12px 16px; border-radius: 12px; background: #B7F36B; color: #F7F8F5; font-weight: 700; font-size: 13px; border: none; cursor: pointer;">Reload App</button>',
+            '      <button onclick="window.location.reload()" style="flex: 1; padding: 12px 16px; border-radius: 12px; background: #B7F36B; color: #10130D; font-weight: 700; font-size: 13px; border: none; cursor: pointer;">Reload App</button>',
             '      <button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload();" style="flex: 1; padding: 12px 16px; border-radius: 12px; background: #171B16; color: #A5AAA1; font-weight: 600; font-size: 13px; border: 1px solid #3A4038; cursor: pointer;">Reset Cache</button>',
             '    </div>',
             '  </div>',

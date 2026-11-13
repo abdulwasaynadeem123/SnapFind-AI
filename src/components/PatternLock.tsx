@@ -98,7 +98,7 @@ export const PatternLock: React.FC<PatternLockProps> = ({
     <div className="flex flex-col items-center">
       <div
         ref={containerRef}
-        className="relative w-64 h-64 select-none touch-none p-4 rounded-3xl bg-[#2C3531] border border-[#334155] shadow-lg"
+        className="relative w-64 h-64 select-none touch-none p-4 rounded-3xl bg-[#0D0F0D] border border-[#30362E] shadow-[inset_3px_3px_8px_rgba(0,0,0,0.65)]"
       >
         {/* SVG connection lines between selected dots */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
@@ -113,7 +113,7 @@ export const PatternLock: React.FC<PatternLockProps> = ({
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
-                stroke={error ? "#EF4444" : "#116466"}
+                stroke={error ? "#EF4444" : "#B7F36B"}
                 strokeWidth="4"
                 strokeLinecap="round"
                 opacity="0.9"
@@ -126,7 +126,7 @@ export const PatternLock: React.FC<PatternLockProps> = ({
               y1={getDotCenter(selectedDots[selectedDots.length - 1]).y}
               x2={currentLineEnd.x}
               y2={currentLineEnd.y}
-              stroke={error ? "#EF4444" : "#D1E8E2"}
+              stroke={error ? "#EF4444" : "#B7F36B"}
               strokeWidth="3"
               strokeDasharray="4 4"
               strokeLinecap="round"
@@ -151,8 +151,8 @@ export const PatternLock: React.FC<PatternLockProps> = ({
                     isSelected
                       ? error
                         ? "w-7 h-7 bg-red-500/20 border-2 border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
-                        : "w-7 h-7 bg-[#116466]/30 border-2 border-[#116466] shadow-[0_0_12px_rgba(17,100,102,0.6)]"
-                      : "w-5 h-5 bg-[#334155]/40 hover:bg-[#334155] border border-[#334155]"
+                        : "w-7 h-7 bg-[#1B1F1A] border-2 border-[#B7F36B] shadow-[0_0_12px_rgba(183,243,107,0.5)]"
+                      : "w-5 h-5 bg-[#141714] hover:bg-[#1B1F1A] border border-[#30362E]"
                   }`}
                 >
                   <div
@@ -160,8 +160,8 @@ export const PatternLock: React.FC<PatternLockProps> = ({
                       isSelected
                         ? error
                           ? "bg-red-500 scale-125"
-                          : "bg-[#D1E8E2] scale-125"
-                        : "bg-[#94A3B8]"
+                          : "bg-[#B7F36B] scale-125"
+                        : "bg-[#777E74]"
                     }`}
                   />
                 </div>
@@ -175,7 +175,7 @@ export const PatternLock: React.FC<PatternLockProps> = ({
         <button
           type="button"
           onClick={handleClear}
-          className="mt-3 flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-[#F1F5F9] transition-colors cursor-pointer"
+          className="mt-3 flex items-center gap-1.5 text-xs text-[#A5AAA1] hover:text-[#F7F8F5] transition-colors cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Redraw pattern</span>

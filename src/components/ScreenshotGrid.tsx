@@ -12,7 +12,6 @@ import {
   LayoutGrid,
   Grid3X3,
   List,
-  Sparkles,
   Download,
   Share2,
   RefreshCw,
@@ -322,17 +321,17 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
 
   return (
     <div className="space-y-6 relative">
-      {/* 3D Gallery Hero Header */}
+      {/* Gallery Hero Header */}
       {!searchQuery && (
         <PageHeroHeader
           type="gallery"
-          title="Gallery"
+          title="Recently added"
           isDark={isDark}
         />
       )}
 
       {/* Category Pills & Interactive Filters Toolbar */}
-      <div className="space-y-4 pb-4 border-b border-[#334155]">
+      <div className="space-y-4 pb-4 border-b border-[#30362E]">
         {/* Category Pills */}
         <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 scrollbar-none">
           <div className="flex items-center gap-2">
@@ -345,13 +344,13 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     isSelectedCat
-                      ? "bg-[#116466] text-[#F1F5F9] border border-[#116466] font-bold shadow-[0_0_12px_rgba(17,100,102,0.3)]"
-                      : "bg-[#1E293B] border border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#116466] hover:bg-[#243347]"
+                      ? "bg-[#B7F36B] text-[#10130D] border border-[#B7F36B] shadow-[2px_2px_8px_rgba(0,0,0,0.5)]"
+                      : "bg-[#141714] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:border-[#B7F36B] hover:bg-[#1B1F1A]"
                   }`}
                 >
-                  {isFavPill && <Star className={`w-3.5 h-3.5 ${isSelectedCat ? "text-[#D9B08C] fill-[#D9B08C]" : "text-[#D9B08C] fill-none"}`} />}
+                  {isFavPill && <Star className={`w-3.5 h-3.5 ${isSelectedCat ? "text-[#10130D] fill-[#10130D]" : "text-[#B7F36B] fill-none"}`} />}
                   <span>{cat}</span>
                 </button>
               );
@@ -363,19 +362,19 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           {/* Quick Search inside Gallery */}
           <div className="relative flex-1 max-w-full sm:max-w-xs">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#777E74]" />
             <input
               type="text"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               placeholder="Filter vault..."
-              className="w-full pl-9 pr-8 py-2 min-h-[40px] rounded-xl text-xs font-medium border border-[#334155] bg-[#1E293B] text-[#F1F5F9] placeholder-[#94A3B8]/60 focus:border-[#116466] focus:outline-none transition-colors"
+              className="w-full pl-9 pr-8 py-2 min-h-[40px] rounded-xl text-xs font-medium border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.6)] focus:border-[#B7F36B] focus:outline-none transition-colors"
             />
             {localSearch && (
               <button
                 type="button"
                 onClick={() => setLocalSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#F1F5F9] p-1"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A5AAA1] hover:text-[#F7F8F5] p-1 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -391,10 +390,10 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 setIsSelectionMode(!isSelectionMode);
                 if (isSelectionMode) setSelectedIds(new Set());
               }}
-              className={`px-3 py-2 min-h-[40px] rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3 py-2 min-h-[40px] rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 isSelectionMode || selectedIds.size > 0
-                  ? "bg-[#116466] text-[#F1F5F9] border-[#116466] font-bold shadow-[0_0_12px_rgba(17,100,102,0.3)]"
-                  : "bg-[#1E293B] border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#116466]"
+                  ? "bg-[#B7F36B] text-[#10130D] border-[#B7F36B] shadow-[2px_2px_8px_rgba(0,0,0,0.5)]"
+                  : "bg-[#141714] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:border-[#B7F36B]"
               }`}
             >
               {selectedIds.size > 0 ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
@@ -407,7 +406,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleSelectAll}
-                  className="px-2.5 py-1.5 rounded-lg border border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:text-[#F1F5F9] text-xs font-medium transition-colors"
+                  className="px-2.5 py-1.5 rounded-lg border border-[#30362E] bg-[#141714] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-medium transition-colors cursor-pointer"
                   title="Select / deselect items on current page"
                 >
                   {selectedIds.size === paginatedItems.length && paginatedItems.length > 0
@@ -417,7 +416,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 <button
                   type="button"
                   onClick={handleSelectAllFiltered}
-                  className="px-2.5 py-1.5 rounded-lg border border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:text-[#F1F5F9] text-xs font-medium transition-colors"
+                  className="px-2.5 py-1.5 rounded-lg border border-[#30362E] bg-[#141714] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-medium transition-colors cursor-pointer"
                   title="Select all matching items"
                 >
                   Select All ({filtered.length})
@@ -426,12 +425,12 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             )}
 
             {/* Layout View Switcher */}
-            <div className="flex items-center p-0.5 rounded-lg border border-[#334155] bg-[#1E293B]">
+            <div className="flex items-center p-0.5 rounded-lg border border-[#30362E] bg-[#141714]">
               <button
                 type="button"
                 onClick={() => setViewLayout("grid")}
-                className={`p-1.5 rounded-md transition-all ${
-                  viewLayout === "grid" ? "bg-[#116466] text-[#F1F5F9]" : "text-[#94A3B8] hover:text-[#F1F5F9]"
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewLayout === "grid" ? "bg-[#B7F36B] text-[#10130D]" : "text-[#A5AAA1] hover:text-[#F7F8F5]"
                 }`}
                 title="Default Grid View"
               >
@@ -440,8 +439,8 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
               <button
                 type="button"
                 onClick={() => setViewLayout("compact")}
-                className={`p-1.5 rounded-md transition-all ${
-                  viewLayout === "compact" ? "bg-[#116466] text-[#F1F5F9]" : "text-[#94A3B8] hover:text-[#F1F5F9]"
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewLayout === "compact" ? "bg-[#B7F36B] text-[#10130D]" : "text-[#A5AAA1] hover:text-[#F7F8F5]"
                 }`}
                 title="Compact Grid View"
               >
@@ -450,8 +449,8 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
               <button
                 type="button"
                 onClick={() => setViewLayout("list")}
-                className={`p-1.5 rounded-md transition-all ${
-                  viewLayout === "list" ? "bg-[#116466] text-[#F1F5F9]" : "text-[#94A3B8] hover:text-[#F1F5F9]"
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewLayout === "list" ? "bg-[#B7F36B] text-[#10130D]" : "text-[#A5AAA1] hover:text-[#F7F8F5]"
                 }`}
                 title="List View"
               >
@@ -463,7 +462,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             <select
               value={sortMode}
               onChange={(e: any) => setSortMode(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-[#334155] text-xs font-medium bg-[#1E293B] text-[#F1F5F9] focus:border-[#116466] outline-none cursor-pointer"
+              className="px-3 py-2 rounded-xl border border-[#30362E] text-xs font-semibold bg-[#141714] text-[#F7F8F5] focus:border-[#B7F36B] outline-none cursor-pointer"
             >
               <option value="recent">Sort: Most Recent</option>
               <option value="oldest">Sort: Oldest</option>
@@ -481,10 +480,10 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             layout
             className={
               viewLayout === "compact"
-                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-5"
+                ? "grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5"
                 : viewLayout === "list"
                 ? "grid grid-cols-1 gap-3.5"
-                : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6"
+                : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6"
             }
           >
             {paginatedItems.map((item) => (
@@ -518,17 +517,17 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
         </>
       ) : (
         /* Empty State */
-        <div className="text-center py-16 px-4 rounded-3xl border border-[#334155] bg-[#1E293B]/95 backdrop-blur-md flex flex-col items-center justify-center text-[#F1F5F9] space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#2C3531] border border-[#334155] flex items-center justify-center text-[#D1E8E2]">
-            <Sparkles className="w-7 h-7" />
+        <div className="text-center py-16 px-4 rounded-3xl border border-[#30362E] bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65)] flex flex-col items-center justify-center text-[#F7F8F5] space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center text-[#B7F36B] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
+            <Layers className="w-7 h-7" />
           </div>
           <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="text-lg font-bold tracking-tight text-[#F1F5F9]">
+            <h3 className="text-lg font-bold tracking-tight text-[#F7F8F5]">
               {screenshots.length === 0
                 ? "Your Private Vault is Ready & Clean"
                 : "No matching screenshots found."}
             </h3>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
+            <p className="text-xs text-[#A5AAA1] leading-relaxed">
               {screenshots.length === 0
                 ? "Your private gallery starts empty for complete data isolation. Upload screenshots to index OCR text locally, or explore our read-only demo gallery."
                 : searchQuery || localSearch
@@ -543,30 +542,30 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                   setSelectedCategory("All");
                   setLocalSearch("");
                 }}
-                className="px-4 py-2.5 rounded-xl border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-xs font-semibold text-[#94A3B8] hover:text-[#F1F5F9] transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] transition-colors cursor-pointer"
               >
                 Reset Filters
               </button>
             )}
             <button
               onClick={onOpenImport}
-              className="px-5 py-2.5 rounded-2xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-bold shadow-lg shadow-[#116466]/20 border border-[#116466] transition-all cursor-pointer"
+              className="px-5 py-2.5 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)] border border-[#B7F36B] transition-all cursor-pointer"
             >
               Upload Screenshot
             </button>
             {screenshots.length === 0 && onOpenDemo && (
               <button
                 onClick={onOpenDemo}
-                className="px-4 py-2.5 rounded-2xl border border-[#116466]/50 bg-[#116466]/10 text-[#D1E8E2] hover:bg-[#116466]/20 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-2xl border border-[#30362E] bg-[#1B1F1A] text-[#B7F36B] hover:bg-[#222720] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#116466]" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#B7F36B]" />
                 <span>Explore Demo Gallery</span>
               </button>
             )}
             {screenshots.length === 0 && onLoadSamplePack && (
               <button
                 onClick={onLoadSamplePack}
-                className="px-4 py-2.5 rounded-2xl border border-[#334155] hover:bg-[#243347] text-[#94A3B8] hover:text-[#F1F5F9] text-xs font-semibold transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-2xl border border-[#30362E] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-semibold transition-all cursor-pointer"
               >
                 Load Sample Pack (Optional)
               </button>
@@ -575,7 +574,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
         </div>
       )}
 
-      {/* Premium Floating Selection Dock with Spring Physics */}
+      {/* Premium Floating Selection Dock */}
       <AnimatePresence>
         {selectedIds.size > 0 && (
           <motion.div
@@ -583,17 +582,16 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 70, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-3xl p-3 sm:p-4 rounded-3xl border shadow-2xl backdrop-blur-2xl bg-[#2C3531]/95 border-[#334155] text-[#F1F5F9] flex flex-col md:flex-row items-center justify-between gap-3.5"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-3xl p-3 sm:p-4 rounded-3xl border shadow-[10px_10px_30px_rgba(0,0,0,0.85),-2px_-2px_8px_rgba(255,255,255,0.02)] bg-[#141714] border-[#30362E] text-[#F7F8F5] flex flex-col md:flex-row items-center justify-between gap-3.5"
           >
             {/* Dock Header: Counter & Selection Helpers */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start px-2">
               <div className="flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#116466] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#116466]" />
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#B7F36B]" />
                 </span>
                 <span className="font-extrabold text-sm tracking-tight flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 rounded-lg bg-[#1E293B] text-[#D1E8E2] border border-[#334155] font-mono text-xs">
+                  <span className="px-2 py-0.5 rounded-lg bg-[#0D0F0D] text-[#B7F36B] border border-[#30362E] font-mono text-xs">
                     {selectedIds.size}
                   </span>
                   <span>Selected</span>
@@ -604,14 +602,14 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
               <div className="flex items-center gap-1 text-[11px]">
                 <button
                   onClick={handleInvertSelection}
-                  className="px-2 py-1 rounded-lg bg-[#1E293B] hover:bg-[#243347] text-[#94A3B8] hover:text-[#F1F5F9] border border-[#334155] transition-all cursor-pointer"
+                  className="px-2 py-1 rounded-lg bg-[#0D0F0D] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] transition-all cursor-pointer"
                   title="Invert current selection"
                 >
                   Invert
                 </button>
                 <button
                   onClick={() => setSelectedIds(new Set())}
-                  className="px-2 py-1 rounded-lg bg-[#1E293B] hover:bg-[#243347] text-[#94A3B8] hover:text-[#F1F5F9] border border-[#334155] transition-all cursor-pointer"
+                  className="px-2 py-1 rounded-lg bg-[#0D0F0D] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] transition-all cursor-pointer"
                   title="Clear selection"
                 >
                   Clear
@@ -626,7 +624,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => setShowBulkDeleteConfirm(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
                 title="Delete selected screenshots (Move to Trash)"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -638,7 +636,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => handleExecuteBulkFavorite(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#D9B08C]/20 hover:bg-[#D9B08C]/30 text-[#D9B08C] border border-[#D9B08C]/40 text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#B7F36B] border border-[#30362E] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
                 title="Add selected to Favorites"
               >
                 <Star className="w-3.5 h-3.5 fill-current" />
@@ -650,10 +648,10 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => setShowBulkMoveModal(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#116466]/30 hover:bg-[#116466]/40 text-[#D1E8E2] border border-[#116466]/60 text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
                 title="Move selected to collection or category"
               >
-                <FolderInput className="w-3.5 h-3.5" />
+                <FolderInput className="w-3.5 h-3.5 text-[#B7F36B]" />
                 <span>Move Collection</span>
               </motion.button>
 
@@ -662,10 +660,10 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => setShowExportModal(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] border border-[#334155] hover:border-[#116466] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
                 title="Export selected (JSON, TXT, MD)"
               >
-                <Download className="w-3.5 h-3.5 text-[#D1E8E2]" />
+                <Download className="w-3.5 h-3.5 text-[#B7F36B]" />
                 <span>Export</span>
               </motion.button>
 
@@ -674,10 +672,10 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={handleExecuteShare}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] border border-[#334155] hover:border-[#116466] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
                 title="Share selected items summary"
               >
-                <Share2 className="w-3.5 h-3.5 text-[#D1E8E2]" />
+                <Share2 className="w-3.5 h-3.5 text-[#B7F36B]" />
                 <span>Share</span>
               </motion.button>
 
@@ -686,7 +684,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={handleExecuteBulkCopyText}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#116466]/40 hover:bg-[#116466]/50 text-[#D1E8E2] border border-[#116466]/60 text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold border border-[#B7F36B] text-xs transition-all shrink-0 cursor-pointer shadow-sm"
                 title="Copy full concatenated OCR text"
               >
                 <Copy className="w-3.5 h-3.5" />
@@ -699,17 +697,17 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                 whileTap={{ scale: 0.92 }}
                 onClick={handleExecuteReindex}
                 disabled={isReindexing}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] border border-[#334155] hover:border-[#116466] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-sm disabled:opacity-50"
                 title="Re-run AI Vision indexing on selected items"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isReindexing ? "animate-spin text-[#D1E8E2]" : "text-[#94A3B8]"}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isReindexing ? "animate-spin text-[#B7F36B]" : "text-[#777E74]"}`} />
                 <span>{isReindexing ? "Scanning..." : "Reindex"}</span>
               </motion.button>
 
               {/* Close Dock Button */}
               <button
                 onClick={() => setSelectedIds(new Set())}
-                className="p-2 rounded-2xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#F1F5F9] transition-all ml-1 shrink-0 cursor-pointer"
+                className="p-2 rounded-xl hover:bg-[#1B1F1A] text-[#777E74] hover:text-[#F7F8F5] transition-all ml-1 shrink-0 cursor-pointer"
                 title="Close dock"
               >
                 <X className="w-4 h-4" />
@@ -721,23 +719,23 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
 
       {/* Bulk Move Collection Modal */}
       {showBulkMoveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md p-6 rounded-3xl border shadow-2xl space-y-5 bg-[#1E293B] border-[#334155] text-[#F1F5F9]"
+            className="w-full max-w-md p-6 rounded-3xl border shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-5 bg-[#141714] border-[#30362E] text-[#F7F8F5]"
           >
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg flex items-center gap-2">
-                <FolderInput className="w-5 h-5 text-[#D1E8E2]" />
+                <FolderInput className="w-5 h-5 text-[#B7F36B]" />
                 <span>Move {selectedIds.size} Screenshots</span>
               </h3>
-              <button onClick={() => setShowBulkMoveModal(false)} className="text-[#94A3B8] hover:text-[#F1F5F9] p-1 cursor-pointer">
+              <button onClick={() => setShowBulkMoveModal(false)} className="text-[#A5AAA1] hover:text-[#F7F8F5] p-1 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
+            <p className="text-xs text-[#A5AAA1] leading-relaxed">
               Choose target collection or category for all {selectedIds.size} selected screenshot items:
             </p>
 
@@ -748,12 +746,12 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
                   onClick={() => setTargetCategory(cat)}
                   className={`p-3 rounded-2xl border text-xs font-semibold text-left transition-all flex items-center justify-between cursor-pointer ${
                     targetCategory === cat
-                      ? "bg-[#116466] text-[#F1F5F9] border-[#116466] shadow-md shadow-[#116466]/30"
-                      : "bg-[#2C3531] border-[#334155] text-[#94A3B8] hover:border-[#116466] hover:text-[#F1F5F9]"
+                      ? "bg-[#B7F36B] text-[#10130D] border-[#B7F36B] shadow-md"
+                      : "bg-[#0D0F0D] border-[#30362E] text-[#A5AAA1] hover:border-[#B7F36B] hover:text-[#F7F8F5]"
                   }`}
                 >
                   <span>{cat}</span>
-                  {targetCategory === cat && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  {targetCategory === cat && <CheckCircle2 className="w-3.5 h-3.5 text-[#10130D]" />}
                 </button>
               ))}
             </div>
@@ -761,13 +759,13 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowBulkMoveModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleExecuteBulkMove}
-                className="px-5 py-2.5 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-bold shadow-lg shadow-[#116466]/20 border border-[#116466] cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold shadow-md border border-[#B7F36B] cursor-pointer"
               >
                 Confirm Move
               </button>
@@ -778,35 +776,35 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
 
       {/* Bulk Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md p-6 rounded-3xl border shadow-2xl space-y-5 bg-[#1E293B] border-[#334155] text-[#F1F5F9]"
+            className="w-full max-w-md p-6 rounded-3xl border shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-5 bg-[#141714] border-[#30362E] text-[#F7F8F5]"
           >
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg flex items-center gap-2">
-                <Download className="w-5 h-5 text-[#D1E8E2]" />
+                <Download className="w-5 h-5 text-[#B7F36B]" />
                 <span>Export {selectedIds.size} Selected Items</span>
               </h3>
-              <button onClick={() => setShowExportModal(false)} className="text-[#94A3B8] hover:text-[#F1F5F9] p-1 cursor-pointer">
+              <button onClick={() => setShowExportModal(false)} className="text-[#A5AAA1] hover:text-[#F7F8F5] p-1 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
+            <p className="text-xs text-[#A5AAA1] leading-relaxed">
               Select the export format for your selected screenshots metadata and extracted OCR text:
             </p>
 
             <div className="space-y-3">
               <button
                 onClick={() => handleExecuteExport("json")}
-                className="w-full p-4 rounded-2xl border text-left flex items-start gap-3 bg-[#2C3531] border-[#334155] hover:border-[#116466] transition-all cursor-pointer"
+                className="w-full p-4 rounded-2xl border text-left flex items-start gap-3 bg-[#0D0F0D] border-[#30362E] hover:border-[#B7F36B] transition-all cursor-pointer"
               >
-                <FileCode className="w-6 h-6 text-[#D1E8E2] shrink-0 mt-0.5" />
+                <FileCode className="w-6 h-6 text-[#B7F36B] shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-xs text-[#F1F5F9]">JSON Metadata Bundle (.json)</div>
-                  <div className="text-[11px] text-[#94A3B8] mt-0.5">
+                  <div className="font-bold text-xs text-[#F7F8F5]">JSON Metadata Bundle (.json)</div>
+                  <div className="text-[11px] text-[#A5AAA1] mt-0.5">
                     Complete raw JSON object containing titles, tags, OCR text, and AI confidence scores.
                   </div>
                 </div>
@@ -814,12 +812,12 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
 
               <button
                 onClick={() => handleExecuteExport("txt")}
-                className="w-full p-4 rounded-2xl border text-left flex items-start gap-3 bg-[#2C3531] border-[#334155] hover:border-[#116466] transition-all cursor-pointer"
+                className="w-full p-4 rounded-2xl border text-left flex items-start gap-3 bg-[#0D0F0D] border-[#30362E] hover:border-[#B7F36B] transition-all cursor-pointer"
               >
-                <FileText className="w-6 h-6 text-[#D1E8E2] shrink-0 mt-0.5" />
+                <FileText className="w-6 h-6 text-[#B7F36B] shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-xs text-[#F1F5F9]">Text Digest (.txt)</div>
-                  <div className="text-[11px] text-[#94A3B8] mt-0.5">
+                  <div className="font-bold text-xs text-[#F7F8F5]">Text Digest (.txt)</div>
+                  <div className="text-[11px] text-[#A5AAA1] mt-0.5">
                     Concatenated plain-text document with clear headings for all OCR text.
                   </div>
                 </div>
@@ -827,12 +825,12 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
 
               <button
                 onClick={() => handleExecuteExport("md")}
-                className="w-full p-4 rounded-2xl border text-left flex items-start gap-3 bg-[#2C3531] border-[#334155] hover:border-[#116466] transition-all cursor-pointer"
+                className="w-full p-4 rounded-2xl border text-left flex items-start gap-3 bg-[#0D0F0D] border-[#30362E] hover:border-[#B7F36B] transition-all cursor-pointer"
               >
-                <Sparkles className="w-6 h-6 text-[#D1E8E2] shrink-0 mt-0.5" />
+                <FileCode className="w-6 h-6 text-[#B7F36B] shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-xs text-[#F1F5F9]">Markdown Document (.md)</div>
-                  <div className="text-[11px] text-[#94A3B8] mt-0.5">
+                  <div className="font-bold text-xs text-[#F7F8F5]">Markdown Document (.md)</div>
+                  <div className="text-[11px] text-[#A5AAA1] mt-0.5">
                     Formatted Markdown report with summaries, key facts, and code blocks.
                   </div>
                 </div>
@@ -842,7 +840,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             <div className="flex items-center justify-end pt-2">
               <button
                 onClick={() => setShowExportModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] cursor-pointer"
               >
                 Cancel
               </button>
@@ -853,11 +851,11 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
 
       {/* Bulk Delete Confirmation Modal */}
       {showBulkDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-sm p-6 rounded-3xl border shadow-2xl space-y-4 bg-[#1E293B] border-[#334155] text-[#F1F5F9]"
+            className="w-full max-w-sm p-6 rounded-3xl border shadow-[10px_10px_30px_rgba(0,0,0,0.85)] space-y-4 bg-[#141714] border-[#30362E] text-[#F7F8F5]"
           >
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center">
               <Trash2 className="w-6 h-6" />
@@ -865,7 +863,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
 
             <div>
               <h3 className="font-bold text-lg">Move {selectedIds.size} Screenshots to Trash?</h3>
-              <p className="text-xs text-[#94A3B8] mt-1">
+              <p className="text-xs text-[#A5AAA1] mt-1">
                 Selected screenshots will be moved to Trash. You can restore them anytime within 30 days.
               </p>
             </div>
@@ -873,7 +871,7 @@ export const ScreenshotGrid: React.FC<ScreenshotGridProps> = ({
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowBulkDeleteConfirm(false)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] cursor-pointer"
               >
                 Cancel
               </button>

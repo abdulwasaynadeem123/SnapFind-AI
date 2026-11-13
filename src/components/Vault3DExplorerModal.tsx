@@ -19,10 +19,10 @@ function createGridTexture(): THREE.CanvasTexture {
   canvas.height = 512;
   const ctx = canvas.getContext("2d");
   if (ctx) {
-    ctx.fillStyle = "#0B0F19";
+    ctx.fillStyle = "#080908";
     ctx.fillRect(0, 0, 512, 512);
 
-    ctx.strokeStyle = "rgba(17, 100, 102, 0.35)";
+    ctx.strokeStyle = "rgba(48, 54, 46, 0.7)";
     ctx.lineWidth = 1.5;
     const step = 32;
     for (let x = 0; x <= 512; x += step) {
@@ -39,7 +39,7 @@ function createGridTexture(): THREE.CanvasTexture {
     }
 
     // Concentric cyber circles
-    ctx.strokeStyle = "rgba(209, 232, 226, 0.25)";
+    ctx.strokeStyle = "rgba(183, 243, 107, 0.3)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(256, 256, 128, 0, Math.PI * 2);
@@ -81,8 +81,8 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
 
     // 1. Scene & Camera Setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#0B0F19");
-    scene.fog = new THREE.FogExp2("#0B0F19", 0.035);
+    scene.background = new THREE.Color("#080908");
+    scene.fog = new THREE.FogExp2("#080908", 0.035);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
     camera.position.set(0, 4.5, 13);
@@ -107,18 +107,18 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
     }
 
     // 3. Studio PBR Lighting System
-    const hemisphereLight = new THREE.HemisphereLight("#D1E8E2", "#0B0F19", 1.2);
+    const hemisphereLight = new THREE.HemisphereLight("#F7F8F5", "#080908", 1.2);
     scene.add(hemisphereLight);
 
-    const keyLight = new THREE.DirectionalLight("#116466", 3.2);
+    const keyLight = new THREE.DirectionalLight("#B7F36B", 2.2);
     keyLight.position.set(6, 10, 8);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight("#D1E8E2", 1.0);
+    const fillLight = new THREE.DirectionalLight("#F7F8F5", 1.0);
     fillLight.position.set(-6, -4, -6);
     scene.add(fillLight);
 
-    const coreLight = new THREE.PointLight("#116466", 4.0, 15);
+    const coreLight = new THREE.PointLight("#B7F36B", 3.0, 15);
     coreLight.position.set(0, 1.2, 0);
     scene.add(coreLight);
 
@@ -130,7 +130,7 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
     const gridTexture = createGridTexture();
     const pedestalGeo = new THREE.CylinderGeometry(5.2, 5.6, 0.35, 64);
     const pedestalMat = new THREE.MeshStandardMaterial({
-      color: "#1E293B",
+      color: "#141714",
       metalness: 0.85,
       roughness: 0.25,
       map: gridTexture,
@@ -142,7 +142,7 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
     // Part 2: Outer Beveled Base Ring
     const outerRingGeo = new THREE.TorusGeometry(5.3, 0.12, 16, 64);
     const chromeMat = new THREE.MeshStandardMaterial({
-      color: "#D1E8E2",
+      color: "#30362E",
       metalness: 0.95,
       roughness: 0.1,
     });
@@ -153,34 +153,34 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
 
     // Part 3: Dual Gyroscopic Gimbal Rings (Outer)
     const gimbalOuterGeo = new THREE.TorusGeometry(3.6, 0.08, 16, 80);
-    const tealAnodizedMat = new THREE.MeshStandardMaterial({
-      color: "#116466",
+    const limeAnodizedMat = new THREE.MeshStandardMaterial({
+      color: "#B7F36B",
       metalness: 0.9,
       roughness: 0.18,
-      emissive: "#116466",
+      emissive: "#B7F36B",
       emissiveIntensity: 0.25,
     });
-    const gimbalOuter = new THREE.Mesh(gimbalOuterGeo, tealAnodizedMat);
+    const gimbalOuter = new THREE.Mesh(gimbalOuterGeo, limeAnodizedMat);
     gimbalOuter.position.y = 1.2;
     vaultGroup.add(gimbalOuter);
 
     // Part 4: Dual Gyroscopic Gimbal Rings (Inner)
     const gimbalInnerGeo = new THREE.TorusGeometry(2.7, 0.06, 16, 80);
-    const softMintMat = new THREE.MeshStandardMaterial({
-      color: "#D1E8E2",
+    const softLightMat = new THREE.MeshStandardMaterial({
+      color: "#F7F8F5",
       metalness: 0.8,
       roughness: 0.2,
-      emissive: "#D1E8E2",
-      emissiveIntensity: 0.2,
+      emissive: "#F7F8F5",
+      emissiveIntensity: 0.15,
     });
-    const gimbalInner = new THREE.Mesh(gimbalInnerGeo, softMintMat);
+    const gimbalInner = new THREE.Mesh(gimbalInnerGeo, softLightMat);
     gimbalInner.position.y = 1.2;
     vaultGroup.add(gimbalInner);
 
     // Part 5: Optical Scanner Core (Faceted Octahedron)
     const coreGeo = new THREE.OctahedronGeometry(1.15, 0);
     const coreMat = new THREE.MeshPhysicalMaterial({
-      color: "#116466",
+      color: "#B7F36B",
       metalness: 0.5,
       roughness: 0.1,
       transmission: 0.7,
@@ -195,7 +195,7 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
     // Part 6: Luminous Inner Energy Orb
     const orbGeo = new THREE.SphereGeometry(0.55, 32, 32);
     const orbMat = new THREE.MeshBasicMaterial({
-      color: "#D1E8E2",
+      color: "#B7F36B",
     });
     const orbMesh = new THREE.Mesh(orbGeo, orbMat);
     orbMesh.position.y = 1.2;
@@ -204,10 +204,10 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
     // Part 7: Scanner Beam / Disc
     const laserDiscGeo = new THREE.RingGeometry(0.3, 3.2, 48);
     const laserDiscMat = new THREE.MeshBasicMaterial({
-      color: "#116466",
+      color: "#B7F36B",
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.25,
     });
     const laserDisc = new THREE.Mesh(laserDiscGeo, laserDiscMat);
     laserDisc.rotation.x = Math.PI / 2;
@@ -227,7 +227,7 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
     const particleGeo = new THREE.BufferGeometry();
     particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
     const particleMat = new THREE.PointsMaterial({
-      color: "#D1E8E2",
+      color: "#B7F36B",
       size: 0.08,
       transparent: true,
       opacity: 0.75,
@@ -255,29 +255,29 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
       cardCanvas.height = 360;
       const cCtx = cardCanvas.getContext("2d");
       if (cCtx) {
-        cCtx.fillStyle = "#1E293B";
+        cCtx.fillStyle = "#141714";
         cCtx.fillRect(0, 0, 256, 360);
 
         // Border
-        cCtx.strokeStyle = "#116466";
+        cCtx.strokeStyle = "#30362E";
         cCtx.lineWidth = 6;
         cCtx.strokeRect(0, 0, 256, 360);
 
         // Header
-        cCtx.fillStyle = "#116466";
+        cCtx.fillStyle = "#1B1F1A";
         cCtx.fillRect(6, 6, 244, 44);
-        cCtx.fillStyle = "#F1F5F9";
+        cCtx.fillStyle = "#B7F36B";
         cCtx.font = "bold 16px sans-serif";
         cCtx.fillText(item.category || "Screenshot", 18, 34);
 
         // Title
-        cCtx.fillStyle = "#F1F5F9";
+        cCtx.fillStyle = "#F7F8F5";
         cCtx.font = "bold 18px sans-serif";
         const shortTitle = (item.title || "Untitled").slice(0, 22);
         cCtx.fillText(shortTitle, 18, 90);
 
         // Snippet / Summary
-        cCtx.fillStyle = "#D1E8E2";
+        cCtx.fillStyle = "#A5AAA1";
         cCtx.font = "14px sans-serif";
         const summary = (item.summary || item.fullText || "Visual Snapshot").slice(0, 75);
         cCtx.fillText(summary.slice(0, 25), 18, 140);
@@ -285,9 +285,9 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
         cCtx.fillText(summary.slice(50, 75), 18, 190);
 
         // Footer Tag
-        cCtx.fillStyle = "rgba(17, 100, 102, 0.4)";
+        cCtx.fillStyle = "rgba(48, 54, 46, 0.6)";
         cCtx.fillRect(18, 300, 220, 36);
-        cCtx.fillStyle = "#F1F5F9";
+        cCtx.fillStyle = "#F7F8F5";
         cCtx.font = "13px sans-serif";
         cCtx.fillText("🔒 Vault Node Verified", 32, 324);
       }
@@ -465,23 +465,23 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B0F19]/90 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#080908]/90 backdrop-blur-md">
       {/* 3D Viewport Canvas Container */}
       <div ref={mountRef} className="relative w-full h-full cursor-grab overflow-hidden">
         {/* Top Header Overlay */}
         <div className="absolute top-4 left-6 right-6 flex items-center justify-between pointer-events-none z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#116466]/30 border border-[#116466] flex items-center justify-center text-[#D1E8E2] shadow-lg shadow-[#116466]/20">
+            <div className="w-10 h-10 rounded-xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center text-[#B7F36B] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.4)]">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[#F1F5F9] tracking-wide flex items-center gap-2">
+              <h2 className="text-xl font-bold text-[#F7F8F5] tracking-wide flex items-center gap-2">
                 SnapFind 3D Vault Explorer
-                <span className="text-xs px-2 py-0.5 rounded-full bg-[#116466]/40 text-[#D1E8E2] border border-[#116466]/60">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
                   PBR Spatial Core
                 </span>
               </h2>
-              <p className="text-xs text-[#D1E8E2]/70">
+              <p className="text-xs text-[#A5AAA1]">
                 Rotating optical scanner core with {screenshots.length} indexed screenshot nodes
               </p>
             </div>
@@ -489,7 +489,7 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
 
           <button
             onClick={onClose}
-            className="pointer-events-auto p-2.5 rounded-xl bg-[#1E293B]/80 hover:bg-[#1E293B] text-[#F1F5F9] border border-[#334155] hover:border-[#116466] transition-colors shadow-lg"
+            className="pointer-events-auto p-2.5 rounded-xl bg-[#141714] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] transition-colors shadow-[2px_2px_8px_rgba(0,0,0,0.3)] cursor-pointer"
             title="Exit 3D Vault"
           >
             <X className="w-5 h-5" />
@@ -498,45 +498,45 @@ export const Vault3DExplorerModal: React.FC<Vault3DExplorerModalProps> = ({
 
         {/* Hovered Node Tooltip (Floating overlay) */}
         {hoveredItem && (
-          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 pointer-events-none z-10 bg-[#1E293B]/95 border border-[#116466] rounded-xl px-5 py-3 shadow-2xl backdrop-blur-md max-w-md text-center animate-in fade-in zoom-in-95 duration-150">
-            <div className="text-xs font-semibold text-[#116466] uppercase tracking-wider mb-0.5">
+          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 pointer-events-none z-10 bg-[#141714]/95 border border-[#30362E] rounded-2xl px-5 py-3 shadow-[6px_6px_16px_rgba(0,0,0,0.65)] backdrop-blur-md max-w-md text-center animate-in fade-in zoom-in-95 duration-150">
+            <div className="text-xs font-bold text-[#B7F36B] uppercase tracking-wider mb-0.5">
               {hoveredItem.category || "Screenshot Node"}
             </div>
-            <div className="text-sm font-bold text-[#F1F5F9] truncate">
+            <div className="text-sm font-bold text-[#F7F8F5] truncate">
               {hoveredItem.title || "Untitled Screenshot"}
             </div>
-            <div className="text-xs text-[#D1E8E2]/80 mt-1 line-clamp-1">
+            <div className="text-xs text-[#A5AAA1] mt-1 line-clamp-1">
               {hoveredItem.summary || hoveredItem.fullText || "Click node to open full inspection"}
             </div>
           </div>
         )}
 
-        {/* Floating Control Dock (<=15% viewport footprint) */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#1E293B]/90 border border-[#334155] rounded-2xl p-2 shadow-2xl backdrop-blur-md z-10 pointer-events-auto">
+        {/* Floating Control Dock */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#141714] border border-[#30362E] rounded-2xl p-2 shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] backdrop-blur-md z-10 pointer-events-auto">
           <button
             onClick={() => setAutoRotate(!autoRotate)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               autoRotate
-                ? "bg-[#116466] text-[#F1F5F9] shadow-md shadow-[#116466]/40"
-                : "bg-[#0B0F19]/60 text-[#D1E8E2] hover:bg-[#0B0F19]"
+                ? "bg-[#B7F36B] text-[#10130D] shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                : "bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5]"
             }`}
           >
             {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             {autoRotate ? "Auto-Spin On" : "Auto-Spin Off"}
           </button>
 
-          <div className="w-[1px] h-5 bg-[#334155]" />
+          <div className="w-[1px] h-5 bg-[#30362E]" />
 
-          <div className="text-xs text-[#D1E8E2]/70 px-2 flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5 text-[#116466]" />
+          <div className="text-xs text-[#A5AAA1] px-2 flex items-center gap-1">
+            <Eye className="w-3.5 h-3.5 text-[#B7F36B]" />
             <span>Drag to rotate • Click node to view</span>
           </div>
 
-          <div className="w-[1px] h-5 bg-[#334155]" />
+          <div className="w-[1px] h-5 bg-[#30362E]" />
 
           <button
             onClick={onClose}
-            className="px-3 py-1.5 rounded-xl text-xs font-medium bg-[#0B0F19]/60 text-[#D1E8E2] hover:bg-[#116466]/30 hover:text-[#F1F5F9] border border-[#334155] transition-colors"
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1B1F1A] text-[#F7F8F5] hover:bg-[#222720] border border-[#30362E] transition-colors cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
           >
             Close Vault
           </button>

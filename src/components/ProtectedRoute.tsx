@@ -25,8 +25,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-28 space-y-4 text-center select-none">
-        <div className="w-9 h-9 border-2 border-[#116466] border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(17,100,102,0.5)]" />
-        <p className="text-xs text-slate-400 font-medium">Verifying your secure session...</p>
+        <div className="w-9 h-9 border-2 border-[#B7F36B] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-[#A5AAA1] font-medium">Verifying your secure session...</p>
       </div>
     );
   }
@@ -36,16 +36,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-center max-w-lg mx-auto select-none">
         <div className="relative mb-6">
-          <PageHero3D type={heroType} size="xl" glow={true} />
-          <div className="absolute -bottom-2 -right-2 p-1.5 rounded-full bg-[#2C3531] border border-[#334155] shadow-lg text-[#D1E8E2]">
+          <PageHero3D type={heroType} size="xl" glow={false} />
+          <div className="absolute -bottom-2 -right-2 p-1.5 rounded-full bg-[#1B1F1A] border border-[#30362E] shadow-[2px_2px_8px_rgba(0,0,0,0.4)] text-[#B7F36B]">
             <Lock className="w-3.5 h-3.5" />
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold tracking-tight text-[#F1F5F9] mb-2">
+        <h2 className="text-2xl font-bold tracking-tight text-[#F7F8F5] mb-2">
           {title}
         </h2>
-        <p className="text-sm text-[#94A3B8] leading-relaxed max-w-md mb-8">
+        <p className="text-sm text-[#A5AAA1] leading-relaxed max-w-md mb-8">
           {description}
         </p>
 
@@ -54,15 +54,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             type="button"
             id="protected-gate-sign-in-btn"
             onClick={onOpenAuth}
-            className="w-full py-3 px-6 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] font-bold text-sm flex items-center justify-center gap-2 shadow-[0_4px_18px_rgba(17,100,102,0.35)] transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full py-3 px-6 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm flex items-center justify-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
           >
-            <LogIn className="w-4 h-4" />
+            <LogIn className="w-4 h-4 text-[#10130D]" />
             <span>Sign In to Vault</span>
           </button>
         </div>
 
-        <div className="mt-8 flex items-center gap-2 text-xs text-[#94A3B8]">
-          <Shield className="w-3.5 h-3.5 text-[#D1E8E2]" />
+        <div className="mt-8 flex items-center gap-2 text-xs text-[#777E74]">
+          <Shield className="w-3.5 h-3.5 text-[#B7F36B]" />
           <span>Zero Knowledge Privacy &bull; Isolated Cloud Storage</span>
         </div>
       </div>

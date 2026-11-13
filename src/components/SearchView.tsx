@@ -3,7 +3,7 @@ import {
   Search,
   SlidersHorizontal,
   RotateCcw,
-  Sparkles,
+  Play,
   ArrowRight,
   FilterX,
 } from "lucide-react";
@@ -249,7 +249,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
       {!hasSearched && (
         <PageHeroHeader
           type="search"
-          title="Search"
+          title="Search your screenshots"
           isDark={isDark}
         />
       )}
@@ -273,13 +273,13 @@ export const SearchView: React.FC<SearchViewProps> = ({
       <div className="flex items-center justify-between gap-3 pt-1">
         <div>
           {hasSearched ? (
-            <p className="text-xs sm:text-sm text-[#94A3B8] font-medium">
+            <p className="text-xs sm:text-sm text-[#A5AAA1] font-medium">
               {displayItems.length === 1
                 ? "1 result found"
                 : `${displayItems.length} results found`}
             </p>
           ) : (
-            <p className="text-xs sm:text-sm text-[#94A3B8] font-medium">
+            <p className="text-xs sm:text-sm text-[#A5AAA1] font-medium">
               {screenshots.length} total screenshots in vault
             </p>
           )}
@@ -292,14 +292,14 @@ export const SearchView: React.FC<SearchViewProps> = ({
           onClick={() => setIsFilterPanelOpen(true)}
           className={`flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
             activeFiltersCount > 0
-              ? "bg-[#116466] text-[#F1F5F9] font-bold border-[#116466] shadow-[0_0_12px_rgba(17,100,102,0.3)]"
-              : "bg-[#1E293B] border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347] hover:border-[#116466]"
+              ? "bg-[#B7F36B] text-[#10130D] font-bold border-[#B7F36B] shadow-[2px_2px_8px_rgba(0,0,0,0.5)]"
+              : "bg-[#141714] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] hover:border-[#B7F36B]"
           }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate whitespace-nowrap">Filters</span>
           {activeFiltersCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-md bg-[#2C3531] text-[#D1E8E2] text-[10px] font-mono font-bold">
+            <span className="px-1.5 py-0.2 rounded-md bg-[#0D0F0D] text-[#B7F36B] text-[10px] font-mono font-bold border border-[#30362E]">
               {activeFiltersCount}
             </span>
           )}
@@ -310,10 +310,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
       {!hasSearched && (
         <div className="py-12 sm:py-16 text-center space-y-4 max-w-lg mx-auto">
           <div className="space-y-1">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-[#F1F5F9] truncate whitespace-nowrap">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-[#F7F8F5] truncate whitespace-nowrap">
               Find anything you've saved
             </h2>
-            <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed truncate whitespace-nowrap">
+            <p className="text-xs sm:text-sm text-[#A5AAA1] leading-relaxed truncate whitespace-nowrap">
               Search screenshots using words, descriptions, receipt amounts, or natural language.
             </p>
           </div>
@@ -328,10 +328,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   setQuery(example);
                   onExecuteSearch(example);
                 }}
-                className="px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-medium border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-[#94A3B8] hover:text-[#D1E8E2] hover:border-[#116466] transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-semibold border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] hover:border-[#B7F36B] transition-all cursor-pointer flex items-center gap-1.5 shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
               >
                 <span className="truncate whitespace-nowrap">"{example}"</span>
-                <ArrowRight className="w-3 h-3 text-[#D1E8E2] shrink-0" />
+                <ArrowRight className="w-3 h-3 text-[#B7F36B] shrink-0" />
               </button>
             ))}
           </div>
@@ -344,14 +344,14 @@ export const SearchView: React.FC<SearchViewProps> = ({
           {screenshots.length === 0 ? (
             /* Scenario A: Empty Vault */
             <>
-              <div className="w-14 h-14 rounded-2xl bg-[#1E293B] border border-[#334155] flex items-center justify-center mx-auto text-[#D1E8E2]">
-                <Sparkles className="w-7 h-7 text-[#D1E8E2]" />
+              <div className="w-14 h-14 rounded-2xl bg-[#141714] border border-[#30362E] flex items-center justify-center mx-auto text-[#B7F36B] shadow-[6px_6px_16px_rgba(0,0,0,0.65)]">
+                <Search className="w-7 h-7 text-[#B7F36B]" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-base sm:text-lg font-bold text-[#F1F5F9] truncate whitespace-nowrap">
+                <h3 className="text-base sm:text-lg font-bold text-[#F7F8F5] truncate whitespace-nowrap">
                   Your screenshot vault is empty
                 </h3>
-                <p className="text-xs text-[#94A3B8] max-w-md mx-auto leading-relaxed">
+                <p className="text-xs text-[#A5AAA1] max-w-md mx-auto leading-relaxed">
                   You have not added any screenshots to your vault yet. Upload your own screenshots or explore the interactive demo with 6 pre-indexed sample files.
                 </p>
               </div>
@@ -360,9 +360,9 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenDemo(query)}
-                    className="px-4 py-2.5 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 active:scale-98 shadow-[0_0_12px_rgba(17,100,102,0.3)] border border-[#116466]"
+                    className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 active:scale-98 shadow-[2px_2px_8px_rgba(0,0,0,0.5)] border border-[#B7F36B]"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Play className="w-3.5 h-3.5" />
                     <span>Try Query in Demo</span>
                   </button>
                 )}
@@ -370,7 +370,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   <button
                     type="button"
                     onClick={onOpenImport}
-                    className="px-4 py-2.5 rounded-xl border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] hover:border-[#116466] text-xs font-semibold transition-colors cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#F7F8F5] hover:border-[#B7F36B] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Upload Screenshots
                   </button>
@@ -379,7 +379,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   <button
                     type="button"
                     onClick={onLoadSamplePack}
-                    className="px-4 py-2.5 rounded-xl border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-[#94A3B8] hover:text-[#F1F5F9] text-xs font-semibold transition-colors cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Load 6 Sample Files
                   </button>
@@ -389,14 +389,14 @@ export const SearchView: React.FC<SearchViewProps> = ({
           ) : (
             /* Scenario B: Vault has screenshots, but this search returned 0 matches */
             <>
-              <div className="w-12 h-12 rounded-2xl bg-[#1E293B] border border-[#334155] flex items-center justify-center mx-auto text-[#D9B08C]">
-                <FilterX className="w-6 h-6 text-[#D9B08C]" />
+              <div className="w-12 h-12 rounded-2xl bg-[#141714] border border-[#30362E] flex items-center justify-center mx-auto text-[#B7F36B] shadow-[4px_4px_12px_rgba(0,0,0,0.5)]">
+                <FilterX className="w-6 h-6 text-[#B7F36B]" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-lg font-semibold text-[#F1F5F9]">
+                <h3 className="text-lg font-semibold text-[#F7F8F5]">
                   No matching screenshots found for "{query}"
                 </h3>
-                <p className="text-xs text-[#94A3B8] max-w-md mx-auto leading-relaxed">
+                <p className="text-xs text-[#A5AAA1] max-w-md mx-auto leading-relaxed">
                   We scanned {screenshots.length} screenshot{screenshots.length > 1 ? "s" : ""} in your vault, but none matched. Check your spelling, try broader keywords, or reset category filters.
                 </p>
               </div>
@@ -407,14 +407,14 @@ export const SearchView: React.FC<SearchViewProps> = ({
                     setQuery("");
                     onExecuteSearch("");
                   }}
-                  className="px-4 py-2 rounded-xl border border-[#334155] text-xs font-medium text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1E293B] transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[#30362E] text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] transition-colors cursor-pointer"
                 >
                   Clear Search
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsFilterPanelOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-semibold shadow-[0_0_12px_rgba(17,100,102,0.3)] border border-[#116466] transition-colors cursor-pointer active:scale-98"
+                  className="px-4 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.5)] border border-[#B7F36B] transition-colors cursor-pointer active:scale-98"
                 >
                   Adjust Filters
                 </button>
@@ -422,7 +422,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenDemo(query)}
-                    className="px-4 py-2 rounded-xl border border-[#334155] text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1E293B] text-xs font-semibold transition-colors cursor-pointer"
+                    className="px-4 py-2 rounded-xl border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Search in Public Demo
                   </button>
@@ -433,10 +433,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
         </div>
       )}
 
-      {/* 5. Clean Responsive Results Grid */}
+      {/* 5. Clean Responsive Results Grid (1, 2, or 4 columns - NO 3-card rows) */}
       {displayItems.length > 0 && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
             {paginatedItems.map((item) => (
               <ScreenshotCard
                 key={item.id}

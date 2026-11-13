@@ -3,7 +3,6 @@ import { SnapFindLogo } from "./SnapFindLogo";
 import {
   UploadCloud,
   FileImage,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -507,15 +506,15 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
       {/* Header Section */}
       <PageHeroHeader
         type="import"
-        title="Import"
+        title="Import screenshots"
         isDark={isDark}
         actions={
           <button
             onClick={handleImportSamplePack}
             type="button"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1E293B] hover:bg-[#243347] text-[#F1F5F9] text-xs font-semibold border border-[#334155] hover:border-[#116466] transition-colors cursor-pointer shrink-0"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs font-semibold border border-[#30362E] hover:border-[#B7F36B]/50 transition-colors cursor-pointer shrink-0 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] min-h-[44px]"
           >
-            <Sparkles className="w-4 h-4 text-[#D1E8E2]" />
+            <FileImage className="w-4 h-4 text-[#B7F36B]" />
             <span>Load 6 Sample Files</span>
           </button>
         }
@@ -536,8 +535,8 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
             onDrop={handleDrop}
             className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
               isDragOver
-                ? "border-[#116466] bg-[#116466]/10 scale-[0.99]"
-                : "bg-[#1E293B] border-[#334155] hover:border-[#116466] hover:bg-[#243347]"
+                ? "border-[#B7F36B] bg-[#B7F36B]/5 scale-[0.99]"
+                : "bg-[#0D0F0D] border-[#30362E] hover:border-[#B7F36B]/60 shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65),inset_-2px_-2px_5px_rgba(255,255,255,0.02)]"
             }`}
           >
             <input
@@ -553,15 +552,15 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
               }}
             />
 
-            <div className="w-16 h-16 rounded-2xl bg-[#2C3531] text-[#D1E8E2] flex items-center justify-center border border-[#334155] shadow-inner">
+            <div className="w-16 h-16 rounded-2xl bg-[#141714] text-[#B7F36B] flex items-center justify-center border border-[#30362E] shadow-[4px_4px_12px_rgba(0,0,0,0.6)]">
               <UploadCloud className="w-8 h-8" />
             </div>
 
             <div className="space-y-1.5 max-w-md">
-              <h3 className="text-base sm:text-lg font-bold text-[#F1F5F9]">
+              <h3 className="text-base sm:text-lg font-bold text-[#F7F8F5]">
                 Drag & Drop files here
               </h3>
-              <p className="text-xs text-[#94A3B8]">
+              <p className="text-xs text-[#A5AAA1]">
                 or select multiple screenshot images from your computer or camera roll
               </p>
             </div>
@@ -571,29 +570,29 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
                 type="button"
                 id="choose-files-btn"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-5 py-2.5 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs font-semibold shadow-[0_0_15px_rgba(17,100,102,0.3)] border border-[#116466] transition-colors cursor-pointer flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold border border-[#B7F36B] transition-colors cursor-pointer flex items-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 stroke-[2.5]" />
                 <span>Choose files</span>
               </button>
             </div>
 
-            <div className="pt-2 text-[11px] text-[#94A3B8] flex items-center gap-2 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#D1E8E2]" />
+            <div className="pt-2 text-[11px] text-[#777E74] flex items-center gap-2 font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#B7F36B]" />
               <span>Supports PNG, JPG, WEBP, HEIC (Processed locally & with private AI)</span>
             </div>
           </div>
 
           {/* Staged Files Preview Grid */}
           {stagedFiles.length > 0 && (
-            <div className="p-5 rounded-3xl border border-[#334155] bg-[#1E293B] space-y-4">
+            <div className="p-5 rounded-3xl border border-[#30362E] bg-[#141714] space-y-4 shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-[#F1F5F9] flex items-center gap-2">
-                    <FileImage className="w-4 h-4 text-[#D1E8E2]" />
+                  <h3 className="text-sm font-bold text-[#F7F8F5] flex items-center gap-2">
+                    <FileImage className="w-4 h-4 text-[#B7F36B]" />
                     <span>Selected Screenshots ({stagedFiles.length})</span>
                   </h3>
-                  <p className="text-xs text-[#94A3B8] mt-0.5">
+                  <p className="text-xs text-[#A5AAA1] mt-0.5">
                     Ready for OCR text extraction and AI indexing.
                   </p>
                 </div>
@@ -602,7 +601,7 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#D1E8E2] hover:bg-[#116466]/20 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#B7F36B] hover:bg-[#1B1F1A] transition-colors cursor-pointer"
                   >
                     + Add More
                   </button>
@@ -621,9 +620,9 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
                 {stagedFiles.map((staged) => (
                   <div
                     key={staged.id}
-                    className="group relative rounded-2xl border border-[#334155] bg-[#2C3531] hover:bg-[#151A20] p-2 flex flex-col justify-between overflow-hidden"
+                    className="group relative rounded-2xl border border-[#30362E] bg-[#0D0F0D] hover:bg-[#1B1F1A] p-2 flex flex-col justify-between overflow-hidden shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
                   >
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40 mb-2">
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-black/60 mb-2">
                       <img
                         src={staged.previewUrl}
                         alt={staged.fileName}
@@ -633,25 +632,25 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
                         type="button"
                         onClick={() => handleRemoveStagedFile(staged.id)}
                         title="Remove file"
-                        className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/70 hover:bg-rose-600 text-white transition-colors cursor-pointer shadow-sm"
+                        className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/80 hover:bg-rose-600 text-white transition-colors cursor-pointer shadow-sm"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
                     <div className="px-1 min-w-0">
-                      <p className="text-xs font-medium text-[#F1F5F9] truncate" title={staged.fileName}>
+                      <p className="text-xs font-medium text-[#F7F8F5] truncate" title={staged.fileName}>
                         {staged.fileName}
                       </p>
-                      <p className="text-[10px] text-[#94A3B8] mt-0.5">{staged.fileSizeFormatted}</p>
+                      <p className="text-[10px] text-[#777E74] mt-0.5">{staged.fileSizeFormatted}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Primary Action Button */}
-              <div className="pt-3 border-t border-[#334155] flex items-center justify-between gap-4">
-                <span className="text-xs text-[#94A3B8]">
+              <div className="pt-3 border-t border-[#30362E] flex items-center justify-between gap-4">
+                <span className="text-xs text-[#A5AAA1]">
                   Total: {stagedFiles.length} file{stagedFiles.length > 1 ? "s" : ""}
                 </span>
 
@@ -659,9 +658,9 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
                   id="start-import-btn"
                   type="button"
                   onClick={handleStartImportAndIndex}
-                  className="px-6 py-2.5 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs sm:text-sm font-semibold shadow-[0_0_15px_rgba(17,100,102,0.3)] border border-[#116466] transition-colors cursor-pointer flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs sm:text-sm font-bold border border-[#B7F36B] transition-colors cursor-pointer flex items-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] min-h-[44px]"
                 >
-                  <Sparkles className="w-4 h-4 text-[#D1E8E2]" />
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                   <span>Import & Index ({stagedFiles.length})</span>
                 </button>
               </div>
@@ -674,41 +673,41 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
       {/* 2. PROGRESS SECTION (In-Page, Not Repeated Notifications) */}
       {/* ───────────────────────────────────────────────────────────── */}
       {progress.isProcessing && (
-        <div className="p-6 sm:p-8 rounded-3xl border border-[#334155] bg-[#1E293B] space-y-6">
+        <div className="p-6 sm:p-8 rounded-3xl border border-[#30362E] bg-[#141714] space-y-6 shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]">
           <div className="space-y-2 text-center max-w-md mx-auto">
-            <div className="w-12 h-12 rounded-2xl bg-[#2C3531] text-[#D1E8E2] flex items-center justify-center mx-auto border border-[#334155] shadow-[0_0_15px_rgba(17,100,102,0.2)]">
+            <div className="w-12 h-12 rounded-2xl bg-[#1B1F1A] text-[#B7F36B] flex items-center justify-center mx-auto border border-[#30362E] shadow-[4px_4px_12px_rgba(0,0,0,0.6)]">
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
 
-            <h3 className="text-lg font-bold text-[#F1F5F9]">
+            <h3 className="text-lg font-bold text-[#F7F8F5]">
               Indexing {Math.min(progress.currentIndex + 1, progress.totalCount)} of {progress.totalCount} screenshots
             </h3>
 
-            <p className="text-xs text-[#94A3B8] truncate">
-              Currently analyzing: <span className="text-[#F1F5F9] font-medium">{progress.currentFileName}</span>
+            <p className="text-xs text-[#A5AAA1] truncate">
+              Currently analyzing: <span className="text-[#F7F8F5] font-medium">{progress.currentFileName}</span>
             </p>
           </div>
 
           {/* Progress Bar */}
           <div className="space-y-2">
-            <div className="flex justify-between text-xs text-[#94A3B8] font-mono">
+            <div className="flex justify-between text-xs text-[#A5AAA1] font-mono">
               <span>Progress</span>
               <span>{percentComplete}%</span>
             </div>
-            <div className="w-full h-3 rounded-full bg-[#2C3531] border border-[#334155] overflow-hidden">
+            <div className="w-full h-3 rounded-full bg-[#0D0F0D] border border-[#30362E] overflow-hidden shadow-[inset_2px_2px_4px_rgba(0,0,0,0.6)]">
               <div
-                className="h-full bg-gradient-to-r from-[#116466] to-[#D1E8E2] transition-all duration-300 rounded-full"
+                className="h-full bg-[#B7F36B] transition-all duration-300 rounded-full"
                 style={{ width: `${percentComplete}%` }}
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-6 text-xs text-[#94A3B8] pt-2 border-t border-[#334155]">
-            <span className="flex items-center gap-1.5 text-[#D1E8E2]">
+          <div className="flex items-center justify-center gap-6 text-xs text-[#A5AAA1] pt-2 border-t border-[#30362E]">
+            <span className="flex items-center gap-1.5 text-[#B7F36B]">
               <CheckCircle2 className="w-3.5 h-3.5" /> {progress.completedCount} indexed
             </span>
             {progress.duplicateCount > 0 && (
-              <span className="flex items-center gap-1.5 text-[#D9B08C]">
+              <span className="flex items-center gap-1.5 text-amber-400">
                 <AlertCircle className="w-3.5 h-3.5" /> {progress.duplicateCount} duplicates skipped
               </span>
             )}
@@ -728,17 +727,17 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-6 sm:p-8 rounded-3xl border border-[#334155] bg-[#1E293B] space-y-6 text-center"
+          className="p-6 sm:p-8 rounded-3xl border border-[#30362E] bg-[#141714] space-y-6 text-center shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]"
         >
-          <div className="w-14 h-14 rounded-2xl bg-[#116466]/20 text-[#D1E8E2] flex items-center justify-center mx-auto border border-[#116466]/40 shadow-lg">
+          <div className="w-14 h-14 rounded-2xl bg-[#B7F36B]/10 text-[#B7F36B] flex items-center justify-center mx-auto border border-[#B7F36B]/30 shadow-[4px_4px_12px_rgba(0,0,0,0.6)]">
             <Check className="w-7 h-7 stroke-[3]" />
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-xl font-bold text-[#F1F5F9]">
+            <h3 className="text-xl font-bold text-[#F7F8F5]">
               {progress.completedCount} screenshot{progress.completedCount === 1 ? "" : "s"} imported successfully
             </h3>
-            <p className="text-xs sm:text-sm text-[#94A3B8] max-w-md mx-auto">
+            <p className="text-xs sm:text-sm text-[#A5AAA1] max-w-md mx-auto">
               All extracted OCR text and AI vision tags have been indexed and are ready for instant search.
             </p>
           </div>
@@ -748,17 +747,17 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
               id="view-gallery-btn"
               type="button"
               onClick={onFinishImport}
-              className="px-6 py-2.5 rounded-xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] text-xs sm:text-sm font-semibold shadow-[0_0_15px_rgba(17,100,102,0.3)] border border-[#116466] transition-colors cursor-pointer flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs sm:text-sm font-bold border border-[#B7F36B] transition-colors cursor-pointer flex items-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
             >
               <span>View Gallery</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </button>
 
             <button
               id="import-more-btn"
               type="button"
               onClick={handleClearAllStaged}
-              className="px-5 py-2.5 rounded-xl bg-[#2C3531] hover:bg-[#243347] text-[#F1F5F9] text-xs sm:text-sm font-semibold border border-[#334155] transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs sm:text-sm font-semibold border border-[#30362E] transition-colors cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
             >
               Import More
             </button>

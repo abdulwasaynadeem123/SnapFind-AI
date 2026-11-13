@@ -8,7 +8,6 @@ import {
   ExternalLink,
   ShieldCheck,
   RefreshCw,
-  Sparkles,
   ArrowRight,
   Settings,
 } from "lucide-react";
@@ -70,22 +69,23 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
         <motion.div
           initial={{ opacity: 0, scale: 0.94, y: 14 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 14 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-lg rounded-3xl bg-[#0D1117] border border-white/10 shadow-2xl overflow-hidden text-[#F8FAFC]"
+          className="relative w-full max-w-lg rounded-3xl bg-[#141714] border border-[#30362E] shadow-2xl overflow-hidden text-[#F7F8F5]"
         >
-          {/* Top Header Glow */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#CCFF00] via-[#00FF66] to-[#CCFF00]" />
+          {/* Top Accent Line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-[#B7F36B]" />
 
           {/* Close button (only when not downloading) */}
           {!isDownloading && (
             <button
+              type="button"
               onClick={handleLater}
-              className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-full text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer"
               aria-label="Dismiss"
             >
               <X className="w-5 h-5" />
@@ -95,15 +95,15 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           <div className="p-6 sm:p-7 space-y-6">
             {/* Header / Brand Icon */}
             <div className="flex items-start gap-4">
-              <div className="p-3 rounded-2xl bg-[#121821] border border-white/10 shrink-0 shadow-lg shadow-black/40">
+              <div className="p-3 rounded-2xl bg-[#1B1F1A] border border-[#30362E] shrink-0">
                 <SnapFindLogo className="w-8 h-8 rounded-xl" />
               </div>
               <div className="space-y-1 pr-6">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#CCFF00] px-2 py-0.5 rounded-full bg-[#CCFF00]/10 border border-[#CCFF00]/20">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#B7F36B] px-2 py-0.5 rounded-full bg-[#1B1F1A] border border-[#30362E]">
                     Official Release
                   </span>
-                  <span className="text-xs text-[#94A3B8]">
+                  <span className="text-xs text-[#A5AAA1]">
                     {new Date(release.publishedAt).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -111,15 +111,15 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                     })}
                   </span>
                 </div>
-                <h2 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                  <span>🚀 New SnapFind update available</span>
+                <h2 className="text-xl font-black tracking-tight text-[#F7F8F5] flex items-center gap-2">
+                  <span>New SnapFind update available</span>
                 </h2>
-                <div className="flex items-center gap-2 text-xs text-[#94A3B8] font-mono">
+                <div className="flex items-center gap-2 text-xs text-[#A5AAA1] font-mono">
                   <span>Current: v{updateState.currentVersion}</span>
-                  <span>→</span>
-                  <span className="text-[#00FF66] font-bold">{release.versionName}</span>
+                  <span>-&gt;</span>
+                  <span className="text-[#B7F36B] font-bold">{release.versionName}</span>
                   {release.apkAsset?.size ? (
-                    <span className="text-slate-400">({formatFileSize(release.apkAsset.size)})</span>
+                    <span className="text-[#777E74]">({formatFileSize(release.apkAsset.size)})</span>
                   ) : null}
                 </div>
               </div>
@@ -127,8 +127,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
             {/* Changes / Changelog Box */}
             <div className="space-y-2.5">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#CCFF00]" />
+              <div className="text-xs font-bold uppercase tracking-wider text-[#A5AAA1] flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#B7F36B]" />
                 <span>What's New in {release.versionName}:</span>
               </div>
               <div className="p-4 rounded-2xl bg-[#121821] border border-white/10 space-y-2 max-h-48 overflow-y-auto">
@@ -195,9 +195,9 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/10">
+                <div className="w-full h-2.5 bg-[#0D0F0D] rounded-full overflow-hidden border border-[#30362E]">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-[#CCFF00] to-[#00FF66]"
+                    className="h-full bg-[#B7F36B]"
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.max(4, updateState.downloadProgress)}%` }}
                     transition={{ ease: "easeOut", duration: 0.2 }}

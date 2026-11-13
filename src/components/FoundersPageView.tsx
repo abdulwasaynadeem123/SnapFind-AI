@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Crown,
-  Sparkles,
+  Search,
   ShieldCheck,
   Zap,
   Check,
@@ -124,43 +124,43 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
       title: "Lifetime Pro 100% Free",
       desc: "Never pay a monthly or yearly subscription fee. Permanent complimentary access.",
       icon: InfinityIcon,
-      accent: "text-[#D1E8E2] bg-[#116466]/20 border-[#116466]/40",
+      accent: "text-[#B7F36B] bg-[#141714] border-[#30362E]",
     },
     {
       title: "Unlimited Screenshot Storage",
       desc: "Bypass the 70 lifetime screenshot free limit completely. Index unlimited screenshots.",
       icon: Zap,
-      accent: "text-[#D1E8E2] bg-[#116466]/20 border-[#116466]/40",
+      accent: "text-[#B7F36B] bg-[#141714] border-[#30362E]",
     },
     {
       title: "Pioneer Founder Rank (#1–#50)",
       desc: "Permanent badge and immutable Founder rank engraved on your profile and export cards.",
       icon: Crown,
-      accent: "text-[#D9B08C] bg-[#D9B08C]/15 border-[#D9B08C]/35",
+      accent: "text-[#B7F36B] bg-[#141714] border-[#30362E]",
     },
     {
       title: "On-Device OCR & Multimodal Vision AI",
       desc: "High-accuracy multi-lingual optical character recognition with instant natural language search.",
-      icon: Sparkles,
-      accent: "text-[#D1E8E2] bg-[#116466]/20 border-[#116466]/40",
+      icon: Search,
+      accent: "text-[#B7F36B] bg-[#141714] border-[#30362E]",
     },
     {
       title: "Priority Indexing Queue",
       desc: "Founder screenshots receive highest-priority processing speed during bulk uploads.",
       icon: ShieldCheck,
-      accent: "text-[#D1E8E2] bg-[#116466]/20 border-[#116466]/40",
+      accent: "text-[#B7F36B] bg-[#141714] border-[#30362E]",
     },
     {
       title: "Encrypted Cloud Sync",
       desc: "Real-time cross-device synchronization with row-level cryptographic isolation.",
       icon: Shield,
-      accent: "text-[#D9B08C] bg-[#D9B08C]/15 border-[#D9B08C]/35",
+      accent: "text-[#B7F36B] bg-[#141714] border-[#30362E]",
     },
   ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-16 text-[#F1F5F9]">
-      {/* 3D Gold Hero Header */}
+    <div className="max-w-5xl mx-auto space-y-8 pb-16 text-[#F7F8F5]">
+      {/* 3D Hero Header */}
       <PageHeroHeader
         type="founder"
         title="Founders Club"
@@ -171,59 +171,46 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`p-6 sm:p-8 rounded-3xl border relative overflow-hidden shadow-2xl ${
-          isFounder
-            ? "bg-[#1E293B] border-[#D9B08C]/40 shadow-[0_4px_24px_rgba(217,176,140,0.15)]"
-            : "bg-[#1E293B] border-[#334155] shadow-[0_4px_24px_rgba(44,53,49,0.5)]"
-        }`}
+        className="p-6 sm:p-8 rounded-3xl border border-[#30362E] bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] relative overflow-hidden"
       >
-        {/* Glow Blobs */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#116466]/20 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#2C3531]/40 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20" />
-
         <div className="relative z-10 space-y-6">
           {isFounder ? (
             /* ================= VERIFIED FOUNDER VIEW ================= */
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#334155]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#30362E]">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#D9B08C] flex items-center justify-center text-[#2C3531] shadow-xl shadow-[#D9B08C]/25">
+                  <div className="w-14 h-14 rounded-2xl bg-[#B7F36B] flex items-center justify-center text-[#10130D] shadow-[2px_2px_8px_rgba(0,0,0,0.4)]">
                     <Crown className="w-8 h-8 fill-current" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#D9B08C] uppercase tracking-widest">Pioneer Status Confirmed</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#D9B08C]/20 text-[#D9B08C] border border-[#D9B08C]/40">VIP #1–#50</span>
+                      <span className="text-xs font-bold text-[#B7F36B] uppercase tracking-widest">Pioneer Status Confirmed</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">VIP #1–#50</span>
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                      👑 Pioneer Founder #{founderNumber || "VIP"}
+                    <h2 className="text-2xl sm:text-3xl font-black text-[#F7F8F5] tracking-tight">
+                      Pioneer Founder #{founderNumber || "VIP"}
                     </h2>
                   </div>
                 </div>
 
                 <div className="text-left sm:text-right">
-                  <span className="px-3.5 py-1.5 rounded-2xl text-xs font-black bg-[#116466]/30 text-[#D1E8E2] border border-[#116466]/50 inline-flex items-center gap-1.5 shadow-sm">
-                    <Check className="w-4 h-4" /> Lifetime Pro Unlocked (Free)
+                  <span className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E] inline-flex items-center gap-1.5 shadow-[2px_2px_8px_rgba(0,0,0,0.3)]">
+                    <Check className="w-4 h-4 text-[#B7F36B]" /> Lifetime Pro Unlocked (Free)
                   </span>
-                  <p className="text-[11px] text-[#94A3B8] mt-1">Permanent complimentary access</p>
+                  <p className="text-[11px] text-[#A5AAA1] mt-1">Permanent complimentary access</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl bg-[#2C3531] border border-[#334155] space-y-1">
-                  <span className="text-xs text-[#94A3B8] font-medium">Screenshot Quota</span>
-                  <p className="text-lg font-black text-[#D1E8E2] font-mono">Unlimited</p>
-                  <p className="text-[11px] text-[#64748B]">Free limit is 70 lifetime screenshots</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)] space-y-1">
+                  <span className="text-xs text-[#A5AAA1] font-medium">Screenshot Quota</span>
+                  <p className="text-lg font-bold text-[#F7F8F5] font-mono">Unlimited</p>
+                  <p className="text-[11px] text-[#777E74]">Free limit is 70 lifetime screenshots</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-[#2C3531] border border-[#334155] space-y-1">
-                  <span className="text-xs text-[#94A3B8] font-medium">Founder Rank</span>
-                  <p className="text-lg font-black text-[#D9B08C] font-mono">Rank #{founderNumber || "VIP"} of 50</p>
-                  <p className="text-[11px] text-[#64748B]">Pioneer Founder tier</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-[#2C3531] border border-[#334155] space-y-1">
-                  <span className="text-xs text-[#94A3B8] font-medium">Renewal Cost</span>
-                  <p className="text-lg font-black text-[#D1E8E2] font-mono">PKR 0 / Forever</p>
-                  <p className="text-[11px] text-[#64748B]">Never expires or bills</p>
+                <div className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)] space-y-1">
+                  <span className="text-xs text-[#A5AAA1] font-medium">Founder Rank &amp; Renewal</span>
+                  <p className="text-lg font-bold text-[#B7F36B] font-mono">Rank #{founderNumber || "VIP"} of 50 (PKR 0 / Forever)</p>
+                  <p className="text-[11px] text-[#777E74]">Pioneer Founder tier, never expires</p>
                 </div>
               </div>
             </div>
@@ -232,10 +219,10 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs font-bold text-[#D9B08C] uppercase tracking-widest">
+                  <span className="text-xs font-bold text-[#B7F36B] uppercase tracking-widest">
                     Live Founder Spots Allocation
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5">
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#F7F8F5] tracking-tight mt-0.5">
                     {remainingCount > 0
                       ? `${remainingCount} of ${totalSpots} Founder Spots Remaining`
                       : `All ${totalSpots} Founder Spots Claimed`}
@@ -247,11 +234,11 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
                     onClick={loadFounderStats}
                     disabled={isLoadingStats}
                     title="Refresh availability count"
-                    className="p-2 rounded-xl bg-[#2C3531] hover:bg-[#334155] border border-[#334155] text-[#94A3B8] hover:text-white transition cursor-pointer"
+                    className="p-2.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] shadow-[2px_2px_8px_rgba(0,0,0,0.3)] transition cursor-pointer"
                   >
                     <RefreshCw className={`w-4 h-4 ${isLoadingStats ? "animate-spin" : ""}`} />
                   </button>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#D9B08C]/15 text-[#D9B08C] border border-[#D9B08C]/30">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
                     First 50 Users
                   </span>
                 </div>
@@ -259,13 +246,13 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
 
               {/* Progress Bar */}
               <div className="space-y-2">
-                <div className="flex justify-between text-xs text-slate-300 font-medium">
+                <div className="flex justify-between text-xs text-[#A5AAA1] font-medium">
                   <span>{claimedCount} Pioneer spots claimed</span>
-                  <span className="text-[#D9B08C] font-bold">{claimedPercentage}% Claimed</span>
+                  <span className="text-[#B7F36B] font-bold">{claimedPercentage}% Claimed</span>
                 </div>
-                <div className="w-full h-3 rounded-full bg-[#2C3531] overflow-hidden p-0.5 border border-[#334155]">
+                <div className="w-full h-3 rounded-full bg-[#0D0F0D] overflow-hidden p-0.5 border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.6)]">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#116466] to-[#D9B08C] transition-all duration-500 shadow-lg shadow-[#116466]/40"
+                    className="h-full rounded-full bg-[#B7F36B] transition-all duration-500"
                     style={{ width: `${Math.max(4, Math.min(100, claimedPercentage))}%` }}
                   />
                 </div>
@@ -273,12 +260,12 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
 
               {/* Action Buttons */}
               {remainingCount > 0 ? (
-                <div className="p-4 rounded-2xl bg-[#116466]/15 border border-[#116466]/35 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[3px_3px_10px_rgba(0,0,0,0.4)]">
                   <div className="space-y-0.5 text-center sm:text-left">
-                    <h3 className="text-sm font-bold text-[#D1E8E2] flex items-center justify-center sm:justify-start gap-1.5">
-                      <Sparkles className="w-4 h-4 text-[#D9B08C]" /> Qualify for Free Lifetime Pro
+                    <h3 className="text-sm font-bold text-[#F7F8F5] flex items-center justify-center sm:justify-start gap-1.5">
+                      <Crown className="w-4 h-4 text-[#B7F36B]" /> Qualify for Free Lifetime Pro
                     </h3>
-                    <p className="text-xs text-slate-300">
+                    <p className="text-xs text-[#A5AAA1]">
                       Claiming assigns your immutable Founder rank (#1–#50) and permanently unlocks unlimited screenshots.
                     </p>
                   </div>
@@ -287,29 +274,29 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
                     id="claim-founder-spot-btn"
                     onClick={handleClaim}
                     disabled={isClaiming}
-                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-[#116466]/30 transition cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm flex items-center justify-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
                   >
                     {isClaiming ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin text-[#10130D]" />
                         <span>Claiming Spot...</span>
                       </>
                     ) : (
                       <>
-                        <Crown className="w-4 h-4 fill-current text-[#D9B08C]" />
+                        <Crown className="w-4 h-4 fill-current text-[#10130D]" />
                         <span>Claim Free Founder Spot</span>
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-4 h-4 text-[#10130D]" />
                       </>
                     )}
                   </button>
                 </div>
               ) : (
-                <div className="p-4 rounded-2xl bg-[#1E293B] border border-[#334155] flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[3px_3px_10px_rgba(0,0,0,0.4)]">
                   <div className="space-y-0.5 text-center sm:text-left">
-                    <h3 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start gap-1.5">
-                      <Gem className="w-4 h-4 text-[#D1E8E2]" /> Lifetime Pro Available
+                    <h3 className="text-sm font-bold text-[#F7F8F5] flex items-center justify-center sm:justify-start gap-1.5">
+                      <Gem className="w-4 h-4 text-[#B7F36B]" /> Lifetime Pro Available
                     </h3>
-                    <p className="text-xs text-slate-300">
+                    <p className="text-xs text-[#A5AAA1]">
                       All 50 Pioneer Founder allocations have been claimed. You can unlock Lifetime Pro anytime via one-time PKR 7,999.
                     </p>
                   </div>
@@ -319,7 +306,7 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
                       if (onOpenUpgrade) onOpenUpgrade();
                       else if (onNavigate) onNavigate("pricing");
                     }}
-                    className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-[#116466] hover:bg-[#157F81] text-[#F1F5F9] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0 shadow-lg shadow-[#116466]/20"
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
                     <span>Upgrade to Lifetime Pro</span>
                     <ArrowRight className="w-4 h-4" />
@@ -334,26 +321,26 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
       {/* Perks Grid */}
       <div className="space-y-6">
         <div className="text-center space-y-1">
-          <h2 className="text-2xl font-black text-white">Founder Perks & Privileges</h2>
-          <p className="text-xs sm:text-sm text-[#94A3B8]">
+          <h2 className="text-2xl font-bold text-[#F7F8F5]">Founder Perks & Privileges</h2>
+          <p className="text-xs sm:text-sm text-[#A5AAA1]">
             Everything included with your Pioneer Founder grant
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {perks.map((perk, i) => (
             <motion.div
               key={perk.title}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="p-6 rounded-3xl bg-[#1E293B] border border-[#334155] hover:border-[#116466] transition-all space-y-3 shadow-xl hover:-translate-y-1"
+              className="p-6 rounded-3xl bg-[#141714] border border-[#30362E] hover:border-[#B7F36B]/50 transition-all space-y-3 shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] hover:-translate-y-1"
             >
-              <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${perk.accent}`}>
+              <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${perk.accent} shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]`}>
                 <perk.icon className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-white">{perk.title}</h3>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">{perk.desc}</p>
+              <h3 className="text-base font-bold text-[#F7F8F5]">{perk.title}</h3>
+              <p className="text-xs text-[#A5AAA1] leading-relaxed">{perk.desc}</p>
             </motion.div>
           ))}
         </div>

@@ -28,24 +28,24 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
   return (
     <div
       className={`flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 pb-2 border-t ${
-        isDark ? "border-[#334155] text-[#94A3B8]" : "border-slate-200 text-slate-600"
+        isDark ? "border-[#30362E] text-[#A5AAA1]" : "border-slate-200 text-slate-600"
       } text-xs font-medium`}
     >
       <div className="flex items-center gap-3">
         <span>
-          Showing <strong className={isDark ? "text-[#F1F5F9]" : "text-slate-800"}>{startItem}</strong> -{" "}
-          <strong className={isDark ? "text-[#F1F5F9]" : "text-slate-800"}>{endItem}</strong> of{" "}
-          <strong className={isDark ? "text-[#F1F5F9]" : "text-slate-800"}>{totalItems}</strong> items
+          Showing <strong className={isDark ? "text-[#F7F8F5]" : "text-slate-800"}>{startItem}</strong> -{" "}
+          <strong className={isDark ? "text-[#F7F8F5]" : "text-slate-800"}>{endItem}</strong> of{" "}
+          <strong className={isDark ? "text-[#F7F8F5]" : "text-slate-800"}>{totalItems}</strong> items
         </span>
 
         {onItemsPerPageChange && (
-          <div className="flex items-center gap-1.5 pl-3 border-l border-[#334155]">
+          <div className="flex items-center gap-1.5 pl-3 border-l border-[#30362E]">
             <span className="text-[11px] opacity-75">Per page:</span>
             <select
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
               className={`px-2 py-1 rounded-lg border text-xs outline-none cursor-pointer ${
-                isDark ? "border-[#334155] bg-[#2C3531] text-[#F1F5F9]" : "border-slate-200 bg-white text-slate-700"
+                isDark ? "border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]" : "border-slate-200 bg-white text-slate-700"
               }`}
             >
               <option value={6}>6</option>
@@ -65,7 +65,7 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
             currentPage === 1
               ? "opacity-40 cursor-not-allowed border-transparent"
               : isDark
-              ? "border-[#334155] hover:bg-[#243347] text-[#F1F5F9]"
+              ? "border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#F7F8F5] shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
               : "border-slate-200 hover:bg-slate-100 text-slate-800"
           }`}
           title="Previous Page"
@@ -86,9 +86,9 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
                     onClick={() => onPageChange(p)}
                     className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
                       currentPage === p
-                        ? "bg-[#116466] text-[#F1F5F9] shadow-sm shadow-[#116466]/30"
+                        ? "bg-[#B7F36B] text-[#10130D] font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                         : isDark
-                        ? "text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#243347]"
+                        ? "text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A]"
                         : "text-slate-600 hover:bg-slate-200"
                     }`}
                   >
@@ -106,7 +106,7 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
             currentPage === totalPages
               ? "opacity-40 cursor-not-allowed border-transparent"
               : isDark
-              ? "border-[#334155] hover:bg-[#243347] text-[#F1F5F9]"
+              ? "border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#F7F8F5] shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
               : "border-slate-200 hover:bg-slate-100 text-slate-800"
           }`}
           title="Next Page"

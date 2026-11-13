@@ -448,20 +448,12 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
       {/* Hero Profile Card (Cyber Teal Redesign) */}
       <div
-        className={`p-6 sm:p-8 rounded-3xl border relative overflow-hidden transition-all ${
-          isDark
-            ? "bg-[#1E293B] border-[#334155] shadow-2xl shadow-black/50 backdrop-blur-xl"
-            : "bg-white border-slate-200 shadow-xl"
-        }`}
+        className="p-6 sm:p-8 rounded-3xl border relative overflow-hidden transition-all bg-[#141714] border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]"
       >
-        {/* Subtle Ambient Glow */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#116466]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#D1E8E2]/5 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20" />
-
         <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
           {/* Avatar with Camera Overlay */}
           <div className="relative group">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden border-2 border-[#334155] shadow-2xl bg-[#2C3531] flex items-center justify-center ring-4 ring-[#116466]/30">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden border-2 border-[#30362E] shadow-2xl bg-[#0D0F0D] flex items-center justify-center ring-2 ring-[#B7F36B]/20">
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
@@ -470,7 +462,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-[#116466] to-[#2C3531] flex items-center justify-center text-[#D1E8E2] text-3xl font-extrabold shadow-inner">
+                <div className="w-full h-full bg-[#1B1F1A] flex items-center justify-center text-[#B7F36B] text-3xl font-extrabold shadow-inner">
                   {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                 </div>
               )}
@@ -480,9 +472,9 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             <button
               onClick={() => setShowAvatarModal(true)}
               title="Change Profile Picture"
-              className="absolute -bottom-1.5 -right-1.5 p-2.5 rounded-2xl bg-[#116466] hover:bg-[#16787b] text-white shadow-lg shadow-[#116466]/40 border-2 border-[#1E293B] transition-transform group-hover:scale-110 cursor-pointer"
+              className="absolute -bottom-1.5 -right-1.5 p-2.5 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] shadow-[2px_2px_8px_rgba(0,0,0,0.4)] border-2 border-[#141714] transition-transform group-hover:scale-110 cursor-pointer"
             >
-              <Camera className="w-4 h-4" />
+              <Camera className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
 
@@ -497,15 +489,13 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter full name"
-                      className={`px-3.5 py-1.5 rounded-xl text-base font-bold border outline-none ${
-                        isDark ? "bg-[#2C3531] border-[#116466] text-white" : "bg-white border-blue-500 text-slate-900"
-                      }`}
+                      className="px-3.5 py-1.5 rounded-xl text-base font-bold border outline-none bg-[#0D0F0D] border-[#30362E] focus:border-[#B7F36B] text-[#F7F8F5] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
                       autoFocus
                     />
                     <button
                       onClick={handleSaveName}
                       disabled={nameLoading}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#116466] hover:bg-[#16787b] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                      className="px-3.5 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                     >
                       {nameLoading ? "Saving..." : "Save"}
                     </button>
@@ -514,31 +504,31 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                         setName(user.name || "");
                         setIsEditingName(false);
                       }}
-                      className="px-3 py-1.5 rounded-xl border border-[#334155] text-xs font-medium hover:bg-white/5 cursor-pointer text-slate-300"
+                      className="px-3 py-1.5 rounded-xl border border-[#30362E] bg-[#1B1F1A] text-xs font-medium hover:bg-[#222720] cursor-pointer text-[#A5AAA1]"
                     >
                       Cancel
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center md:justify-start gap-2.5">
-                    <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+                    <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#F7F8F5]">
                       {user.name || "SnapFind User"}
                     </h2>
                     <button
                       onClick={() => setIsEditingName(true)}
-                      className="text-xs text-[#D1E8E2] hover:text-white font-semibold underline underline-offset-4 cursor-pointer"
+                      className="text-xs text-[#B7F36B] hover:underline font-semibold cursor-pointer"
                     >
                       Edit Name
                     </button>
                   </div>
                 )}
 
-                <div className="flex items-center justify-center md:justify-start gap-2 text-xs text-slate-400">
-                  <Mail className="w-3.5 h-3.5 text-[#D1E8E2]" />
-                  <span className="font-mono text-slate-300">{user.email || "guest@snapfind.ai"}</span>
+                <div className="flex items-center justify-center md:justify-start gap-2 text-xs text-[#A5AAA1]">
+                  <Mail className="w-3.5 h-3.5 text-[#B7F36B]" />
+                  <span className="font-mono text-[#F7F8F5]">{user.email || "guest@snapfind.ai"}</span>
                   {user.emailConfirmedAt && (
-                    <span className="flex items-center gap-1 text-[#D1E8E2] text-[10px] bg-[#116466]/20 px-2 py-0.5 rounded-full border border-[#116466]/40">
-                      <CheckCircle2 className="w-3 h-3 text-[#D1E8E2]" /> Verified
+                    <span className="flex items-center gap-1 text-[#B7F36B] text-[10px] bg-[#B7F36B]/15 px-2 py-0.5 rounded-full border border-[#B7F36B]/30 font-semibold">
+                      <CheckCircle2 className="w-3 h-3 text-[#B7F36B]" /> Verified
                     </span>
                   )}
                 </div>
@@ -547,18 +537,18 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
               {/* Plan Tier Pill & Action */}
               <div className="flex items-center justify-center gap-2">
                 {isFounder ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#D9B08C]/15 border-[#D9B08C]/35 text-[#D9B08C] shadow-[#D9B08C]/10">
-                    <Crown className="w-3.5 h-3.5 text-[#D9B08C]" />
+                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-amber-500/15 border-amber-500/35 text-amber-300">
+                    <Crown className="w-3.5 h-3.5 text-amber-400" />
                     <span>👑 Founder {founderNumStr}</span>
                   </div>
                 ) : isLifetimePro ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#116466]/25 border-[#116466]/45 text-[#D1E8E2] shadow-[#116466]/10">
-                    <Gem className="w-3.5 h-3.5 text-[#D1E8E2]" />
+                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#B7F36B]/15 border-[#B7F36B]/35 text-[#B7F36B]">
+                    <Gem className="w-3.5 h-3.5 text-[#B7F36B]" />
                     <span>💎 Lifetime Pro</span>
                   </div>
                 ) : isPaymentPending ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#D9B08C]/20 border-[#D9B08C]/40 text-[#D9B08C]">
-                    <Clock className="w-3.5 h-3.5 text-[#D9B08C] animate-pulse" />
+                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-amber-500/20 border-amber-500/40 text-amber-300">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                     <span>Payment Pending</span>
                   </div>
                 ) : isPaymentRejected ? (
@@ -567,8 +557,8 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                     <span>Payment Rejected</span>
                   </div>
                 ) : (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#2C3531] border-[#334155] text-slate-300">
-                    <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#1B1F1A] border-[#30362E] text-[#A5AAA1]">
+                    <Sparkles className="w-3.5 h-3.5 text-[#777E74]" />
                     <span>Free Plan</span>
                   </div>
                 )}
@@ -576,22 +566,22 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 {isFree ? (
                   <button
                     onClick={() => setShowProModal(true)}
-                    className="px-3.5 py-1.5 rounded-2xl bg-[#116466] hover:bg-[#16787b] text-white text-xs font-bold flex items-center gap-1 shadow-md shadow-[#116466]/20 transition-all cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center gap-1 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all cursor-pointer"
                   >
-                    <Zap className="w-3.5 h-3.5" />
+                    <Zap className="w-3.5 h-3.5 stroke-[2.5]" />
                     <span>Upgrade to Lifetime Pro</span>
                   </button>
                 ) : isPaymentPending || isPaymentRejected ? (
                   <button
                     onClick={() => setShowManualPaymentModal(true)}
-                    className="px-3 py-1.5 rounded-2xl bg-[#2C3531] hover:bg-[#1E293B] border border-[#334155] text-white text-xs font-semibold transition cursor-pointer"
+                    className="px-3 py-1.5 rounded-2xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-xs font-semibold transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
                     {isPaymentPending ? "View Payment" : "Re-submit Payment"}
                   </button>
                 ) : (
                   <button
                     onClick={() => setShowProModal(true)}
-                    className="px-3 py-1.5 rounded-2xl bg-[#2C3531] hover:bg-[#1E293B] border border-[#334155] text-slate-300 hover:text-white text-xs font-medium transition cursor-pointer"
+                    className="px-3 py-1.5 rounded-2xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-medium transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                   >
                     Manage Plan
                   </button>

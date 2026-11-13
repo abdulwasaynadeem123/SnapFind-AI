@@ -44,41 +44,44 @@ export const PrivacyConsentBanner: React.FC<PrivacyConsentBannerProps> = ({ isDa
       className="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-in fade-in slide-in-from-bottom-5 duration-300"
     >
       <div
-        className={`p-4 sm:p-5 rounded-2xl border shadow-2xl backdrop-blur-xl ${
+        className={`p-4 sm:p-5 rounded-2xl border shadow-[8px_8px_24px_rgba(0,0,0,0.8)] ${
           isDark
-            ? "bg-[#0D1117]/95 border-slate-800 text-slate-100 shadow-black/60"
-            : "bg-white/95 border-slate-200 text-slate-900 shadow-slate-300/60"
+            ? "bg-[#141714] border-[#30362E] text-[#F7F8F5]"
+            : "bg-white border-slate-200 text-slate-900"
         }`}
       >
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-[#00FF66]/10 text-[#00FF66] shrink-0 border border-[#00FF66]/20">
+          <div className="p-2 rounded-xl bg-[#1B1F1A] text-[#B7F36B] shrink-0 border border-[#30362E]">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1">
-            <h4 className="text-sm font-bold tracking-tight">Privacy & Cookie Preferences</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h4 className="text-sm font-bold tracking-tight">Privacy &amp; Cookie Preferences</h4>
+            <p className="text-xs text-[#A5AAA1] leading-relaxed">
               SnapFind AI uses privacy-focused, zero-PII telemetry to analyze public site performance. We never track your personal screenshots, search queries, or OCR contents.
             </p>
           </div>
           <button
+            type="button"
             onClick={handleDecline}
             aria-label="Dismiss consent notice"
-            className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+            className="text-[#777E74] hover:text-[#F7F8F5] transition-colors p-1 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800/80">
+        <div className="mt-4 flex items-center justify-end gap-2.5 pt-3 border-t border-[#30362E]">
           <button
+            type="button"
             onClick={handleDecline}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+            className="px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] transition-colors cursor-pointer"
           >
             Decline
           </button>
           <button
+            type="button"
             onClick={handleAccept}
-            className="px-4 py-1.5 rounded-xl text-xs font-bold bg-[#CCFF00] hover:bg-[#b8e600] text-black shadow-sm transition-all"
+            className="px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] shadow-sm transition-colors cursor-pointer"
           >
             Accept Telemetry
           </button>

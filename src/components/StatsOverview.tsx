@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, ShieldCheck, Bookmark, CreditCard } from "lucide-react";
+import { Tag, ShieldCheck, Bookmark, CreditCard } from "lucide-react";
 import { ScreenshotItem, CategoryType } from "../types";
 
 interface StatsOverviewProps {
@@ -22,52 +22,50 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
       {/* Total Index */}
       <div
         onClick={() => onSelectCategory("All")}
-        className="p-3.5 rounded-2xl border border-[#334155] bg-[#1E293B]/95 hover:border-[#116466] hover:bg-[#243347] cursor-pointer transition-all shadow-[0_0_12px_rgba(0,0,0,0.4)]"
+        className="p-3.5 rounded-2xl border border-[#30362E] bg-[#141714] hover:border-[#B7F36B] hover:bg-[#1B1F1A] cursor-pointer transition-colors shadow-[4px_4px_12px_rgba(0,0,0,0.5)]"
       >
-        <div className="flex items-center justify-between text-[#94A3B8] mb-1 font-mono text-[10px] uppercase tracking-wider">
+        <div className="flex items-center justify-between text-[#A5AAA1] mb-1 font-mono text-[10px] uppercase tracking-wider">
           <span>Indexed Snaps</span>
-          <ShieldCheck className="w-3.5 h-3.5 text-[#D1E8E2]" />
+          <ShieldCheck className="w-3.5 h-3.5 text-[#B7F36B]" />
         </div>
-        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F1F5F9] tabular-nums">{totalCount}</div>
-        <span className="text-[10px] font-mono text-[#D1E8E2] font-medium">100% OCR PROCESSED</span>
+        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F7F8F5] tabular-nums">{totalCount}</div>
+        <span className="text-[10px] font-mono text-[#B7F36B] font-medium">OCR PROCESSED</span>
       </div>
 
       {/* Extracted Entities */}
-      <div
-        className="p-3.5 rounded-2xl border border-[#334155] bg-[#1E293B]/95 hover:border-[#116466] transition-all shadow-[0_0_12px_rgba(0,0,0,0.4)]"
-      >
-        <div className="flex items-center justify-between text-[#94A3B8] mb-1 font-mono text-[10px] uppercase tracking-wider">
+      <div className="p-3.5 rounded-2xl border border-[#30362E] bg-[#141714] transition-colors shadow-[4px_4px_12px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center justify-between text-[#A5AAA1] mb-1 font-mono text-[10px] uppercase tracking-wider">
           <span>Key Entities</span>
-          <Sparkles className="w-3.5 h-3.5 text-[#D1E8E2]" />
+          <Tag className="w-3.5 h-3.5 text-[#B7F36B]" />
         </div>
-        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F1F5F9] tabular-nums">{totalEntities}</div>
-        <span className="text-[10px] font-mono text-[#94A3B8]/70">DATES, PRICES, CODES</span>
+        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F7F8F5] tabular-nums">{totalEntities}</div>
+        <span className="text-[10px] font-mono text-[#777E74]">DATES, PRICES, CODES</span>
       </div>
 
       {/* Passports & Travel count */}
       <div
         onClick={() => onSelectCategory("Passport")}
-        className="p-3.5 rounded-2xl border border-[#334155] bg-[#1E293B]/95 hover:border-[#116466] hover:bg-[#243347] cursor-pointer transition-all shadow-[0_0_12px_rgba(0,0,0,0.4)]"
+        className="p-3.5 rounded-2xl border border-[#30362E] bg-[#141714] hover:border-[#B7F36B] hover:bg-[#1B1F1A] cursor-pointer transition-colors shadow-[4px_4px_12px_rgba(0,0,0,0.5)]"
       >
-        <div className="flex items-center justify-between text-[#94A3B8] mb-1 font-mono text-[10px] uppercase tracking-wider">
+        <div className="flex items-center justify-between text-[#A5AAA1] mb-1 font-mono text-[10px] uppercase tracking-wider">
           <span>Passports</span>
-          <Bookmark className="w-3.5 h-3.5 text-[#D9B08C]" />
+          <Bookmark className="w-3.5 h-3.5 text-[#B7F36B]" />
         </div>
-        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F1F5F9] tabular-nums">{passportCount}</div>
-        <span className="text-[10px] font-mono text-[#94A3B8] font-medium">AUTO-CATEGORIZED</span>
+        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F7F8F5] tabular-nums">{passportCount}</div>
+        <span className="text-[10px] font-mono text-[#777E74] font-medium">AUTO-CATEGORIZED</span>
       </div>
 
       {/* Electricity Bills count */}
       <div
         onClick={() => onSelectCategory("Electricity Bill")}
-        className="p-3.5 rounded-2xl border border-[#334155] bg-[#1E293B]/95 hover:border-[#116466] hover:bg-[#243347] cursor-pointer transition-all shadow-[0_0_12px_rgba(0,0,0,0.4)]"
+        className="p-3.5 rounded-2xl border border-[#30362E] bg-[#141714] hover:border-[#B7F36B] hover:bg-[#1B1F1A] cursor-pointer transition-colors shadow-[4px_4px_12px_rgba(0,0,0,0.5)]"
       >
-        <div className="flex items-center justify-between text-[#94A3B8] mb-1 font-mono text-[10px] uppercase tracking-wider">
+        <div className="flex items-center justify-between text-[#A5AAA1] mb-1 font-mono text-[10px] uppercase tracking-wider">
           <span>Bills &amp; Invoices</span>
-          <CreditCard className="w-3.5 h-3.5 text-[#D1E8E2]" />
+          <CreditCard className="w-3.5 h-3.5 text-[#B7F36B]" />
         </div>
-        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F1F5F9] tabular-nums">{billCount}</div>
-        <span className="text-[10px] font-mono text-[#94A3B8] font-medium">AMOUNTS &amp; DUE DATES</span>
+        <div className="text-xl font-extrabold font-mono tracking-tight text-[#F7F8F5] tabular-nums">{billCount}</div>
+        <span className="text-[10px] font-mono text-[#777E74] font-medium">AMOUNTS &amp; DUE DATES</span>
       </div>
     </div>
   );

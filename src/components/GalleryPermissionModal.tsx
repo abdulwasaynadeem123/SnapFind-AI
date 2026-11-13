@@ -59,29 +59,29 @@ export const GalleryPermissionModal: React.FC<GalleryPermissionModalProps> = ({ 
   return (
     <div
       id="gallery-permission-banner"
-      className="mb-4 rounded-xl border border-[#CCFF00]/20 bg-[#0D1117] p-4 text-[#F8FAFC] shadow-lg transition-all"
+      className="mb-4 rounded-2xl border border-[#30362E] bg-[#141714] p-4 text-[#F7F8F5] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#CCFF00]/10 text-[#CCFF00]">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.4)]">
             {isDenied ? (
-              <AlertCircle className="h-5 w-5 text-[#FF6600]" />
+              <AlertCircle className="h-5 w-5 text-[#B7F36B]" />
             ) : isPartial ? (
-              <CheckCircle2 className="h-5 w-5 text-[#00FF66]" />
+              <CheckCircle2 className="h-5 w-5 text-[#B7F36B]" />
             ) : (
-              <Camera className="h-5 w-5 text-[#CCFF00]" />
+              <Camera className="h-5 w-5 text-[#B7F36B]" />
             )}
           </div>
 
           <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-[#F8FAFC]">
+            <h4 className="text-sm font-bold text-[#F7F8F5]">
               {isDenied
                 ? 'Photo Access Needed'
                 : isPartial
                 ? 'Selected Photos Access'
                 : 'Automatic Screenshot Detection'}
             </h4>
-            <p className="text-xs leading-relaxed text-[#94A3B8]">
+            <p className="text-xs leading-relaxed text-[#A5AAA1]">
               {isDenied ? (
                 <>
                   SnapFind needs access to your photos so it can find and index your screenshots. Since
@@ -103,21 +103,21 @@ export const GalleryPermissionModal: React.FC<GalleryPermissionModalProps> = ({ 
                 type="button"
                 onClick={handleAllowClick}
                 disabled={isRequesting}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#CCFF00] px-3.5 py-1.5 text-xs font-semibold text-[#07090D] transition-colors hover:bg-[#b8e600] active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#B7F36B] px-3.5 py-1.5 text-xs font-bold text-[#10130D] transition-colors hover:bg-[#A5E65A] active:scale-95 disabled:opacity-50 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
               >
                 {isDenied ? (
                   <>
-                    <Settings className="h-3.5 w-3.5" />
+                    <Settings className="h-3.5 w-3.5 text-[#10130D]" />
                     Open App Settings
                   </>
                 ) : isPartial ? (
                   <>
-                    <Settings className="h-3.5 w-3.5" />
+                    <Settings className="h-3.5 w-3.5 text-[#10130D]" />
                     Grant Full Access
                   </>
                 ) : (
                   <>
-                    <ShieldCheck className="h-3.5 w-3.5" />
+                    <ShieldCheck className="h-3.5 w-3.5 text-[#10130D]" />
                     Allow Photo Access
                   </>
                 )}
@@ -128,7 +128,7 @@ export const GalleryPermissionModal: React.FC<GalleryPermissionModalProps> = ({ 
                   id="btn-manual-photo-picker"
                   type="button"
                   onClick={onManualUploadClick}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#1E293B] bg-[#121821] px-3 py-1.5 text-xs font-medium text-[#94A3B8] transition-colors hover:bg-[#1E293B] hover:text-[#F8FAFC]"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#30362E] bg-[#1B1F1A] px-3 py-1.5 text-xs font-bold text-[#F7F8F5] transition-colors hover:bg-[#222720] shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
                 >
                   Pick Screenshots Manually
                 </button>
@@ -138,7 +138,7 @@ export const GalleryPermissionModal: React.FC<GalleryPermissionModalProps> = ({ 
                 id="btn-dismiss-permission-banner"
                 type="button"
                 onClick={() => setIsDismissed(true)}
-                className="rounded-lg px-2.5 py-1.5 text-xs text-[#64748B] transition-colors hover:text-[#94A3B8]"
+                className="rounded-xl px-2.5 py-1.5 text-xs text-[#777E74] transition-colors hover:text-[#A5AAA1]"
               >
                 Not Now
               </button>
@@ -150,7 +150,7 @@ export const GalleryPermissionModal: React.FC<GalleryPermissionModalProps> = ({ 
           type="button"
           aria-label="Dismiss banner"
           onClick={() => setIsDismissed(true)}
-          className="rounded p-1 text-[#64748B] hover:bg-[#121821] hover:text-[#94A3B8]"
+          className="rounded-xl p-1 text-[#777E74] hover:bg-[#1B1F1A] hover:text-[#A5AAA1] transition"
         >
           <X className="h-4 w-4" />
         </button>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Sparkles,
   Check,
   Shield,
   Zap,
@@ -67,22 +66,19 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
             onClose();
           }
         }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 overflow-y-auto"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative w-full max-w-lg rounded-3xl bg-[#1E293B] border border-[#334155] text-[#F1F5F9] shadow-2xl overflow-hidden my-6"
+          className="relative w-full max-w-lg rounded-3xl bg-[#141714] border border-[#30362E] text-[#F7F8F5] shadow-[8px_8px_24px_rgba(0,0,0,0.85)] overflow-hidden my-6"
         >
-          {/* Header Ambient Glow */}
-          <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-[#116466]/20 to-[#D1E8E2]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-
           {/* Close Button */}
           <button
             id="close-pro-modal-btn"
             onClick={onClose}
-            className="absolute top-5 right-5 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer z-10"
+            className="absolute top-5 right-5 p-2 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#222720] transition cursor-pointer z-10"
           >
             <X className="w-4 h-4" />
           </button>
@@ -90,21 +86,21 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
           <div className="p-6 sm:p-8 space-y-6 relative z-10">
             {/* Crown / Icon & Header */}
             <div className="text-center space-y-2">
-              <div className="inline-flex p-3 rounded-2xl bg-[#116466]/20 border border-[#116466]/40 text-[#D1E8E2] mb-1 shadow-lg shadow-[#116466]/15">
-                <Sparkles className="w-7 h-7" />
+              <div className="inline-flex p-3 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] mb-1 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.4)]">
+                <Crown className="w-7 h-7" />
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-2xl font-black tracking-tight text-[#F1F5F9]">
+                <h3 className="text-2xl font-bold tracking-tight text-[#F7F8F5]">
                   Unlock SnapFind Lifetime Pro
                 </h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                <p className="text-xs text-[#A5AAA1] max-w-sm mx-auto">
                   Unlimited screenshots, on-device OCR, AI search, and permanent lifetime access.
                 </p>
               </div>
 
               {initialFeature && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#116466]/20 border border-[#116466]/40 text-xs text-[#D1E8E2] font-medium mt-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1B1F1A] border border-[#30362E] text-xs text-[#B7F36B] font-medium mt-1">
                   <span>Required for: <strong>{initialFeature}</strong></span>
                 </div>
               )}
@@ -112,12 +108,12 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
 
             {/* Founder Status Banner if active */}
             {isFounder ? (
-              <div className="p-4 rounded-2xl bg-[#D9B08C]/15 border border-[#D9B08C]/35 text-[#D9B08C] space-y-1.5 text-center">
+              <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] space-y-1.5 text-center shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)]">
                 <div className="flex items-center justify-center gap-2 font-bold text-sm">
-                  <Crown className="w-4 h-4 text-[#D9B08C]" />
+                  <Crown className="w-4 h-4 text-[#B7F36B]" />
                   <span>Founder VIP #{founderNumber || "VIP"} Active</span>
                 </div>
-                <p className="text-xs text-[#F1F5F9]/80">
+                <p className="text-xs text-[#A5AAA1]">
                   You already have permanent complimentary Lifetime Pro access!
                 </p>
               </div>
@@ -125,58 +121,58 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
               /* Lifetime Pro Pricing & Payment Options */
               <div className="space-y-4">
                 {/* Lifetime Deal Card */}
-                <div className="p-5 rounded-2xl bg-[#2C3531] border-2 border-[#116466] space-y-3 relative overflow-hidden shadow-xl shadow-[#116466]/10">
+                <div className="p-5 rounded-2xl bg-[#0D0F0D] border border-[#30362E] space-y-3 relative overflow-hidden shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#116466] text-[#D1E8E2]">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B]">
                         One-Time Payment
                       </span>
-                      <span className="text-xs font-bold text-slate-300">Lifetime Pass</span>
+                      <span className="text-xs font-bold text-[#A5AAA1]">Lifetime Pass</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-2xl font-black text-[#D1E8E2]">PKR 7,999</span>
-                      <span className="text-[10px] text-slate-400 block font-medium">No recurring fees</span>
+                      <span className="text-2xl font-bold text-[#F7F8F5]">PKR 7,999</span>
+                      <span className="text-[10px] text-[#777E74] block font-medium">No recurring fees</span>
                     </div>
                   </div>
 
-                  <ul className="space-y-2 text-xs text-slate-200 pt-2 border-t border-[#334155]">
+                  <ul className="space-y-2 text-xs text-[#A5AAA1] pt-2 border-t border-[#30362E]">
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-[#D1E8E2] shrink-0" />
-                      <span><strong>25,000 screenshots</strong> (Free limit: 70)</span>
+                      <Check className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
+                      <span><strong className="text-[#F7F8F5]">25,000 screenshots</strong> (Free limit: 70)</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-[#D1E8E2] shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
                       <span>Permanent Lifetime Access • Never expires</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-[#D1E8E2] shrink-0" />
-                      <span>On-device OCR & AI vision search</span>
+                      <Check className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
+                      <span>On-device OCR &amp; AI vision search</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-[#D1E8E2] shrink-0" />
-                      <span>Encrypted cloud backup & multi-device sync</span>
+                      <Check className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
+                      <span>Encrypted cloud backup &amp; multi-device sync</span>
                     </li>
                   </ul>
                 </div>
 
                 {/* Supported Payment Methods Note */}
-                <div className="p-3.5 rounded-xl bg-[#2C3531] border border-[#334155] space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                <div className="p-3.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] space-y-2">
+                  <span className="text-[11px] font-bold text-[#777E74] uppercase tracking-wider block">
                     Supported Manual Payment Methods:
                   </span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 rounded-lg bg-[#116466]/15 border border-[#116466]/30 text-[#D1E8E2] flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 shrink-0 text-[#D1E8E2]" />
+                    <div className="p-2 rounded-xl bg-[#141714] border border-[#30362E] text-[#F7F8F5] flex items-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.3)]">
+                      <Smartphone className="w-4 h-4 shrink-0 text-[#B7F36B]" />
                       <div>
                         <p className="font-bold">Easypaisa</p>
-                        <p className="text-[10px] opacity-80">Mobile Wallet</p>
+                        <p className="text-[10px] text-[#A5AAA1]">Mobile Wallet</p>
                       </div>
                     </div>
-                    <div className="p-2 rounded-lg bg-[#116466]/15 border border-[#116466]/30 text-[#D1E8E2] flex items-center gap-2">
-                      <Building2 className="w-4 h-4 shrink-0 text-[#D1E8E2]" />
+                    <div className="p-2 rounded-xl bg-[#141714] border border-[#30362E] text-[#F7F8F5] flex items-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.3)]">
+                      <Building2 className="w-4 h-4 shrink-0 text-[#B7F36B]" />
                       <div>
                         <p className="font-bold">Bank Transfer</p>
-                        <p className="text-[10px] opacity-80">IBFT / Raast</p>
+                        <p className="text-[10px] text-[#A5AAA1]">IBFT / Raast</p>
                       </div>
                     </div>
                   </div>
@@ -186,16 +182,16 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
                 <button
                   id="pay-with-easypaisa-or-bank-btn"
                   onClick={handleOpenManualPayment}
-                  className="w-full py-4 px-4 rounded-2xl font-black text-sm bg-[#116466] hover:bg-[#16787b] text-white flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(17,100,102,0.4)] transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.98]"
+                  className="w-full py-4 px-4 rounded-xl font-bold text-sm bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] flex items-center justify-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.98]"
                 >
-                  <Sparkles className="w-4 h-4 text-[#D1E8E2] fill-current" />
+                  <Crown className="w-4 h-4 text-[#10130D]" />
                   <span>Get Lifetime Pro for PKR 7,999</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 text-[#10130D]" />
                 </button>
               </div>
             )}
 
-            <p className="text-[11px] text-center text-slate-400 pt-1">
+            <p className="text-[11px] text-center text-[#777E74] pt-1">
               Admin manual verification ensures 100% security. No credit card or automated recurring charge.
             </p>
           </div>

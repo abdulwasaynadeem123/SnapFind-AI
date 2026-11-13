@@ -146,28 +146,24 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-fadeIn">
       <div
-        className={`relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all ${
-          isDark
-            ? "bg-[#2C3531] border-[#334155] text-[#F1F5F9]"
-            : "bg-white border-slate-200 text-slate-900"
-        }`}
+        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[8px_8px_24px_rgba(0,0,0,0.85)] overflow-hidden transition-all"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#334155]">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#30362E]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#116466]/20 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2]">
+            <div className="w-10 h-10 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center text-[#B7F36B] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.4)]">
               <Copy className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold tracking-tight flex items-center gap-2">
+              <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 text-[#F7F8F5]">
                 Duplicate Screenshots
                 {duplicateGroups.length > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#D9B08C]/15 border border-[#D9B08C]/30 text-[#D9B08C]">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B]">
                     {totalDuplicatesCount} redundant
                   </span>
                 )}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#A5AAA1]">
                 Identified by exact SHA-256 binary content hash per user. Canonical master copies are preserved.
               </p>
             </div>
@@ -177,7 +173,7 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
             <button
               onClick={handleBackfillHashes}
               disabled={isCleaning}
-              className="px-3 py-1.5 rounded-xl border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-xs font-semibold text-slate-300 flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-xs font-bold text-[#F7F8F5] flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50 shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
               title="Compute SHA-256 for older screenshots"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isCleaning ? "animate-spin" : ""}`} />
@@ -185,7 +181,7 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-slate-400 hover:text-white transition-all cursor-pointer"
+              className="p-2 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#A5AAA1] hover:text-[#F7F8F5] transition-all cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -194,26 +190,26 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
 
         {/* Stats Strip */}
         {duplicateGroups.length > 0 && (
-          <div className="px-6 py-3 bg-[#1E293B]/70 border-b border-[#334155] flex items-center justify-between flex-wrap gap-4 text-xs">
-            <div className="flex items-center gap-6 text-slate-400">
+          <div className="px-6 py-3 bg-[#0D0F0D] border-b border-[#30362E] flex items-center justify-between flex-wrap gap-4 text-xs">
+            <div className="flex items-center gap-6 text-[#A5AAA1]">
               <span className="flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-[#D1E8E2]" />
-                <strong className="text-white">{duplicateGroups.length}</strong> Duplicate Groups
+                <Layers className="w-4 h-4 text-[#B7F36B]" />
+                <strong className="text-[#F7F8F5]">{duplicateGroups.length}</strong> Duplicate Groups
               </span>
               <span className="flex items-center gap-1.5">
-                <Copy className="w-4 h-4 text-[#D9B08C]" />
-                <strong className="text-white">{totalDuplicatesCount}</strong> Extra Copies
+                <Copy className="w-4 h-4 text-[#B7F36B]" />
+                <strong className="text-[#F7F8F5]">{totalDuplicatesCount}</strong> Extra Copies
               </span>
               <span className="flex items-center gap-1.5">
-                <HardDrive className="w-4 h-4 text-[#116466]" />
-                Reclaim <strong className="text-white">~{estimatedReclaimMB} MB</strong>
+                <HardDrive className="w-4 h-4 text-[#B7F36B]" />
+                Reclaim <strong className="text-[#F7F8F5]">~{estimatedReclaimMB} MB</strong>
               </span>
             </div>
 
             <button
               onClick={() => setConfirmAllOpen(true)}
               disabled={isCleaning}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#D9B08C] to-rose-500 text-white font-semibold text-xs shadow-lg hover:opacity-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-xs shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Clean All ({totalDuplicatesCount}) Duplicates
@@ -225,18 +221,18 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {duplicateGroups.length === 0 ? (
             <div className="py-16 text-center space-y-4">
-              <div className="w-16 h-16 rounded-3xl bg-[#116466]/20 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2] mx-auto shadow-[0_0_30px_rgba(17,100,102,0.25)]">
+              <div className="w-16 h-16 rounded-3xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center text-[#B7F36B] mx-auto shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <div className="space-y-1 max-w-md mx-auto">
-                <h3 className="text-base font-bold text-white">No Duplicate Screenshots</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <h3 className="text-base font-bold text-[#F7F8F5]">No Duplicate Screenshots</h3>
+                <p className="text-xs text-[#A5AAA1] leading-relaxed">
                   Every screenshot in your SnapFind library is unique. Absolute SHA-256 duplicate prevention automatically blocks redundant imports.
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-xs font-semibold text-white transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-xs font-bold text-[#F7F8F5] transition-all cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
               >
                 Back to Library
               </button>
@@ -245,15 +241,15 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
             duplicateGroups.map((group, gIdx) => (
               <div
                 key={group.contentHash + gIdx}
-                className="p-5 rounded-2xl bg-[#1E293B] border border-[#334155] space-y-4 hover:border-[#116466]/50 transition-all"
+                className="p-5 rounded-2xl bg-[#0D0F0D] border border-[#30362E] space-y-4 hover:border-[#B7F36B]/40 transition-all shadow-[inset_1px_1px_3px_rgba(0,0,0,0.5)]"
               >
                 {/* Group Header */}
                 <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-[#2C3531] border border-[#334155] font-mono text-[11px] text-[#D1E8E2]">
+                    <span className="px-2.5 py-1 rounded-lg bg-[#141714] border border-[#30362E] font-mono text-[11px] text-[#B7F36B]">
                       SHA-256: {group.contentHash.substring(0, 16)}...
                     </span>
-                    <span className="text-slate-400">
+                    <span className="text-[#A5AAA1]">
                       {group.totalCount} total copies ({group.duplicateItems.length} duplicate)
                     </span>
                   </div>
@@ -261,9 +257,9 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
                   <button
                     onClick={() => handleCleanSingleGroup(group)}
                     disabled={isCleaning}
-                    className="px-3 py-1.5 rounded-xl border border-[#D9B08C]/40 bg-[#D9B08C]/15 hover:bg-[#D9B08C]/25 text-[#D9B08C] font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-xl border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#F7F8F5] font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5 text-[#B7F36B]" />
                     Keep Original & Trash Duplicate ({group.duplicateItems.length})
                   </button>
                 </div>
@@ -271,19 +267,19 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
                 {/* Items Comparison Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Canonical Master Item */}
-                  <div className="p-3.5 rounded-xl bg-[#116466]/15 border border-[#116466]/40 space-y-2.5 relative">
+                  <div className="p-3.5 rounded-xl bg-[#141714] border border-[#B7F36B]/30 space-y-2.5 relative shadow-[2px_2px_8px_rgba(0,0,0,0.4)]">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="px-2 py-0.5 rounded-md bg-[#116466]/30 border border-[#116466]/60 text-[#D1E8E2] font-bold text-[10px] tracking-wide uppercase flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-[#D1E8E2]" /> Original (Kept)
+                      <span className="px-2 py-0.5 rounded-md bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] font-bold text-[10px] tracking-wide uppercase flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-[#B7F36B]" /> Original (Kept)
                       </span>
-                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <span className="text-[11px] text-[#777E74] flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {new Date(group.canonicalItem.createdAt).toLocaleDateString()}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="w-16 h-12 rounded-lg bg-[#2C3531] border border-[#334155] overflow-hidden flex-shrink-0">
+                      <div className="w-16 h-12 rounded-lg bg-[#080908] border border-[#30362E] overflow-hidden flex-shrink-0">
                         <img
                           src={group.canonicalItem.thumbnailUri || group.canonicalItem.imageUrl}
                           alt={group.canonicalItem.title}
@@ -291,13 +287,13 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-xs text-white truncate">
+                        <h4 className="font-bold text-xs text-[#F7F8F5] truncate">
                           {group.canonicalItem.title}
                         </h4>
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-[11px] text-[#A5AAA1] truncate">
                           {group.canonicalItem.fileName || "screenshot.png"}
                         </p>
-                        <div className="text-[10px] text-[#D1E8E2] font-medium mt-0.5">
+                        <div className="text-[10px] text-[#B7F36B] font-medium mt-0.5">
                           ✓ Completed AI Vision & OCR Indexing
                         </div>
                       </div>
@@ -309,19 +305,19 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
                     {group.duplicateItems.map((dup, dIdx) => (
                       <div
                         key={dup.id + dIdx}
-                        className="p-3.5 rounded-xl bg-[#2C3531]/60 border border-rose-500/20 space-y-2 relative"
+                        className="p-3.5 rounded-xl bg-[#141714] border border-[#30362E] space-y-2 relative"
                       >
                         <div className="flex items-center justify-between text-xs">
-                          <span className="px-2 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-400 font-bold text-[10px] tracking-wide uppercase flex items-center gap-1">
-                            <Copy className="w-3 h-3" /> Duplicate Copy #{dIdx + 1}
+                          <span className="px-2 py-0.5 rounded-md bg-[#1B1F1A] border border-[#30362E] text-[#A5AAA1] font-bold text-[10px] tracking-wide uppercase flex items-center gap-1">
+                            <Copy className="w-3 h-3 text-[#A5AAA1]" /> Duplicate Copy #{dIdx + 1}
                           </span>
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-[#777E74]">
                             {new Date(dup.createdAt).toLocaleDateString()}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <div className="w-16 h-12 rounded-lg bg-[#2C3531] border border-[#334155] overflow-hidden flex-shrink-0 opacity-70">
+                          <div className="w-16 h-12 rounded-lg bg-[#080908] border border-[#30362E] overflow-hidden flex-shrink-0 opacity-70">
                             <img
                               src={dup.thumbnailUri || dup.imageUrl}
                               alt={dup.title}
@@ -329,13 +325,13 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
                             />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-medium text-xs text-slate-300 truncate">
+                            <h4 className="font-medium text-xs text-[#A5AAA1] truncate">
                               {dup.title}
                             </h4>
-                            <p className="text-[11px] text-slate-500 truncate">
+                            <p className="text-[11px] text-[#777E74] truncate">
                               {dup.fileName || "copy.png"}
                             </p>
-                            <div className="text-[10px] text-[#D9B08C] font-medium mt-0.5">
+                            <div className="text-[10px] text-[#777E74] font-medium mt-0.5">
                               Identical binary content hash
                             </div>
                           </div>
@@ -356,16 +352,16 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="absolute inset-0 z-50 bg-[#2C3531]/95 backdrop-blur-md p-6 flex flex-col items-center justify-center text-center space-y-4"
+              className="absolute inset-0 z-50 bg-[#141714]/95 backdrop-blur-md p-6 flex flex-col items-center justify-center text-center space-y-4"
             >
-              <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] flex items-center justify-center shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
                 <AlertTriangle className="w-7 h-7" />
               </div>
               <div className="max-w-md space-y-2">
-                <h3 className="text-lg font-bold text-white">Clean All Duplicate Screenshots?</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <h3 className="text-lg font-bold text-[#F7F8F5]">Clean All Duplicate Screenshots?</h3>
+                <p className="text-xs text-[#A5AAA1] leading-relaxed">
                   SnapFind will keep the primary canonical master copy for every group and safely move{" "}
-                  <strong className="text-white">{totalDuplicatesCount} redundant copies</strong> to your Trash.
+                  <strong className="text-[#F7F8F5]">{totalDuplicatesCount} redundant copies</strong> to your Trash.
                   You can restore any item from Trash later if needed.
                 </p>
               </div>
@@ -373,16 +369,16 @@ export const DuplicateManagerModal: React.FC<DuplicateManagerModalProps> = ({
               <div className="flex items-center gap-3 pt-2">
                 <button
                   onClick={() => setConfirmAllOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-[#334155] bg-[#1E293B] hover:bg-[#243347] text-xs font-semibold text-slate-300 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-xs font-bold text-[#A5AAA1] cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.3)]"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCleanAllDuplicates}
                   disabled={isCleaning}
-                  className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-lg shadow-rose-500/20 cursor-pointer flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.4)] cursor-pointer flex items-center gap-2"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4 text-[#10130D]" />
                   Yes, Clean {totalDuplicatesCount} Copies
                 </button>
               </div>

@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import {
   Search,
-  Sparkles,
   Bookmark,
   FileText,
   Clock,
@@ -151,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-[#F1F5F9] pb-24 font-sans selection:bg-[#116466] selection:text-[#F1F5F9]">
+    <div className="min-h-screen bg-[#080908] text-[#F7F8F5] pb-24 font-sans selection:bg-[#B7F36B] selection:text-[#080908]">
       {/* 3D Vault Explorer Modal */}
       <Vault3DExplorerModal
         isOpen={is3DVaultOpen}
@@ -162,9 +161,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
         {/* Top Header & Quick Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b border-[#273548] pb-4 sm:pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b border-[#30362E] pb-4 sm:pb-6">
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-[#F1F5F9] tracking-tight truncate whitespace-nowrap">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-[#F7F8F5] tracking-tight truncate whitespace-nowrap">
               Home
             </h1>
           </div>
@@ -172,15 +171,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               onClick={() => setIs3DVaultOpen(true)}
-              className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl bg-[#16202C] hover:bg-[#116466]/20 text-[#D1E8E2] border border-[#273548] hover:border-[#116466] transition-all shadow-md group cursor-pointer"
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl bg-[#141714] hover:bg-[#1B1F1A] text-[#F7F8F5] border border-[#30362E] transition-all shadow-[4px_4px_10px_rgba(0,0,0,0.5),-2px_-2px_6px_rgba(255,255,255,0.02)] group cursor-pointer"
             >
-              <Maximize2 className="w-4 h-4 text-[#116466] group-hover:scale-110 transition-transform shrink-0" />
+              <Maximize2 className="w-4 h-4 text-[#A5AAA1] group-hover:text-[#F7F8F5] transition-colors shrink-0" />
               <span className="text-xs sm:text-sm font-semibold truncate whitespace-nowrap">3D View</span>
             </button>
 
             <button
               onClick={() => onNavigate("gallery")}
-              className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl bg-[#116466] hover:bg-[#116466]/80 text-[#F1F5F9] font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-[#116466]/30 cursor-pointer"
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[44px] rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-xs sm:text-sm transition-all shadow-[3px_3px_8px_rgba(0,0,0,0.45),-1px_-1px_3px_rgba(255,255,255,0.05)] border border-[#B7F36B] cursor-pointer"
             >
               <Layers className="w-4 h-4 shrink-0" />
               <span className="truncate whitespace-nowrap">Gallery ({totalScreenshots})</span>
@@ -188,23 +187,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* PROMINENT SEARCH BAR */}
-        <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#116466]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-
+        {/* PROMINENT RECESSED SEARCH BAR */}
+        <div className="bg-[#141714] rounded-2xl p-6 border border-[#30362E] shadow-[8px_8px_20px_rgba(0,0,0,0.65),-4px_-4px_12px_rgba(255,255,255,0.03)] relative overflow-hidden">
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative flex items-center">
-              <Search className="absolute left-4 w-5 h-5 text-[#116466] pointer-events-none" />
+              <Search className="absolute left-4 w-5 h-5 text-[#A5AAA1] pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search anything: 'Electricity bill', 'Tracking number', 'Laptop price', 'WhatsApp'..."
-                className="w-full pl-12 pr-28 py-3.5 bg-[#0B0F19]/80 border border-[#334155] focus:border-[#116466] focus:ring-2 focus:ring-[#116466]/40 rounded-xl text-base text-[#F1F5F9] placeholder-[#D1E8E2]/40 transition-all outline-none"
+                className="w-full pl-12 pr-28 py-3.5 bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] shadow-[inset_3px_3px_8px_rgba(0,0,0,0.65),inset_-2px_-2px_5px_rgba(255,255,255,0.02)] rounded-xl text-base text-[#F7F8F5] placeholder-[#777E74] transition-all outline-none"
               />
               <button
                 type="submit"
-                className="absolute right-2 px-4 py-2 bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] font-medium text-sm rounded-lg transition-colors flex items-center gap-1.5 shadow-md shadow-[#116466]/30"
+                className="absolute right-2 px-4 py-2 bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm rounded-lg transition-colors flex items-center gap-1.5 shadow-[2px_2px_6px_rgba(0,0,0,0.4)] cursor-pointer"
               >
                 <span>Find</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -214,8 +211,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Quick Natural Language Suggestion Tags */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-[#D1E8E2]/60 mr-1 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#116466]" />
+            <span className="text-xs font-medium text-[#A5AAA1] mr-1 flex items-center gap-1">
+              <Tag className="w-3.5 h-3.5 text-[#B7F36B]" />
               Quick Searches:
             </span>
             {QUICK_SEARCH_TAGS.map((tag) => (
@@ -225,7 +222,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   setSearchQuery(tag.query);
                   onExecuteSearch(tag.query);
                 }}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#0B0F19]/60 hover:bg-[#116466]/20 text-[#D1E8E2] border border-[#334155] hover:border-[#116466] transition-colors"
+                className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#0D0F0D] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] hover:border-[#B7F36B] transition-colors cursor-pointer min-h-[36px]"
               >
                 {tag.label}
               </button>
@@ -234,30 +231,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* REAL-TIME INDEXING STATUS WIDGET */}
-        <div className="bg-[#1E293B] rounded-2xl p-6 border border-[#334155] shadow-lg">
+        <div className="bg-[#141714] rounded-2xl p-6 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)]">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <div
-                className={`w-3 h-3 rounded-full ${
+                className={`w-2.5 h-2.5 rounded-full ${
                   indexingState.status === "scanning"
-                    ? "bg-[#116466] animate-ping"
+                    ? "bg-[#B7F36B]"
                     : indexingState.status === "paused"
-                    ? "bg-amber-400"
+                    ? "bg-[#A5AAA1]"
                     : indexingState.status === "error"
                     ? "bg-rose-500"
-                    : "bg-emerald-400"
+                    : "bg-[#B7F36B]"
                 }`}
               />
               <div className="min-w-0">
-                <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 truncate whitespace-nowrap">
+                <h3 className="text-sm sm:text-base font-bold text-[#F7F8F5] flex items-center gap-2 truncate whitespace-nowrap">
                   <span className="truncate whitespace-nowrap">Smart Gallery Indexing Engine</span>
                   <span
                     className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border shrink-0 ${
                       indexingState.status === "scanning"
-                        ? "bg-[#116466]/30 text-[#D1E8E2] border-[#116466]"
+                        ? "bg-[#B7F36B]/20 text-[#B7F36B] border-[#B7F36B]/40"
                         : indexingState.status === "paused"
-                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                        : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                        ? "bg-[#1B1F1A] text-[#A5AAA1] border-[#30362E]"
+                        : "bg-[#B7F36B]/15 text-[#B7F36B] border-[#B7F36B]/30"
                     }`}
                   >
                     {indexingState.status === "scanning"
@@ -267,7 +264,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : "Ready & Synced"}
                   </span>
                 </h3>
-                <p className="text-xs text-[#D1E8E2]/70 mt-0.5 truncate whitespace-nowrap">
+                <p className="text-xs text-[#A5AAA1] mt-0.5 truncate whitespace-nowrap">
                   {indexingState.status === "scanning"
                     ? `Processing batch ${indexingState.currentBatchIndex + 1}/${indexingState.totalBatches || 1}: ${
                         indexingState.currentItemName || "analyzing screenshot..."
@@ -284,7 +281,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {indexingState.status === "scanning" ? (
                 <button
                   onClick={handlePauseIndexing}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                 >
                   <Pause className="w-3.5 h-3.5" />
                   <span>Pause</span>
@@ -292,7 +289,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               ) : indexingState.status === "paused" ? (
                 <button
                   onClick={handleResumeIndexing}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] text-xs font-semibold transition-colors shadow-md shadow-[#116466]/30"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold transition-colors shadow-[2px_2px_8px_rgba(0,0,0,0.5)] cursor-pointer"
                 >
                   <Play className="w-3.5 h-3.5" />
                   <span>Resume</span>
@@ -300,16 +297,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               ) : (
                 <button
                   onClick={handleResumeIndexing}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1E293B] hover:bg-[#116466]/20 text-[#D1E8E2] border border-[#334155] hover:border-[#116466] text-xs font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] hover:border-[#B7F36B] text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-[#116466]" />
+                  <RotateCcw className="w-3.5 h-3.5 text-[#B7F36B]" />
                   <span>Scan Delta</span>
                 </button>
               )}
 
               <button
                 onClick={handleRetryIndexing}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B0F19]/60 hover:bg-[#0B0F19] text-[#D1E8E2] border border-[#334155] text-xs font-medium transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0D0F0D] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] text-xs font-medium transition-colors cursor-pointer"
                 title="Retry failed items"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -320,63 +317,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Real-time Progress Bar */}
           <div className="space-y-1.5 mb-4">
-            <div className="flex justify-between text-xs font-medium text-[#D1E8E2]/80">
+            <div className="flex justify-between text-xs font-medium text-[#A5AAA1]">
               <span>Indexing Progress</span>
-              <span className="font-mono text-[#D1E8E2] font-semibold">{indexingState.percent || 100}%</span>
+              <span className="font-mono text-[#F7F8F5] font-semibold">{indexingState.percent || 100}%</span>
             </div>
-            <div className="w-full h-2.5 bg-[#0B0F19] rounded-full overflow-hidden border border-[#334155]">
+            <div className="w-full h-2.5 bg-[#0D0F0D] rounded-full overflow-hidden border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.6)]">
               <div
-                className="h-full bg-gradient-to-r from-[#116466] to-[#D1E8E2] transition-all duration-300"
+                className="h-full bg-[#B7F36B] transition-all duration-300"
                 style={{ width: `${Math.max(4, indexingState.percent || 100)}%` }}
               />
             </div>
           </div>
 
           {/* Stats Breakdown Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-[#334155]/60 text-center">
-            <div className="bg-[#0B0F19]/40 p-2.5 rounded-xl border border-[#334155]/60">
-              <div className="text-xs text-[#D1E8E2]/60">Total Gallery</div>
-              <div className="text-lg font-bold text-[#F1F5F9] font-mono mt-0.5">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-[#30362E] text-center">
+            <div className="bg-[#0D0F0D] p-2.5 rounded-xl border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.5)]">
+              <div className="text-xs text-[#777E74]">Total Gallery</div>
+              <div className="text-lg font-bold text-[#F7F8F5] font-mono mt-0.5">
                 {indexingState.totalImages || totalScreenshots}
               </div>
             </div>
-            <div className="bg-[#0B0F19]/40 p-2.5 rounded-xl border border-[#334155]/60">
-              <div className="text-xs text-[#D1E8E2]/60">Indexed</div>
-              <div className="text-lg font-bold text-emerald-400 font-mono mt-0.5">
+            <div className="bg-[#0D0F0D] p-2.5 rounded-xl border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.5)]">
+              <div className="text-xs text-[#777E74]">Indexed</div>
+              <div className="text-lg font-bold text-[#B7F36B] font-mono mt-0.5">
                 {totalScreenshots}
               </div>
             </div>
-            <div className="bg-[#0B0F19]/40 p-2.5 rounded-xl border border-[#334155]/60">
-              <div className="text-xs text-[#D1E8E2]/60">Pending</div>
-              <div className="text-lg font-bold text-amber-300 font-mono mt-0.5">
+            <div className="bg-[#0D0F0D] p-2.5 rounded-xl border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.5)]">
+              <div className="text-xs text-[#777E74]">Pending</div>
+              <div className="text-lg font-bold text-[#A5AAA1] font-mono mt-0.5">
                 {indexingState.pendingImages || 0}
               </div>
             </div>
-            <div className="bg-[#0B0F19]/40 p-2.5 rounded-xl border border-[#334155]/60">
-              <div className="text-xs text-[#D1E8E2]/60">Skipped (Unchanged)</div>
-              <div className="text-lg font-bold text-[#D1E8E2] font-mono mt-0.5">
+            <div className="bg-[#0D0F0D] p-2.5 rounded-xl border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.5)]">
+              <div className="text-xs text-[#777E74]">Skipped (Unchanged)</div>
+              <div className="text-lg font-bold text-[#A5AAA1] font-mono mt-0.5">
                 {indexingState.skippedImages || 0}
               </div>
             </div>
-            <div className="bg-[#0B0F19]/40 p-2.5 rounded-xl border border-[#334155]/60">
-              <div className="text-xs text-[#D1E8E2]/60">Failed</div>
-              <div className="text-lg font-bold text-rose-400 font-mono mt-0.5">
+            <div className="bg-[#0D0F0D] p-2.5 rounded-xl border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.5)]">
+              <div className="text-xs text-[#777E74]">Failed</div>
+              <div className="text-lg font-bold text-[#A5AAA1] font-mono mt-0.5">
                 {indexingState.failedImages || 0}
               </div>
             </div>
           </div>
 
           {/* Honest Platform Access Disclosure */}
-          <div className="mt-3 pt-2.5 border-t border-[#334155]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-[#94A3B8]">
+          <div className="mt-3 pt-2.5 border-t border-[#30362E] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-[#A5AAA1]">
             <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
               <span>
-                <strong className="text-slate-200">Browser Privacy Sandbox:</strong> Web browsers do not permit silent background access to your phone or PC gallery without user permission. Use <em>Batch Import</em> to select screenshot folders or drag-and-drop.
+                <strong className="text-[#F7F8F5]">Browser Privacy Sandbox:</strong> Web browsers do not permit silent background access to your phone or PC gallery without user permission. Use <em>Batch Import</em> to select screenshot folders.
               </span>
             </div>
             <button
               onClick={() => onNavigate("import")}
-              className="text-[#D1E8E2] hover:text-white underline font-semibold shrink-0 cursor-pointer text-left"
+              className="text-[#B7F36B] hover:text-[#A5E65A] underline font-semibold shrink-0 cursor-pointer text-left"
             >
               Select Screenshots Folder →
             </button>
@@ -385,68 +382,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* STATS METRIC CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#1E293B] rounded-2xl p-5 border border-[#334155] shadow-md flex items-center justify-between">
+          <div className="bg-[#141714] rounded-2xl p-5 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] flex items-center justify-between">
             <div>
-              <span className="text-xs font-medium text-[#D1E8E2]/60 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">
                 Total Screenshots
               </span>
-              <div className="text-2xl font-black text-[#F1F5F9] mt-1 font-mono">
+              <div className="text-2xl font-black text-[#F7F8F5] mt-1 font-mono">
                 {totalScreenshots}
               </div>
-              <div className="text-xs text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+              <div className="text-xs text-[#B7F36B] mt-1 flex items-center gap-1 font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Verified in Vault</span>
               </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-[#116466]/20 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2]">
+            <div className="w-12 h-12 rounded-xl bg-[#1B1F1A] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)] flex items-center justify-center text-[#B7F36B]">
               <HardDrive className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-[#1E293B] rounded-2xl p-5 border border-[#334155] shadow-md flex items-center justify-between">
+          <div className="bg-[#141714] rounded-2xl p-5 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] flex items-center justify-between">
             <div>
-              <span className="text-xs font-medium text-[#D1E8E2]/60 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">
                 Indexed Today
               </span>
-              <div className="text-2xl font-black text-[#F1F5F9] mt-1 font-mono">
+              <div className="text-2xl font-black text-[#F7F8F5] mt-1 font-mono">
                 {indexedToday}
               </div>
-              <div className="text-xs text-[#D1E8E2]/70 mt-1">Incremental scan active</div>
+              <div className="text-xs text-[#A5AAA1] mt-1">Incremental scan active</div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-[#116466]/20 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2]">
+            <div className="w-12 h-12 rounded-xl bg-[#1B1F1A] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)] flex items-center justify-center text-[#B7F36B]">
               <Zap className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-[#1E293B] rounded-2xl p-5 border border-[#334155] shadow-md flex items-center justify-between">
+          <div className="bg-[#141714] rounded-2xl p-5 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] flex items-center justify-between">
             <div>
-              <span className="text-xs font-medium text-[#D1E8E2]/60 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">
                 Starred Favorites
               </span>
-              <div className="text-2xl font-black text-[#F1F5F9] mt-1 font-mono">
+              <div className="text-2xl font-black text-[#F7F8F5] mt-1 font-mono">
                 {favoriteCount}
               </div>
-              <div className="text-xs text-[#D1E8E2]/70 mt-1">Quick accessible snaps</div>
+              <div className="text-xs text-[#A5AAA1] mt-1">Quick accessible snaps</div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-[#116466]/20 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2]">
+            <div className="w-12 h-12 rounded-xl bg-[#1B1F1A] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)] flex items-center justify-center text-[#B7F36B]">
               <Bookmark className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-[#1E293B] rounded-2xl p-5 border border-[#334155] shadow-md flex items-center justify-between">
+          <div className="bg-[#141714] rounded-2xl p-5 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] flex items-center justify-between">
             <div>
-              <span className="text-xs font-medium text-[#D1E8E2]/60 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">
                 OCR Accuracy
               </span>
-              <div className="text-2xl font-black text-[#F1F5F9] mt-1 font-mono">
+              <div className="text-2xl font-black text-[#F7F8F5] mt-1 font-mono">
                 {avgOcrAccuracy}%
               </div>
-              <div className="text-xs text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+              <div className="text-xs text-[#B7F36B] mt-1 flex items-center gap-1 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Multi-lingual engine</span>
               </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-[#116466]/20 border border-[#116466]/40 flex items-center justify-center text-[#D1E8E2]">
+            <div className="w-12 h-12 rounded-xl bg-[#1B1F1A] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)] flex items-center justify-center text-[#B7F36B]">
               <FileText className="w-6 h-6" />
             </div>
           </div>
@@ -455,13 +452,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* CATEGORY PILLS */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2 min-w-0">
-            <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 min-w-0 truncate whitespace-nowrap">
-              <Tag className="w-4 h-4 text-[#116466] shrink-0" />
+            <h3 className="text-sm sm:text-base font-bold text-[#F7F8F5] flex items-center gap-2 min-w-0 truncate whitespace-nowrap">
+              <Tag className="w-4 h-4 text-[#B7F36B] shrink-0" />
               <span className="truncate whitespace-nowrap">Vault Categories</span>
             </h3>
             <button
               onClick={() => onNavigate("gallery")}
-              className="text-xs text-[#D1E8E2] hover:text-[#F1F5F9] hover:underline shrink-0"
+              className="text-xs text-[#A5AAA1] hover:text-[#B7F36B] hover:underline shrink-0 cursor-pointer"
             >
               View all
             </button>
@@ -472,10 +469,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 key={cat}
                 onClick={() => onSelectCategory(cat as CategoryType)}
-                className="flex items-center gap-2 px-3 sm:px-3.5 py-2 min-h-[40px] rounded-xl bg-[#16202C] hover:bg-[#116466]/20 text-[#F1F5F9] border border-[#273548] hover:border-[#116466] transition-all text-xs font-medium shadow-sm group"
+                className="flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl bg-[#141714] hover:bg-[#1B1F1A] text-[#F7F8F5] border border-[#30362E] hover:border-[#B7F36B] transition-all text-xs font-semibold shadow-[3px_3px_8px_rgba(0,0,0,0.45),-1px_-1px_3px_rgba(255,255,255,0.02)] group cursor-pointer"
               >
                 <span>{cat}</span>
-                <span className="px-1.5 py-0.5 rounded-full bg-[#0B0F19] text-[#D1E8E2] font-mono text-[11px] group-hover:bg-[#116466] group-hover:text-[#F1F5F9] transition-colors">
+                <span className="px-1.5 py-0.5 rounded-full bg-[#0D0F0D] text-[#A5AAA1] font-mono text-[11px] group-hover:text-[#B7F36B] transition-colors border border-[#30362E]">
                   {count}
                 </span>
               </button>
@@ -488,32 +485,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Recent Screenshots Gallery (2 Cols) */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between gap-2 min-w-0">
-              <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 min-w-0 truncate whitespace-nowrap">
-                <Clock className="w-4 h-4 text-[#116466] shrink-0" />
+              <h3 className="text-sm sm:text-base font-bold text-[#F7F8F5] flex items-center gap-2 min-w-0 truncate whitespace-nowrap">
+                <Clock className="w-4 h-4 text-[#B7F36B] shrink-0" />
                 <span className="truncate whitespace-nowrap">Recent Screenshots</span>
               </h3>
               <button
                 onClick={() => onNavigate("gallery")}
-                className="text-xs text-[#D1E8E2] hover:underline shrink-0"
+                className="text-xs text-[#A5AAA1] hover:text-[#B7F36B] hover:underline shrink-0 cursor-pointer"
               >
                 Gallery view
               </button>
             </div>
 
             {recentScreenshots.length === 0 ? (
-              <div className="bg-[#1E293B] rounded-2xl p-8 border border-[#334155] text-center text-[#D1E8E2]/60">
-                <HardDrive className="w-8 h-8 mx-auto text-[#116466] mb-2" />
+              <div className="bg-[#141714] rounded-2xl p-8 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65)] text-center text-[#A5AAA1]">
+                <HardDrive className="w-8 h-8 mx-auto text-[#B7F36B] mb-2" />
                 <p className="text-sm">No screenshots indexed yet. Import screenshots to begin.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {recentScreenshots.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => onSelectScreenshot(item)}
-                    className="group bg-[#1E293B] rounded-xl overflow-hidden border border-[#334155] hover:border-[#116466] transition-all cursor-pointer shadow-md flex flex-col"
+                    className="group bg-[#141714] rounded-xl overflow-hidden border border-[#30362E] hover:border-[#B7F36B] transition-all cursor-pointer shadow-[4px_4px_12px_rgba(0,0,0,0.55),-2px_-2px_6px_rgba(255,255,255,0.02)] flex flex-col"
                   >
-                    <div className="aspect-[4/3] bg-[#0B0F19] relative overflow-hidden flex items-center justify-center">
+                    <div className="aspect-[4/3] bg-[#0D0F0D] relative overflow-hidden flex items-center justify-center">
                       {item.thumbnailUri || item.imageUrl ? (
                         <img
                           src={item.thumbnailUri || item.imageUrl}
@@ -522,17 +519,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           loading="lazy"
                         />
                       ) : (
-                        <FileText className="w-8 h-8 text-[#334155]" />
+                        <FileText className="w-8 h-8 text-[#30362E]" />
                       )}
-                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-[#0B0F19]/80 backdrop-blur-sm text-[10px] font-semibold text-[#D1E8E2] border border-[#334155]">
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-[#080908] text-[10px] font-semibold text-[#B7F36B] border border-[#30362E]">
                         {item.category || "General"}
                       </div>
                     </div>
                     <div className="p-3 flex-1 flex flex-col justify-between">
-                      <div className="text-xs font-bold text-[#F1F5F9] truncate whitespace-nowrap group-hover:text-[#D1E8E2] transition-colors">
+                      <div className="text-xs font-bold text-[#F7F8F5] truncate whitespace-nowrap group-hover:text-[#B7F36B] transition-colors">
                         {item.title || "Untitled"}
                       </div>
-                      <div className="text-[11px] text-[#D1E8E2]/60 truncate whitespace-nowrap mt-1">
+                      <div className="text-[11px] text-[#A5AAA1] truncate whitespace-nowrap mt-1">
                         {item.summary || item.fullText || "Screenshot"}
                       </div>
                     </div>
@@ -544,44 +541,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Recent Search Activity (1 Col) */}
           <div className="space-y-4">
-            <h3 className="text-sm sm:text-base font-bold text-[#F1F5F9] flex items-center gap-2 truncate whitespace-nowrap">
-              <Search className="w-4 h-4 text-[#116466] shrink-0" />
+            <h3 className="text-sm sm:text-base font-bold text-[#F7F8F5] flex items-center gap-2 truncate whitespace-nowrap">
+              <Search className="w-4 h-4 text-[#B7F36B] shrink-0" />
               <span className="truncate whitespace-nowrap">Recent Search Activity</span>
             </h3>
 
-            <div className="bg-[#1E293B] rounded-2xl p-4 border border-[#334155] shadow-md space-y-2">
+            <div className="bg-[#141714] rounded-2xl p-4 border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-2">
               {searchHistory && searchHistory.length > 0 ? (
                 searchHistory.slice(0, 7).map((hist) => (
                   <div
                     key={hist.id}
                     onClick={() => onExecuteSearch(hist.query)}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#0B0F19]/60 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#1B1F1A] transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden">
-                      <Search className="w-3.5 h-3.5 text-[#116466] flex-shrink-0 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-medium text-[#F1F5F9] truncate group-hover:text-[#D1E8E2]">
+                      <Search className="w-3.5 h-3.5 text-[#B7F36B] flex-shrink-0 group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-medium text-[#F7F8F5] truncate group-hover:text-[#B7F36B]">
                         {hist.query}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono text-[#D1E8E2]/60 flex-shrink-0">
+                    <span className="text-[10px] font-mono text-[#A5AAA1] flex-shrink-0">
                       {hist.resultCount || 0} hits
                     </span>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-6 text-xs text-[#D1E8E2]/60">
-                  <Search className="w-6 h-6 mx-auto text-[#334155] mb-2" />
+                <div className="text-center py-6 text-xs text-[#A5AAA1]">
+                  <Search className="w-6 h-6 mx-auto text-[#777E74] mb-2" />
                   <span>No recent searches. Try querying above.</span>
                 </div>
               )}
             </div>
 
             {/* Security Status Info Card */}
-            <div className="bg-[#116466]/15 border border-[#116466]/40 rounded-2xl p-4 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-[#D1E8E2] flex-shrink-0 mt-0.5" />
+            <div className="bg-[#141714] border border-[#30362E] shadow-[4px_4px_12px_rgba(0,0,0,0.5)] rounded-2xl p-4 flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 text-[#B7F36B] flex-shrink-0 mt-0.5" />
               <div>
-                <div className="text-xs font-bold text-[#F1F5F9]">Private & Device First</div>
-                <div className="text-[11px] text-[#D1E8E2]/80 mt-0.5 leading-relaxed">
+                <div className="text-xs font-bold text-[#F7F8F5]">Private & Device First</div>
+                <div className="text-[11px] text-[#A5AAA1] mt-0.5 leading-relaxed">
                   SnapFind runs local OCR and SHA-256 duplicate filters. Your original device files are never deleted automatically.
                 </div>
               </div>

@@ -2,15 +2,18 @@
 
 @layer base {
   :root {
-    /* SnapFind AI - Official Darkened Cyber Teal & Forest Slate Palette:
-       - Deep Forest Slate: #1A2220 — main page background
-       - Cyber Teal (Darkened): #080908 — landing page background
-       - Cyber Teal Brand Accent: #B7F36B — brand accents, active states, and highlights
-       - Soft Mint: #F7F8F5 — subtle highlights and light accent surfaces
-       - Charcoal Card: #141714 — cards, sidebars, modals, and search panels
-       - Frost White: #F7F8F5 — primary text
-       - Shadow Gray: #30362E — borders and dividers
-       - Warm Beige: #A5AAA1 — optional, restrained secondary highlights
+    /* SnapFind AI - Official 11-Color Palette:
+       - Main background: #080908
+       - Secondary background: #0D0F0D
+       - Card background: #141714
+       - Elevated surface: #1B1F1A
+       - Hover surface: #222720
+       - Primary text: #F7F8F5
+       - Secondary text: #A5AAA1
+       - Muted text: #777E74
+       - Borders: #30362E
+       - Primary green: #B7F36B
+       - Green hover: #A5E65A
     */
     --sf-bg-from: #080908;
     --sf-bg-to: #080908;
