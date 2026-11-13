@@ -49,17 +49,24 @@ app.use((req, res, next) => {
   ];
   res.setHeader("Content-Security-Policy", cspDirectives.join("; "));
 
-  // CORS Origin Hardening
+  // CORS: compare parsed hostnames exactly; substring checks accept lookalike attacker domains.
   const origin = req.headers.origin;
   if (origin) {
-    const isAllowedOrigin =
-      origin.includes("localhost") ||
-      origin.includes("127.0.0.1") ||
-      origin.includes("0.0.0.0") ||
-      origin.includes("ai.studio") ||
-      origin.includes("google.com");
-    if (isAllowedOrigin) {
+    let allowed = false;
+    try {
+      const parsed = new URL(origin);
+      const hostname = parsed.hostname.toLowerCase();
+      const isLocal = (hostname === "localhost" || hostname === "127.0.0.1") &&
+        (parsed.protocol === "http:" || parsed.protocol === "https:");
+      const isProduction = parsed.protocol === "https:" &&
+        (hostname === "snapfind.ai.studio" || hostname === "aistudio.google.com" || hostname === "ai.studio");
+      allowed = isLocal || isProduction;
+    } catch {
+      allowed = false;
+    }
+    if (allowed) {
       res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-device-id, x-user-id");
       res.setHeader("Access-Control-Allow-Credentials", "true");
