@@ -56,11 +56,11 @@ export const FeatureLockedCard: React.FC<FeatureLockedCardProps> = ({
         className={`rounded-3xl p-6 sm:p-8 border relative overflow-hidden transition-all text-center max-w-xl mx-auto ${
           isDark
             ? "bg-[#1E293B] border-[#334155] text-[#F1F5F9] shadow-xl"
-            : "bg-gradient-to-b from-white to-slate-50 border-blue-200 text-slate-900 shadow-lg"
+            : "bg-[#141714] border-[#30362E] text-[#F7F8F5] shadow-lg"
         } ${className}`}
       >
         {/* Glow backdrop */}
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-48 bg-[#B7F36B]/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col items-center space-y-4">
           {/* Icon with lock overlay */}
@@ -69,7 +69,7 @@ export const FeatureLockedCard: React.FC<FeatureLockedCardProps> = ({
               className={`w-16 h-16 rounded-2xl border flex items-center justify-center shadow-lg ${
                 isDark
                   ? "bg-[#116466]/20 border-[#116466]/40 text-[#D1E8E2] shadow-[#116466]/15"
-                  : "bg-blue-50 border-blue-200 text-blue-600 shadow-blue-500/10"
+                  : "bg-[#1B1F1A] border-[#30362E] text-[#B7F36B]"
               }`}
             >
               <IconComponent className="w-8 h-8" />
@@ -114,7 +114,7 @@ export const FeatureLockedCard: React.FC<FeatureLockedCardProps> = ({
               onClick={handleOpenModal}
               className="w-full sm:w-auto px-7 py-3 rounded-xl text-xs font-extrabold bg-[#116466] hover:bg-[#116466]/90 text-[#F1F5F9] shadow-md shadow-[#116466]/30 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
             >
-              <span>Unlock with Pro ($2.99/mo)</span>
+              <span>Unlock with Pro (PKR 249/mo)</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

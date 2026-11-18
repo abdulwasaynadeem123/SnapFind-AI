@@ -9,9 +9,10 @@ import {
   CustomerPortalResult,
 } from "./PaymentProvider";
 import { BillingProduct, SubscriptionRecord } from "../../types";
+import { getAuthBearerHeader } from "../supabase";
 
 export const GOOGLE_PLAY_CONFIG = {
-  PACKAGE_NAME: "com.snapfind.app",
+  PACKAGE_NAME: "com.snapfind.ai",
   SKUS: {
     PRODUCT_ID: "snapfind_pro",
     BASE_PLAN_MONTHLY: "pro-monthly",
@@ -108,8 +109,9 @@ export class GooglePlayBillingProvider implements PaymentProvider {
 
   public async getSubscriptionStatus(userId?: string): Promise<SubscriptionRecord | null> {
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch(`/api/billing/subscription-status?userId=${encodeURIComponent(userId || "guest")}`, {
-        headers: { "x-user-id": userId || "guest" },
+        headers: { "x-user-id": userId || "guest", ...authHeaders },
       });
       if (res.ok) {
         const data = await res.json();
@@ -160,16 +162,19 @@ export class GooglePlayBillingProvider implements PaymentProvider {
         };
       }
     } else {
-      // Running in web or preview environment: fallback to simulated sandbox token
-      orderId = `GPA.${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-      purchaseToken = `token_play_${productId.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}`;
+      return {
+        success: false,
+        platform: "android",
+        error: "Google Play Billing is only available in the Android app. Please complete checkout via the web pricing flow.",
+      };
     }
 
     // 2. Authoritative Server Verification (CRITICAL: Client NEVER decides entitlement directly)
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const verifyRes = await fetch("/api/billing/verify-purchase", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           userId,
           productId,
@@ -232,9 +237,10 @@ export class GooglePlayBillingProvider implements PaymentProvider {
     }
 
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/restore-purchases", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           userId: userId || "guest",
           purchases: nativePurchases,
@@ -294,7 +300,10 @@ export class GooglePlayBillingProvider implements PaymentProvider {
       }
     }
 
-    window.open(playUrl, "_blank", "noopener,noreferrer");
-    return { url: playUrl, openedExternally: true };
+    return {
+      url: playUrl,
+      openedExternally: false,
+      instructions: "Manage your Android subscription in Google Play Store -> Payments & subscriptions.",
+    };
   }
 }

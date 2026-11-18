@@ -85,7 +85,7 @@ export async function analyzeScreenshotImage(
       if (errData?.quotaExceeded) {
         return {
           success: false,
-          error: "Monthly AI Vision limit reached. Upgrade to Pro for 2,000 monthly scans.",
+          error: "Monthly AI analysis limit reached. Upgrade your plan to unlock higher scan limits.",
           details: "quota_exceeded",
         };
       }
@@ -149,10 +149,12 @@ export async function searchScreenshotsAI(
           isFavorite: s.isFavorite,
         }));
 
+        const authHeaders = await getAuthBearerHeader().catch(() => ({}));
         const response = await fetch("/api/search-screenshots", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...authHeaders,
           },
           body: JSON.stringify({
             query: cleanQuery,

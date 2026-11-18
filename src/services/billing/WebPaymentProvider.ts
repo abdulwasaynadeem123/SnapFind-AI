@@ -8,6 +8,7 @@ import {
   CustomerPortalResult,
 } from "./PaymentProvider";
 import { BillingProduct, SubscriptionRecord } from "../../types";
+import { getAuthBearerHeader } from "../supabase";
 
 /**
  * Web Payment Provider
@@ -27,7 +28,7 @@ import { BillingProduct, SubscriptionRecord } from "../../types";
  */
 export class WebPaymentProvider implements PaymentProvider {
   public readonly providerId: PaymentProviderId = "web";
-  public readonly name: string = "Web Payment Gateway (Stripe / Hosted Checkout)";
+  public readonly name: string = "SnapFind Web Checkout";
   public readonly isSandbox: boolean = false;
 
   private isInit: boolean = false;
@@ -63,8 +64,9 @@ export class WebPaymentProvider implements PaymentProvider {
 
   public async getSubscriptionStatus(userId?: string): Promise<SubscriptionRecord | null> {
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch(`/api/billing/subscription-status?userId=${encodeURIComponent(userId || "guest")}`, {
-        headers: { "x-user-id": userId || "guest" },
+        headers: { "x-user-id": userId || "guest", ...authHeaders },
       });
       if (res.ok) {
         const data = await res.json();
@@ -82,9 +84,10 @@ export class WebPaymentProvider implements PaymentProvider {
     const { productId, userId = "guest", customerEmail } = options;
 
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           productId,
           userId,
@@ -122,9 +125,10 @@ export class WebPaymentProvider implements PaymentProvider {
 
   public async restorePurchases(userId?: string): Promise<RestoreResult> {
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/restore-purchases", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ userId: userId || "guest" }),
       });
 
@@ -147,9 +151,10 @@ export class WebPaymentProvider implements PaymentProvider {
 
   public async cancelSubscription(subscriptionId: string, userId?: string): Promise<CancelResult> {
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/cancel-subscription", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ subscriptionId, userId }),
       });
       const data = await res.json();
@@ -169,13 +174,14 @@ export class WebPaymentProvider implements PaymentProvider {
 
   public async openCustomerPortal(subscriptionId?: string): Promise<CustomerPortalResult> {
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/customer-portal", {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
       });
       const data = await res.json();
       if (data.portalUrl) {
-        window.open(data.portalUrl, "_blank", "noopener,noreferrer");
+        window.location.assign(data.portalUrl);
         return { url: data.portalUrl, openedExternally: true };
       }
     } catch {}

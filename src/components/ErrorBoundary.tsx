@@ -35,10 +35,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
   };
 
   private handleClearStorage = () => {
-    if (window.confirm("Clear cache and local storage? This will reset all app data to defaults.")) {
-      localStorage.clear();
-      window.location.reload();
-    }
+    localStorage.clear();
+    window.location.reload();
   };
 
   public render() {
@@ -47,11 +45,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <div
           className="min-h-screen text-[#F1F5F9] flex items-center justify-center p-6 font-sans"
           style={{
-            backgroundImage: "linear-gradient(135deg, #18211E 0%, #0A3638 100%)",
-            backgroundColor: "#18211E",
+            backgroundColor: "#080908",
           }}
         >
-          <div className="max-w-md w-full bg-[#16202C] border border-[#273548] rounded-3xl p-8 shadow-2xl space-y-6 text-center">
+          <div className="max-w-md w-full bg-[#141714] border border-[#30362E] rounded-3xl p-8 shadow-2xl space-y-6 text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30 flex items-center justify-center mx-auto">
               <AlertOctagon className="w-8 h-8" />
             </div>
@@ -72,7 +69,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <button
                 onClick={this.handleReset}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Try Recovering</span>

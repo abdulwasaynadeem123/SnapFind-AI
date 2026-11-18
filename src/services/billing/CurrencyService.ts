@@ -2,8 +2,9 @@
  * SnapFind AI - Multi-Currency Display & Exchange Rate Engine
  *
  * CANONICAL BASE PRICING (USD):
- * - Monthly Pro: USD $2.99
- * - Annual Pro: USD $24.99
+ * - Monthly Pro: PKR 249
+ * - Annual Pro: PKR 1,999
+ * - Lifetime Pro: PKR 5,999
  *
  * CRITICAL ARCHITECTURAL DIRECTIVES:
  * 1. The frontend conversion value is strictly for display and localization convenience.
@@ -143,17 +144,17 @@ export const BASELINE_EXCHANGE_RATES: Record<SupportedCurrencyCode, number> = {
  */
 export const CANONICAL_PRICING_USD = {
   FREE: 0,
-  PRO_MONTHLY: 1.07, // Equivalent for 299 PKR
-  PRO_YEARLY: 8.93, // Equivalent for 2,499 PKR
-  PRO_LIFETIME: 28.57, // Equivalent for 7,999 PKR at 280 rate
-  SAVINGS_PERCENT: 30,
+  PRO_MONTHLY: 0.89, // Equivalent for 249 PKR
+  PRO_YEARLY: 7.14, // Equivalent for 1,999 PKR
+  PRO_LIFETIME: 21.43, // Equivalent for 5,999 PKR at 280 rate
+  SAVINGS_PERCENT: 33,
 } as const;
 
 export const CANONICAL_PRICING_PKR = {
   FREE: 0,
-  PRO_MONTHLY: 299,
-  PRO_YEARLY: 2499,
-  PRO_LIFETIME: 7999,
+  PRO_MONTHLY: 249,
+  PRO_YEARLY: 1999,
+  PRO_LIFETIME: 5999,
 } as const;
 
 type CurrencyChangeListener = (currency: SupportedCurrencyCode) => void;

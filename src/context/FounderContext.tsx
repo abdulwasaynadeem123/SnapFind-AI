@@ -3,9 +3,10 @@ import { supabase, isSupabaseConfigured } from "../services/supabase";
 import { SubscriptionManager } from "../services/billing/SubscriptionManager";
 
 export interface FounderStats {
-  claimed: number;
+  claimed: number | null;
+  occupied: number | null;
   totalSpots: number;
-  remaining: number;
+  remaining: number | null;
   isAvailable: boolean;
   isLive: boolean;
   isLoading: boolean;
@@ -22,13 +23,14 @@ interface FounderContextType extends FounderStats {
   }>;
 }
 
-const TOTAL_FOUNDER_LIMIT = 50;
+const TOTAL_VIP_SEATS = 50;
 
 const defaultFounderState: FounderStats = {
-  claimed: 0,
-  totalSpots: TOTAL_FOUNDER_LIMIT,
-  remaining: TOTAL_FOUNDER_LIMIT,
-  isAvailable: true,
+  claimed: null,
+  occupied: null,
+  totalSpots: TOTAL_VIP_SEATS,
+  remaining: null,
+  isAvailable: false,
   isLive: false,
   isLoading: true,
   error: null,
@@ -42,86 +44,39 @@ const FounderContext = createContext<FounderContextType>({
 
 export const FounderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [stats, setStats] = useState<FounderStats>(defaultFounderState);
-  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
-  // Authoritative fetch directly from Supabase database with backend API verification
   const fetchAuthoritativeStats = useCallback(async () => {
     try {
-      // 1. Direct Supabase database count query (Authoritative Source of Truth)
-      if (supabase && isSupabaseConfigured) {
-        try {
-          const { count, error } = await supabase
-            .from("user_entitlements")
-            .select("*", { count: "exact", head: true })
-            .eq("is_founder", true);
-
-          if (!error && typeof count === "number" && isMountedRef.current) {
-            const claimed = count;
-            const remaining = Math.max(0, TOTAL_FOUNDER_LIMIT - claimed);
-            setStats({
-              claimed,
-              totalSpots: TOTAL_FOUNDER_LIMIT,
-              remaining,
-              isAvailable: remaining > 0,
-              isLive: true,
-              isLoading: false,
-              error: null,
-            });
-            return;
-          }
-        } catch (dbErr) {
-          console.warn("[FounderContext] Supabase direct count query warning:", dbErr);
-        }
-      }
-
-      // 2. Query dedicated backend billing endpoint if running on web with server
-      try {
-        const res = await fetch("/api/billing/founder-stats");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && isMountedRef.current) {
-            const claimed = typeof data.claimedSpots === "number" ? data.claimedSpots : typeof data.claimed === "number" ? data.claimed : 0;
-            const total = data.totalSpots || TOTAL_FOUNDER_LIMIT;
-            const remaining = Math.max(0, total - claimed);
-            setStats({
-              claimed,
-              totalSpots: total,
-              remaining,
-              isAvailable: remaining > 0,
-              isLive: true,
-              isLoading: false,
-              error: null,
-            });
-            return;
-          }
-        }
-      } catch (fetchErr) {
-        // Expected when running on local mobile app or offline
-      }
-
-      // 3. Fallback to SubscriptionManager availability
       const liveStats = await SubscriptionManager.getFounderAvailability();
-      if (isMountedRef.current) {
-        setStats({
-          claimed: liveStats.claimed,
-          totalSpots: liveStats.totalSpots || TOTAL_FOUNDER_LIMIT,
-          remaining: liveStats.remaining,
-          isAvailable: liveStats.remaining > 0,
-          isLive: false,
-          isLoading: false,
-          error: null,
-        });
-      }
+      if (!isMountedRef.current) return;
+      const total = liveStats.totalSpots || TOTAL_VIP_SEATS;
+      const occupied = Math.max(0, Math.min(total, liveStats.claimed));
+      const remaining = Math.max(0, total - occupied);
+      setStats({
+        claimed: occupied,
+        occupied,
+        totalSpots: total,
+        remaining,
+        isAvailable: remaining > 0,
+        isLive: true,
+        isLoading: false,
+        error: null,
+      });
     } catch (err: any) {
-      console.warn("[FounderContext] Error fetching authoritative founder stats:", err);
-      if (isMountedRef.current) {
-        setStats((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: "Founder seat data temporarily unavailable",
-        }));
-      }
+      console.warn("[VIPContext] Error fetching authoritative VIP seat stats:", err?.message || err);
+      if (!isMountedRef.current) return;
+      setStats({
+        claimed: null,
+        occupied: null,
+        totalSpots: TOTAL_VIP_SEATS,
+        remaining: null,
+        isAvailable: false,
+        isLive: false,
+        isLoading: false,
+        error: err?.message || "VIP seat availability is temporarily unavailable. Please try again.",
+      });
     }
   }, []);
 
@@ -129,11 +84,10 @@ export const FounderProvider: React.FC<{ children: React.ReactNode }> = ({ child
     isMountedRef.current = true;
     fetchAuthoritativeStats();
 
-    // Setup Supabase Realtime channel for instant real-time broadcasts (only if configured)
     let channel: any = null;
-    if (supabase && isSupabaseConfigured) {
+    if (supabase && isSupabaseConfigured && typeof (supabase as any).channel === "function") {
       channel = supabase
-        .channel("founder_realtime_sync")
+        .channel("vip_seat_realtime_sync")
         .on(
           "postgres_changes",
           {
@@ -145,16 +99,24 @@ export const FounderProvider: React.FC<{ children: React.ReactNode }> = ({ child
             fetchAuthoritativeStats();
           }
         )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "founder_claims",
+          },
+          () => {
+            fetchAuthoritativeStats();
+          }
+        )
         .subscribe((status: string) => {
           if (status === "SUBSCRIBED") {
-            if (isMountedRef.current) {
-              setStats((prev) => ({ ...prev, isLive: true, error: null }));
-            }
+            fetchAuthoritativeStats();
           } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             if (isMountedRef.current) {
               setStats((prev) => ({ ...prev, isLive: false }));
             }
-            // Auto reconnect & refetch on disconnect
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
             reconnectTimerRef.current = setTimeout(() => {
               fetchAuthoritativeStats();
@@ -163,15 +125,37 @@ export const FounderProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
     }
 
-    // Polling fallback every 12 seconds
+    // Periodic refresh while open
     const interval = setInterval(() => {
       fetchAuthoritativeStats();
-    }, 12000);
+    }, 15000);
+
+    // Refresh when user returns to tab/window or across devices
+    const handleFocus = () => {
+      fetchAuthoritativeStats();
+    };
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchAuthoritativeStats();
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleFocus);
+    }
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
 
     return () => {
       isMountedRef.current = false;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       clearInterval(interval);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleFocus);
+      }
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
       if (channel && supabase) {
         supabase.removeChannel(channel).catch(() => {});
       }
@@ -184,9 +168,10 @@ export const FounderProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await fetchAuthoritativeStats();
       return res;
     } catch (err: any) {
+      await fetchAuthoritativeStats();
       return {
         success: false,
-        error: err.message || "Failed to claim Founder spot.",
+        error: err.message || "Failed to claim VIP seat.",
       };
     }
   };

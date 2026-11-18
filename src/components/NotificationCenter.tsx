@@ -97,10 +97,10 @@ export function getCategoryVisuals(category: NotificationCategory | string, isDa
     case "SECURITY":
       return {
         label: "Security",
-        icon: <ShieldAlert className="w-4 h-4 text-purple-400" />,
-        badgeBg: isDark ? "bg-purple-500/15 text-purple-300 border-purple-500/30" : "bg-purple-100 text-purple-800 border-purple-200",
-        iconBg: isDark ? "bg-purple-500/10 border-purple-500/20 text-purple-400" : "bg-purple-50 border-purple-200 text-purple-600",
-        accentBorder: "border-purple-500/40",
+        icon: <ShieldAlert className="w-4 h-4 text-[#B7F36B]" />,
+        badgeBg: "bg-[#1B1F1A] text-[#B7F36B] border-[#30362E]",
+        iconBg: "bg-[#1B1F1A] border-[#30362E] text-[#B7F36B]",
+        accentBorder: "border-[#30362E]",
       };
     case "INDEXING":
       return {
@@ -138,9 +138,9 @@ export function getCategoryVisuals(category: NotificationCategory | string, isDa
     default:
       return {
         label: "System",
-        icon: <Server className="w-4 h-4 text-blue-400" />,
-        badgeBg: isDark ? "bg-blue-500/15 text-blue-300 border-blue-500/30" : "bg-blue-100 text-blue-800 border-blue-200",
-        iconBg: isDark ? "bg-blue-500/10 border-blue-500/20 text-blue-400" : "bg-blue-50 border-blue-200 text-blue-600",
+        icon: <Server className="w-4 h-4 text-[#B7F36B]" />,
+        badgeBg: isDark ? "bg-[#B7F36B]/15 text-blue-300 border-[#30362E]" : "bg-blue-100 text-blue-800 border-blue-200",
+        iconBg: isDark ? "bg-[#B7F36B]/10 border-blue-500/20 text-[#B7F36B]" : "bg-blue-50 border-blue-200 text-blue-600",
         accentBorder: "border-blue-500/40",
       };
   }
@@ -173,8 +173,8 @@ export function getPriorityVisuals(priority?: NotificationPriority) {
     default:
       return {
         label: "Normal",
-        dotColor: "bg-blue-400",
-        badge: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+        dotColor: "bg-[#B7F36B]",
+        badge: "text-[#B7F36B] bg-[#B7F36B]/10 border-blue-500/20",
         pulse: false,
       };
   }
@@ -368,7 +368,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   {toast.type === "success" && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                   {toast.type === "error" && <AlertCircle className="w-5 h-5 text-rose-400" />}
                   {toast.type === "warning" && <AlertTriangle className="w-5 h-5 text-amber-400" />}
-                  {toast.type === "info" && <Info className="w-5 h-5 text-blue-400" />}
+                  {toast.type === "info" && <Info className="w-5 h-5 text-[#B7F36B]" />}
                 </div>
 
                 <div className="flex-1 space-y-0.5 text-xs min-w-0">
@@ -424,7 +424,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <div className={`p-5 border-b space-y-3.5 ${isDark ? "border-white/10 bg-[#0c0c10]" : "border-slate-200 bg-slate-50/70"}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                    <div className="p-2.5 rounded-2xl bg-[#B7F36B]/10 border border-blue-500/20 text-[#B7F36B]">
                       <Bell className="w-5 h-5" />
                     </div>
                     <div>
@@ -482,7 +482,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     onClick={onMarkAllAsRead}
                     disabled={unreadCount === 0}
                     title="Mark all as read"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-bold text-xs transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#B7F36B] font-bold text-xs transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Mark read</span>
@@ -509,7 +509,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         onClick={() => setActiveTab(tab.id)}
                         className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                           isActive
-                            ? "bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/25"
+                            ? "bg-[#B7F36B] text-[#080908] border-[#B7F36B]"
                             : isDark
                             ? "bg-[#141418] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-[#1c1c22]"
                             : "bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -575,7 +575,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     {[1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className={`p-4 rounded-2xl border animate-pulse ${
+                        className={`p-4 rounded-2xl border ${
                           isDark ? "bg-[#121216] border-white/5" : "bg-slate-100 border-slate-200"
                         }`}
                       >
@@ -603,7 +603,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     {onRetry && (
                       <button
                         onClick={onRetry}
-                        className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                        className="px-4 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-all shadow-md cursor-pointer"
                       >
                         Retry
                       </button>
@@ -632,7 +632,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                           isDark
                             ? isRead
                               ? "bg-[#111115]/80 border-white/5 hover:border-white/15 hover:bg-[#16161c]"
-                              : "bg-[#141520] border-blue-500/30 hover:border-blue-500/50 shadow-lg shadow-blue-950/20"
+                              : "bg-[#141520] border-[#30362E] hover:border-[#B7F36B] shadow-lg shadow-blue-950/20"
                             : isRead
                             ? "bg-slate-50 border-slate-200 hover:bg-slate-100"
                             : "bg-blue-50/70 border-blue-200 hover:bg-blue-50 shadow-sm"
@@ -642,8 +642,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         {!isRead && (
                           <div className="absolute top-4 right-4 flex items-center gap-1.5">
                             <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                              <span className="absolute inline-flex h-full w-full rounded-full bg-[#B7F36B] opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#B7F36B]" />
                             </span>
                           </div>
                         )}
@@ -736,7 +736,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                             {/* Card Footer Actions */}
                             <div className="flex items-center justify-between pt-2 mt-1 border-t border-white/5">
                               {associatedScreenshot ? (
-                                <span className="text-[11px] font-bold text-blue-400 group-hover:text-blue-300 flex items-center gap-1">
+                                <span className="text-[11px] font-bold text-[#B7F36B] group-hover:text-[#A5E65A] flex items-center gap-1">
                                   <span>Inspect Screenshot</span>
                                   <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                                 </span>
@@ -796,7 +796,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                                   className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
                                   title={isRead ? "Mark as unread" : "Mark as read"}
                                 >
-                                  <Check className={`w-3.5 h-3.5 ${isRead ? "opacity-30" : "text-blue-400"}`} />
+                                  <Check className={`w-3.5 h-3.5 ${isRead ? "opacity-30" : "text-[#B7F36B]"}`} />
                                 </button>
                                 <button
                                   type="button"
@@ -845,7 +845,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     {activeTab !== "ALL" && (
                       <button
                         onClick={() => setActiveTab("ALL")}
-                        className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                        className="px-4 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-all shadow-md cursor-pointer"
                       >
                         View All Alerts
                       </button>
@@ -861,7 +861,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="text-[11px] font-mono">Event Engine Active</span>
                 </div>
                 <button

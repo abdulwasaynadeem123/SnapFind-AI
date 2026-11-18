@@ -1,5 +1,7 @@
 import { ScreenshotItem, UserEntitlement } from "../../types";
-import { SubscriptionManager, PLAN_LIMITS } from "./SubscriptionManager";
+import { SubscriptionManager } from "./SubscriptionManager";
+import { PLAN_CONFIG } from "./entitlementConfig";
+import { getAuthBearerHeader } from "../supabase";
 
 export interface UsageMetrics {
   // 1. AI Vision Analysis
@@ -32,7 +34,7 @@ export interface UsageMetrics {
   lastSyncedAt?: string;
 
   // 5. Tier & Timing
-  tierName: "Free" | "Pro" | "Founder Pro";
+  tierName: "Free" | "Pro" | "VIP User";
   plan: "free" | "pro" | "founder";
   isPro: boolean;
   isFounder: boolean;
@@ -176,11 +178,11 @@ class UsageServiceEngine {
     const founderNumber = ent.founderNumber;
 
     // 1. Tier Name
-    let tierName: "Free" | "Pro" | "Founder Pro" = "Free";
+    let tierName: "Free" | "Pro" | "VIP User" = "Free";
     let plan: "free" | "pro" | "founder" = "free";
 
     if (isFounder) {
-      tierName = "Founder Pro";
+      tierName = "VIP User";
       plan = "founder";
     } else if (isPro) {
       tierName = "Pro";
@@ -188,15 +190,25 @@ class UsageServiceEngine {
     }
 
     // 2. Limits based on Authoritative Plan Features
-    const screenshotsLimit = isPro
-      ? PLAN_LIMITS.PRO_MAX_SCREENSHOTS
-      : PLAN_LIMITS.FREE_MAX_SCREENSHOTS;
+    const planKey = isFounder
+      ? "founder"
+      : ent.plan && PLAN_CONFIG[ent.plan]
+      ? ent.plan
+      : isPro
+      ? "lifetime"
+      : "free";
+    const planDefaults = PLAN_CONFIG[planKey].features;
 
-    const aiAnalysesLimit = isPro
-      ? PLAN_LIMITS.PRO_AI_SCANS_MONTHLY
-      : PLAN_LIMITS.FREE_AI_SCANS_MONTHLY;
+    const screenshotsLimit =
+      ent.features?.maxIndexedScreenshots ??
+      ent.maxScreenshots ??
+      planDefaults.maxIndexedScreenshots;
 
-    const storageLimitMB = isPro ? 10000 : 500; // 10 GB vs 500 MB
+    const aiAnalysesLimit =
+      ent.features?.maxAIScansPerMonth ?? planDefaults.maxAIScansPerMonth;
+
+    const storageLimitMB =
+      ent.features?.maxStorageMB ?? planDefaults.maxStorageMB;
     const storageLimitBytes = storageLimitMB * 1024 * 1024;
 
     // 3. Calculated Usage
@@ -347,9 +359,11 @@ class UsageServiceEngine {
 
     try {
       const deviceId = this.getDeviceId();
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         "x-device-id": deviceId,
+        ...authHeaders,
       };
       if (userId) {
         headers["x-user-id"] = userId;

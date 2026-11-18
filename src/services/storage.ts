@@ -358,6 +358,7 @@ export function clearUserCache(userId?: string): void {
   cachedSettings = null;
   cachedSearchHistory = null;
   cachedUserProfile = null;
+  try { localStorage.removeItem("snapfind_user_v1"); } catch {}
 
   try {
     const { intelligentCache } = require("./intelligentCache");

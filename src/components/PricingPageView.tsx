@@ -41,15 +41,24 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   onOpenAuth,
   addToast,
 }) => {
-  const { user, isPro, refreshEntitlement } = useAuth();
+  const { user, entitlement, isPro, loading: authLoading, refreshEntitlement } = useAuth();
   const {
-    claimed: spotsClaimed,
-    totalSpots: totalFounderSpots,
-    remaining: spotsRemaining,
+    claimed: rawClaimed,
+    totalSpots: totalVipSeats = 50,
+    remaining: rawRemaining,
     isLive,
+    isLoading: isLoadingVipStats,
+    error: vipStatsError,
     claimFounderSpot,
     refreshFounderStats,
   } = useFounder();
+
+  const hasValidVipStats =
+    !vipStatsError &&
+    typeof rawClaimed === "number" &&
+    typeof rawRemaining === "number";
+  const spotsClaimed = hasValidVipStats ? Math.max(0, Math.min(totalVipSeats, rawClaimed as number)) : null;
+  const spotsRemaining = hasValidVipStats ? Math.max(0, totalVipSeats - (spotsClaimed as number)) : null;
 
   const [billingTab, setBillingTab] = useState<BillingFilter>("all");
   const [openingCheckoutPlan, setOpeningCheckoutPlan] = useState<PaddlePlanKey | null>(null);
@@ -61,13 +70,20 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   // Dynamic user plan calculation from authoritative state
   const isFounder = Boolean(
     user?.entitlement?.isFounder ||
+      entitlement?.isFounder ||
       user?.plan === "Founder" ||
       user?.entitlement?.plan === "founder" ||
+      entitlement?.plan === "founder" ||
       user?.entitlement?.tier === "Founder" ||
+      entitlement?.tier === "Founder" ||
       (user as any)?.tier === "Founder"
   );
-  const founderNumber = user?.entitlement?.founderNumber;
-  const activePlanType = user?.entitlement?.plan || user?.plan?.toLowerCase() || (isFounder ? "founder" : isPro ? "pro" : "free");
+  const founderNumber = user?.entitlement?.founderNumber || entitlement?.founderNumber || null;
+  const activePlanType =
+    user?.entitlement?.plan ||
+    entitlement?.plan ||
+    user?.plan?.toLowerCase() ||
+    (isFounder ? "founder" : isPro ? "pro" : "free");
 
   const isPaidMonthlyPro = Boolean(isPro && !isFounder && activePlanType === "monthly");
   const isPaidYearlyPro = Boolean(isPro && !isFounder && activePlanType === "yearly");
@@ -90,11 +106,14 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [comingSoonPlanName, setComingSoonPlanName] = useState<string>("Pro Plan");
 
-  // Founder seat copy based on real database state
-  const founderSeatAvailabilityLabel =
-    spotsRemaining > 0
-      ? `${spotsRemaining} Founder Seat${spotsRemaining === 1 ? "" : "s"} Available`
-      : "Founder Seats Sold Out";
+  // VIP seat copy based strictly on authoritative database state
+  const vipSeatAvailabilityLabel = !hasValidVipStats
+    ? isLoadingVipStats
+      ? "Checking VIP Seats..."
+      : "Temporarily Unavailable"
+    : (spotsRemaining as number) > 0
+    ? `${spotsRemaining} Available`
+    : "0 Available • Full";
 
   /**
    * Handle click on Paid Plans (Coming Soon)
@@ -109,24 +128,34 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
    */
   const handleClaimFreeFounder = async () => {
     if (!user || !user.id || user.id === "guest" || user.id.startsWith("local-guest")) {
-      setAuthModalPlanName("Founder 50 Plan (Lifetime Free)");
+      setAuthModalPlanName("VIP Program (Lifetime Free)");
       setShowAuthRequiredModal(true);
       return;
     }
 
     if (isFounder) {
       addToast?.({
-        title: "Founder Status Active",
-        description: `You are already verified as Founder #${founderNumber || 1} with permanent Lifetime Free Pro access.`,
+        title: "VIP Access Active",
+        description: `You already hold ${founderNumber ? `VIP Seat #${founderNumber}` : "your VIP Seat"} with permanent Lifetime Free Pro access.`,
         type: "success",
       });
       return;
     }
 
-    if (spotsRemaining <= 0) {
+    if (!hasValidVipStats) {
       addToast?.({
-        title: "Founder Seats Sold Out",
-        description: "All 50 Founder seats have been claimed. You can choose the Pro Lifetime or Pro Yearly plan.",
+        title: "Availability Unavailable",
+        description: vipStatsError || "Live VIP seat count is still loading. Please retry in a moment.",
+        type: "info",
+      });
+      refreshFounderStats();
+      return;
+    }
+
+    if ((spotsRemaining ?? 0) <= 0) {
+      addToast?.({
+        title: "VIP Seats Full",
+        description: "All 50 VIP seats have been occupied. You can choose Pro Lifetime or Pro Yearly.",
         type: "info",
       });
       return;
@@ -139,22 +168,24 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         await refreshEntitlement();
         await refreshFounderStats();
         addToast?.({
-          title: "👑 Founder Seat Claimed!",
-          description: result.message || `Congratulations! You are officially Founder #${result.founderNumber || 1} with free lifetime Pro access!`,
+          title: "VIP Seat Activated",
+          description:
+            result.message ||
+            `Welcome, VIP User! You have been assigned ${result.founderNumber ? `VIP Seat #${result.founderNumber}` : "your VIP Seat"} with Lifetime Pro access.`,
           type: "success",
         });
       } else {
         addToast?.({
-          title: "Founder Claim Notice",
-          description: result.error || "Could not claim Founder seat at this time.",
+          title: "VIP Seat Notice",
+          description: result.error || "Could not allocate a VIP seat at this time.",
           type: "error",
         });
       }
     } catch (err: any) {
-      console.error("[PricingPage] Founder claim error:", err);
+      console.error("[PricingPage] VIP claim error:", err);
       addToast?.({
-        title: "Claim Error",
-        description: err.message || "Failed to claim Founder seat. Please try again.",
+        title: "Allocation Error",
+        description: err.message || "Failed to claim VIP seat. Please try again.",
         type: "error",
       });
     } finally {
@@ -181,8 +212,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
     // 2. Prevent purchasing already active permanent plans
     if (isFounder) {
       addToast?.({
-        title: "Founder Status Active",
-        description: `You are verified as Founder #${founderNumber || 1} with permanent Lifetime Free Pro access.`,
+        title: "VIP Access Active",
+        description: `You are verified as VIP User with ${founderNumber ? `VIP Seat #${founderNumber}` : "your VIP Seat"} and permanent Lifetime Free Pro access.`,
         type: "success",
       });
       return;
@@ -247,7 +278,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-[11px] text-[#A5AAA1] bg-[#141714] px-3 py-1.5 rounded-xl border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
               <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#B7F36B] opacity-75"></span>
+                <span className="sr-only">Live spot indicator</span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#B7F36B]"></span>
               </span>
               <span>{isLive ? "Live Realtime Sync" : "Authoritative Sync"}</span>
@@ -275,7 +306,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         >
           <div className="flex items-center gap-3.5">
             {isFounder ? (
-              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/35 flex items-center justify-center text-amber-300 shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-[#B7F36B]/15 border border-[#B7F36B]/35 flex items-center justify-center text-[#B7F36B] shrink-0">
                 <Crown className="w-6 h-6" />
               </div>
             ) : isPaidLifetimePro ? (
@@ -296,7 +327,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                 <span className="text-sm font-bold text-[#F7F8F5]">
                   {isFounder
-                    ? `👑 Founder #${founderNumber || 1}`
+                    ? `VIP User • ${founderNumber ? `VIP Seat #${founderNumber}` : "VIP Seat Verified"}`
                     : isPaidLifetimePro
                     ? "💎 Pro Lifetime"
                     : isPaidYearlyPro
@@ -308,18 +339,18 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 <span
                   className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                     isFounder
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                      ? "bg-[#B7F36B]/15 text-[#B7F36B] border border-[#B7F36B]/30"
                       : isPro
                       ? "bg-[#B7F36B]/15 text-[#B7F36B] border border-[#B7F36B]/30"
                       : "bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E]"
                   }`}
                 >
-                  {isFounder ? "Permanent Founder VIP" : isPro ? "Active Pro" : "Active Plan"}
+                  {isFounder ? "VIP Access Active" : isPro ? "Active Pro" : "Active Plan"}
                 </span>
               </div>
               <p className="text-xs text-[#A5AAA1] mt-0.5">
                 {isFounder
-                  ? "150,000 AI-indexed screenshots • Lifetime Free Founder VIP • AI Multimodal Search"
+                  ? "150,000 AI-indexed screenshots • Lifetime Free VIP Access • AI Multimodal Search"
                   : isPaidLifetimePro
                   ? "100,000 AI-indexed screenshots • Permanent Pro • AI Multimodal Search"
                   : isPaidYearlyPro
@@ -333,9 +364,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
 
           <div className="flex items-center gap-2 text-xs font-semibold">
             {isFounder ? (
-              <span className="text-amber-300 flex items-center gap-1.5 bg-amber-500/15 px-3 py-1.5 rounded-xl border border-amber-500/30">
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                Permanent Founder VIP
+              <span className="text-[#B7F36B] flex items-center gap-1.5 bg-[#B7F36B]/15 px-3 py-1.5 rounded-xl border border-[#B7F36B]/30">
+                <Crown className="w-3.5 h-3.5 text-[#B7F36B]" />
+                {founderNumber ? `VIP Seat #${founderNumber} of 50` : "VIP Seat Verified"}
               </span>
             ) : isPro ? (
               <span className="text-[#B7F36B] flex items-center gap-1.5 bg-[#B7F36B]/15 px-3 py-1.5 rounded-xl border border-[#B7F36B]/30">
@@ -403,7 +434,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 : "text-[#A5AAA1] hover:text-[#F7F8F5]"
             }`}
           >
-            Lifetime &amp; Founder
+            Lifetime &amp; VIP Access
           </button>
         </div>
       </div>
@@ -846,7 +877,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           </div>
         )}
 
-        {/* ================= PLAN 5: FOUNDER PLAN (FREE 150K QUOTA - 50 SEATS) ================= */}
+        {/* ================= PLAN 5: VIP ACCESS PLAN (FREE 150K QUOTA - 50 VIP SEATS) ================= */}
         <div
           id="plan-card-founder"
           className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all relative ${
@@ -857,27 +888,27 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               : "border-[#30362E] hover:border-[#30362E]/80"
           }`}
         >
-          {/* Top Pill */}
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#B7F36B] text-[#10130D] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]">
+          {/* Top Tag */}
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#B7F36B] text-[#10130D] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] whitespace-nowrap">
             <Crown className="w-3.5 h-3.5 fill-current" />
-            <span>👑 FOUNDER • 100% FREE • MAXIMUM 50 SEATS</span>
+            <span>VIP PROGRAM • 100% FREE • {totalVipSeats} VIP SEATS TOTAL</span>
           </div>
 
           <div className="space-y-5 pt-1">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">FOUNDER PLAN</h3>
+                  <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">VIP ACCESS</h3>
                   <Crown className="w-5 h-5 text-[#B7F36B]" />
                 </div>
                 <p className="text-xs text-[#A5AAA1] mt-0.5 font-medium">
-                  Strictly limited to the first 50 early founding supporters • 100% Free Lifetime VIP
+                  Strictly limited to {totalVipSeats} VIP User seats • 100% Free Lifetime VIP Program
                 </p>
               </div>
               {isFounder && (
                 <span className="px-3 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-xs font-bold text-[#B7F36B] flex items-center gap-1.5">
                   <Crown className="w-3.5 h-3.5 fill-[#B7F36B]" />
-                  <span>👑 Founder #{founderNumber || 1} Active</span>
+                  <span>{founderNumber ? `VIP Seat #${founderNumber} Active` : "VIP Seat Active"}</span>
                 </span>
               )}
             </div>
@@ -893,52 +924,99 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 </span>
               </div>
               <p className="text-xs text-[#777E74]">
-                Lifetime Free for Founder • Maximum 50 seats • Instant 1-click allocation
+                Lifetime Free VIP Access • {totalVipSeats} total VIP seats • Instant 1-click allocation
               </p>
             </div>
 
-            {/* REAL DATABASE-BACKED FOUNDER COUNTER */}
+            {/* AUTHORITATIVE 50-SEAT VIP COUNTER */}
             <div
               id="founder-availability-tracker"
               className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)] space-y-2.5"
             >
-              <div className="flex items-center justify-between text-xs sm:text-sm">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#B7F36B]" />
-                  <span className="font-bold text-[#F7F8F5]">
-                    {spotsClaimed} / {totalFounderSpots} Founder seats claimed
-                  </span>
+              {isLoadingVipStats && !hasValidVipStats ? (
+                <div className="flex items-center justify-between gap-3 py-2 text-xs text-[#A5AAA1]">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#B7F36B]" />
+                    <span>Loading live VIP seat availability...</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-[#777E74]">{totalVipSeats} total VIP seats</span>
                 </div>
-                <span
-                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                    spotsRemaining > 0
-                      ? "bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]"
-                      : "bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E]"
-                  }`}
-                >
-                  {founderSeatAvailabilityLabel}
-                </span>
-              </div>
+              ) : !hasValidVipStats ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#F7F8F5]">
+                      <AlertCircle className="w-4 h-4 text-[#B7F36B] shrink-0" />
+                      <span>VIP seat availability temporarily unavailable</span>
+                    </div>
+                    <p className="text-[11px] text-[#A5AAA1]">
+                      {vipStatsError || "Unable to verify live seat occupancy right now."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => refreshFounderStats()}
+                    className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-xs font-bold text-[#F7F8F5] flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-[#B7F36B]" />
+                    <span>Retry</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-xs sm:text-sm gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-[#B7F36B]" />
+                      <span className="font-bold text-[#F7F8F5]">
+                        {spotsClaimed} / {totalVipSeats} occupied
+                      </span>
+                    </div>
+                    <span
+                      className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        (spotsRemaining as number) > 0
+                          ? "bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]"
+                          : "bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E]"
+                      }`}
+                    >
+                      {vipSeatAvailabilityLabel}
+                    </span>
+                  </div>
 
-              {/* Progress Bar */}
-              <div className="w-full h-2 rounded-full bg-[#141714] overflow-hidden p-0.5 border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.6)]">
-                <div
-                  className="h-full bg-[#B7F36B] rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(183,243,107,0.4)]"
-                  style={{ width: `${Math.min(100, (spotsClaimed / totalFounderSpots) * 100)}%` }}
-                />
-              </div>
+                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                    <div className="px-2.5 py-1.5 rounded-xl bg-[#141714] border border-[#30362E]">
+                      <span className="text-[#777E74] block">Total VIP seats</span>
+                      <span className="font-bold font-mono text-[#F7F8F5]">{totalVipSeats}</span>
+                    </div>
+                    <div className="px-2.5 py-1.5 rounded-xl bg-[#141714] border border-[#30362E]">
+                      <span className="text-[#777E74] block">Occupied seats</span>
+                      <span className="font-bold font-mono text-[#F7F8F5]">{spotsClaimed}</span>
+                    </div>
+                    <div className="px-2.5 py-1.5 rounded-xl bg-[#141714] border border-[#30362E]">
+                      <span className="text-[#777E74] block">Available seats</span>
+                      <span className="font-bold font-mono text-[#B7F36B]">{spotsRemaining}</span>
+                    </div>
+                  </div>
 
-              <p className="text-[11px] text-[#A5AAA1]">
-                {spotsRemaining > 0
-                  ? `Real-time availability calculated from live database. ${spotsRemaining} spots remaining.`
-                  : "All 50 Founder seats have been claimed. Thank you to our 50 founding members!"}
-              </p>
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 rounded-full bg-[#141714] overflow-hidden p-0.5 border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.6)]">
+                    <div
+                      className="h-full bg-[#B7F36B] rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.max(0, ((spotsClaimed as number) / totalVipSeats) * 100))}%` }}
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-[#A5AAA1]">
+                    {(spotsRemaining as number) > 0
+                      ? `${totalVipSeats} total VIP seats • ${spotsClaimed} occupied • ${spotsRemaining} available right now.`
+                      : "All 50 VIP seats have been occupied."}
+                  </p>
+                </>
+              )}
             </div>
 
-            {/* Grid of Founder Inclusions */}
+            {/* Grid of VIP Inclusions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#30362E]">
               <div className="space-y-2.5">
-                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Founder Inclusions</p>
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">VIP Access Inclusions</p>
                 <ul className="space-y-2 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
@@ -950,17 +1028,17 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-[#F7F8F5]">Permanent Founder badge (👑 #1–50)</span>
+                    <span className="font-semibold text-[#F7F8F5]">Permanent VIP Badge (#1–#50)</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-[#F7F8F5]">Permanent Founder VIP status</span>
+                    <span className="font-semibold text-[#F7F8F5]">Permanent VIP User status</span>
                   </li>
                 </ul>
               </div>
 
               <div className="space-y-2.5">
-                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">Exclusive Privileges</p>
+                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">VIP Program Privileges</p>
                 <ul className="space-y-2 text-xs sm:text-sm text-[#A5AAA1]">
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
@@ -968,11 +1046,11 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span>Founder recognition &amp; VIP crown badge</span>
+                    <span>Official VIP User recognition &amp; VIP Badge</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span>Founder-exclusive priority queue</span>
+                    <span>VIP priority processing queue</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
@@ -982,32 +1060,53 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               </div>
             </div>
 
-            {/* Potential Limitations */}
+            {/* Eligibility Limits */}
             <div className="pt-2 border-t border-[#30362E] space-y-1.5">
               <p className="text-[11px] font-semibold text-[#777E74] uppercase tracking-wider">Eligibility Limits</p>
               <p className="text-xs text-[#777E74]">
-                • Hard maximum of 50 founder seats. Allocation is atomic, real-time, and verified securely on the database.
+                • Hard maximum of 50 VIP seats. Seat allocation is atomic, deduplicated, and verified on the server.
               </p>
             </div>
           </div>
 
-          {/* Founder CTA Button */}
+          {/* VIP CTA Button */}
           <div className="pt-6">
             {isFounder ? (
               <div className="p-3.5 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-center space-y-0.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)]">
                 <div className="text-xs font-bold text-[#B7F36B] flex items-center justify-center gap-1.5">
                   <Crown className="w-4 h-4 fill-[#B7F36B]" />
-                  <span>👑 Founder #{founderNumber || 1} • Lifetime Free Pro Active</span>
+                  <span>
+                    {founderNumber ? `VIP Seat #${founderNumber} of 50` : "VIP Seat Verified"} • Lifetime Free Pro Active
+                  </span>
                 </div>
-                <p className="text-[11px] text-[#A5AAA1]">150,000 AI-indexed screenshots • Permanent VIP Rank</p>
+                <p className="text-[11px] text-[#A5AAA1]">150,000 AI-indexed screenshots • VIP User</p>
               </div>
-            ) : spotsRemaining <= 0 ? (
+            ) : authLoading ? (
+              <button
+                type="button"
+                disabled
+                className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] text-[#A5AAA1] text-xs font-bold flex items-center justify-center gap-2 border border-[#30362E] opacity-80 cursor-wait"
+              >
+                <RefreshCw className="w-4 h-4 animate-spin text-[#B7F36B]" />
+                <span>Verifying Account Status...</span>
+              </button>
+            ) : !hasValidVipStats ? (
+              <button
+                type="button"
+                onClick={() => refreshFounderStats()}
+                disabled={isLoadingVipStats}
+                className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer border border-[#30362E] disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 text-[#B7F36B] ${isLoadingVipStats ? "animate-spin" : ""}`} />
+                <span>{isLoadingVipStats ? "Checking VIP Seat Availability..." : "Retry VIP Seat Check"}</span>
+              </button>
+            ) : (spotsRemaining as number) <= 0 ? (
               <button
                 type="button"
                 disabled
                 className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] text-[#777E74] text-xs font-bold text-center cursor-not-allowed border border-[#30362E]"
               >
-                Founder Seats Sold Out
+                All 50 VIP Seats Occupied
               </button>
             ) : (
               <button
@@ -1020,12 +1119,12 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 {isClaimingFounder ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-[#10130D]" />
-                    <span>Claiming your Free Founder Seat...</span>
+                    <span>Allocating VIP Seat...</span>
                   </>
                 ) : (
                   <>
                     <Crown className="w-4 h-4 text-[#10130D] fill-current" />
-                    <span>👑 Claim Free Founder Seat ({spotsRemaining} Left)</span>
+                    <span>Claim Free VIP Seat ({spotsRemaining} Available)</span>
                   </>
                 )}
               </button>
@@ -1041,7 +1140,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             Detailed Plan Comparison
           </h2>
           <p className="text-xs sm:text-sm text-[#A5AAA1]">
-            Compare all features across Free, Monthly, Yearly, Lifetime, and Founder tiers.
+            Compare all features across Free, Monthly, Yearly, Lifetime, and VIP Access tiers.
           </p>
         </div>
 
@@ -1070,8 +1169,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     <div className="text-[10px] text-[#A5AAA1] font-bold">PKR 5,999 once (Coming Soon)</div>
                   </th>
                   <th className="p-4 sm:p-5 font-bold text-center bg-[#1B1F1A]/80 border-l border-[#30362E]">
-                    <div className="text-[#B7F36B]">👑 Founder</div>
-                    <div className="text-[10px] text-[#B7F36B] font-bold">FREE (First 50 Users)</div>
+                    <div className="text-[#B7F36B]">VIP User</div>
+                    <div className="text-[10px] text-[#B7F36B] font-bold">FREE (50 VIP Seats)</div>
                   </th>
                 </tr>
               </thead>
@@ -1143,7 +1242,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 {/* Row 5: Founder Badge & Rank */}
                 <tr className="hover:bg-white/[0.02] transition">
                   <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
-                    Founder Badge &amp; VIP Rank
+                    VIP Badge &amp; Seat Number
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
                   <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
@@ -1177,7 +1276,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             <span>Payment Gateway in Progress</span>
           </div>
           <p className="text-xs text-[#A5AAA1] leading-relaxed">
-            Paid checkouts are currently in preparation. Claim a free Founder seat or enjoy the generous 250 AI-indexed screenshot Free tier.
+            Paid checkouts are currently in preparation. Claim an available free VIP Seat or enjoy the 250 AI-indexed screenshot Free tier.
           </p>
         </div>
 
@@ -1187,7 +1286,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             <span>Real Database Scarcity</span>
           </div>
           <p className="text-xs text-[#A5AAA1] leading-relaxed">
-            Founder spots are strictly limited to 50 members backed by atomic database verification.
+            VIP seats are strictly limited to 50 members backed by atomic verification.
           </p>
         </div>
       </div>
@@ -1221,13 +1320,15 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               <p className="text-xs text-[#A5AAA1] leading-relaxed">
                 Direct online payment for <span className="font-semibold text-[#F7F8F5]">{comingSoonPlanName}</span> is currently under active integration. No credit card charges or fake transactions are accepted.
               </p>
-              <p className="text-xs text-[#B7F36B] bg-[#1B1F1A] p-3 rounded-xl border border-[#30362E] leading-relaxed font-medium">
-                💡 Good news: You can claim a <span className="font-bold text-[#F7F8F5]">Free Founder Seat</span> right now ({spotsRemaining} remaining) for permanent 150,000 AI-indexed screenshots with zero payment required!
-              </p>
+              {hasValidVipStats && (spotsRemaining as number) > 0 && (
+                <p className="text-xs text-[#B7F36B] bg-[#1B1F1A] p-3 rounded-xl border border-[#30362E] leading-relaxed font-medium">
+                  You can claim an available <span className="font-bold text-[#F7F8F5]">Free VIP Seat</span> right now ({spotsRemaining} of {totalVipSeats} available) for 150,000 AI-indexed screenshots with zero payment required.
+                </p>
+              )}
             </div>
 
             <div className="space-y-3 pt-2">
-              {!isFounder && spotsRemaining > 0 && (
+              {!isFounder && hasValidVipStats && (spotsRemaining as number) > 0 && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1237,7 +1338,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   className="w-full py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
                 >
                   <Crown className="w-4 h-4 text-[#10130D] fill-current" />
-                  <span>👑 Claim Free Founder Seat ({spotsRemaining} Left)</span>
+                  <span>Claim Free VIP Seat ({spotsRemaining} Available)</span>
                 </button>
               )}
 

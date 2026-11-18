@@ -144,7 +144,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({
         NotificationService.notifyManualPaymentApproved({
           transactionId: req.transaction_id || req.transactionId,
           userEmail: req.user_email || req.userEmail,
-          amount: "PKR 7,999",
+          amount: "PKR 5,999",
           userId: req.user_id || req.userId,
         });
 
@@ -238,7 +238,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({
 
   const REJECTION_PRESETS = [
     "Transaction ID could not be matched with banking / Easypaisa statement.",
-    "Incorrect payment amount received (expected PKR 7,999).",
+    "Incorrect payment amount received (expected PKR 5,999).",
     "Duplicate or previously processed Transaction Reference ID.",
     "Receipt screenshot is illegible, cropped, or blurry.",
     "Payment was sent to an unrecognized receiving account.",
@@ -351,7 +351,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({
                 </span>
               </div>
               <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                Authoritative verification hub for PKR 7,999 Lifetime Pro manual payment submissions.
+                Authoritative verification hub for PKR 5,999 Lifetime Pro manual payment submissions.
               </p>
             </div>
           </div>
@@ -449,7 +449,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold tracking-tight text-blue-500">
-              PKR {(approvedCount * 7999).toLocaleString()}
+              PKR {requests.filter((r) => r.status === "approved").reduce((sum, r) => sum + Number(r.amount || 5999), 0).toLocaleString()}
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1">Lifetime revenue realized</p>
@@ -609,7 +609,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({
             const userEmail = req.user_email || req.userEmail || "Unknown Email";
             const userName = req.user_name || req.userName || userEmail.split("@")[0] || "User";
             const planName = req.plan === "lifetime" ? "Lifetime Pro" : req.plan || "Lifetime Pro";
-            const amount = req.amount || 7999;
+            const amount = req.amount || 5999;
             const currency = req.currency || "PKR";
             const method = req.payment_method || req.paymentMethod || "Easypaisa";
             const receiptUrl = req.receipt_url || req.receiptUrl;
@@ -836,7 +836,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Plan & Amount:</span>
-                  <span className="font-semibold text-emerald-400">Lifetime Pro (PKR 7,999)</span>
+                  <span className="font-semibold text-emerald-400">Lifetime Pro (PKR 5,999)</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Expiry Policy:</span>

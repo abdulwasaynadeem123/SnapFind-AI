@@ -80,7 +80,7 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <span>SnapDash Arena</span>
               <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 Live
               </span>
             </h3>
@@ -95,7 +95,7 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
           aria-label="Refresh leaderboard"
           className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
         >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-blue-400" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-[#B7F36B]" : ""}`} />
         </button>
       </div>
 
@@ -107,7 +107,7 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
           onClick={() => setActiveTab("global")}
           className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "global"
-              ? "bg-blue-600/20 text-blue-300 border border-blue-500/40 shadow-sm"
+              ? "bg-[#1B1F1A] text-[#B7F36B] border border-[#B7F36B]/40 shadow-sm"
               : "text-slate-400 hover:text-slate-200"
           }`}
         >
@@ -120,7 +120,7 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
           onClick={() => setActiveTab("personal")}
           className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "personal"
-              ? "bg-blue-600/20 text-blue-300 border border-blue-500/40 shadow-sm"
+              ? "bg-[#1B1F1A] text-[#B7F36B] border border-[#B7F36B]/40 shadow-sm"
               : "text-slate-400 hover:text-slate-200"
           }`}
         >
@@ -133,7 +133,7 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
       <div className="flex-1 overflow-y-auto max-h-[460px] p-3 space-y-2 custom-scrollbar">
         {isLoading ? (
           <div className="py-12 flex flex-col items-center justify-center space-y-3">
-            <RefreshCw className="w-6 h-6 animate-spin text-blue-400" />
+            <RefreshCw className="w-6 h-6 animate-spin text-[#B7F36B]" />
             <p className="text-xs text-slate-400">Loading flight telemetry...</p>
           </div>
         ) : activeTab === "global" ? (
@@ -153,7 +153,7 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
                     id={`leaderboard-row-${entry.rank}`}
                     className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
                       isYou
-                        ? "bg-blue-600/15 border-blue-500/60 shadow-[0_0_15px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/30"
+                        ? "bg-[#1B1F1A] border-[#B7F36B]"
                         : "bg-slate-900/60 border-slate-800/80 hover:border-slate-700"
                     }`}
                   >
@@ -166,18 +166,18 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
                         <div className="flex items-center gap-1.5">
                           <span
                             className={`text-xs font-bold truncate ${
-                              isYou ? "text-blue-300" : "text-white"
+                              isYou ? "text-[#B7F36B]" : "text-white"
                             }`}
                           >
                             {entry.gameUsername}
                           </span>
                           {isYou && (
-                            <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.2 rounded bg-blue-500/30 text-blue-300 border border-blue-400/40">
+                            <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.2 rounded bg-blue-500/30 text-[#B7F36B] border border-blue-400/40">
                               YOU
                             </span>
                           )}
                           {entry.isFounder && (
-                            <span title="Founder Pioneer">
+                            <span title="VIP User">
                               <Crown className="w-3 h-3 text-amber-400 flex-shrink-0" />
                             </span>
                           )}
@@ -220,7 +220,7 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
                       </span>
                       {user?.entitlement?.isFounder && (
                         <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40">
-                          <Crown className="w-3 h-3" /> Founder
+                          <Crown className="w-3 h-3" /> VIP User
                         </span>
                       )}
                     </div>

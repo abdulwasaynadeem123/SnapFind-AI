@@ -1,5 +1,6 @@
 import { BillingProduct, SubscriptionRecord, UserEntitlement } from "../../types";
 import { SubscriptionManager } from "./SubscriptionManager";
+import { getAuthBearerHeader } from "../supabase";
 
 export interface CheckoutResult {
   success: boolean;
@@ -84,103 +85,103 @@ class PaymentServiceEngine {
     }
 
     // Default canonical catalog matching authoritative plans:
-    // Free (100 screenshots), Pro Monthly (PKR 299/mo, 1,000 screenshots), Pro Yearly (PKR 2,499/yr, 10,000 screenshots), Pro Lifetime (PKR 7,999, 50,000 screenshots), Founder (PKR 4,999, 100,000 screenshots)
+    // Free (250 screenshots), Pro Monthly (PKR 249/mo, 2,500/mo), Pro Yearly (PKR 1,999/yr, 30,000/yr), Pro Lifetime (PKR 5,999, 100,000), Founder 50 (PKR 0, 150,000)
     return [
       {
         id: "free_plan",
         productId: "free_plan",
         name: "SnapFind Free",
-        description: "Essential on-device OCR and basic search with 100 lifetime screenshots",
+        description: "Essential AI-powered screenshot search with 250 lifetime screenshots",
         planType: "Free",
         price: 0,
         currency: "PKR",
         interval: "lifetime",
         features: [
-          "100 lifetime screenshots",
-          "On-device OCR extraction",
-          "Basic search",
+          "250 lifetime screenshots",
+          "Text extraction & visual search",
+          "Smart search & filters",
           "Collections & smart albums",
           "Trash & restore management",
         ],
-        maxScreenshots: 100,
+        maxScreenshots: 250,
         isPopular: false,
       },
       {
         id: "founder_grant",
         productId: "founder_grant",
-        name: "Founder 50",
-        description: "Permanent Founder access (#1–#50) with 100,000 screenshots",
+        name: "VIP Access",
+        description: "First 50 VIP seats only: Free forever with 150,000 screenshots & VIP Seat (#1–#50)",
         planType: "Founder",
-        price: 4999,
+        price: 0,
         currency: "PKR",
         interval: "lifetime",
         features: [
-          "100,000 screenshots",
-          "Permanent Founder status",
-          "Founder badge (#1–#50)",
+          "150,000 screenshots",
+          "Free forever (No payment required)",
+          "Permanent VIP Badge (#1–#50)",
           "Early access to new features",
-          "Founder perks & priority queue",
+          "Priority indexing queue",
         ],
-        maxScreenshots: 100000,
+        maxScreenshots: 150000,
         isPopular: true,
       },
       {
         id: "monthly_pro_pkr",
         productId: "monthly_pro_pkr",
         name: "Pro Monthly",
-        description: "Full AI search & smart organization with 1,000 screenshots per month",
+        description: "Full AI search & smart organization with 2,500 screenshots per month",
         planType: "Pro",
-        price: 299,
+        price: 249,
         currency: "PKR",
         interval: "month",
         features: [
-          "1,000 screenshots/month",
+          "2,500 screenshots/month",
           "AI multimodal search",
           "Advanced search filters",
           "QR / Barcode / URL intelligence",
           "Smart organization",
           "Cloud synchronization",
         ],
-        maxScreenshots: 1000,
+        maxScreenshots: 2500,
         isPopular: false,
       },
       {
         id: "yearly_pro_pkr",
         productId: "yearly_pro_pkr",
         name: "Pro Yearly",
-        description: "10,000 screenshots/year with priority AI processing (Save PKR 1,089)",
+        description: "30,000 screenshots/year with priority AI processing (Save PKR 989)",
         planType: "Pro",
-        price: 2499,
+        price: 1999,
         currency: "PKR",
         interval: "year",
         features: [
-          "10,000 screenshots/year",
+          "30,000 screenshots/year",
           "Everything in Pro Monthly",
-          "Priority AI vision processing queue",
+          "Priority AI indexing queue",
           "Encrypted multi-device sync",
           "Priority support",
         ],
-        maxScreenshots: 10000,
+        maxScreenshots: 30000,
         isPopular: true,
       },
       {
         id: "lifetime_pro_pkr",
         productId: "lifetime_pro_pkr",
         name: "Pro Lifetime",
-        description: "One-time payment for 50,000 total screenshots with permanent Pro access",
+        description: "One-time payment for 100,000 total screenshots with permanent Pro access",
         planType: "Pro",
-        price: 7999,
+        price: 5999,
         currency: "PKR",
         interval: "lifetime",
         features: [
-          "50,000 total screenshots",
+          "100,000 total screenshots",
           "Permanent lifetime access",
           "Everything in Pro",
           "No recurring subscriptions",
-          "Neural OCR & multimodal AI search",
+          "Advanced visual & text search",
           "Encrypted cloud synchronization",
         ],
-        maxScreenshots: 50000,
+        maxScreenshots: 100000,
         isPopular: false,
       },
     ];
@@ -195,9 +196,10 @@ class PaymentServiceEngine {
     email?: string
   ): Promise<CheckoutResult> {
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           planId,
           userId,
@@ -232,9 +234,10 @@ class PaymentServiceEngine {
    */
   public async verifyPayment(sessionId: string, userId: string): Promise<PaymentVerificationResult> {
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/verify-payment", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ sessionId, userId }),
       });
 
@@ -266,7 +269,10 @@ class PaymentServiceEngine {
    */
   public async getSubscriptionStatus(userId: string = "guest"): Promise<SubscriptionRecord | null> {
     try {
-      const res = await fetch(`/api/billing/status?userId=${encodeURIComponent(userId)}`);
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
+      const res = await fetch(`/api/billing/status?userId=${encodeURIComponent(userId)}`, {
+        headers: { ...authHeaders },
+      });
       if (res.ok) {
         const data = await res.json();
         return data.subscription || null;

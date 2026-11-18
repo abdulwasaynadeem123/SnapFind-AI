@@ -71,6 +71,13 @@ class ProcessingQueueService {
         this.resumeWaitingForNetworkJobs();
       });
     }
+
+    // Automatically resume quota-paused jobs when user upgrades plan or claims Founder seat
+    SubscriptionManager.subscribe((ent) => {
+      if (ent.isPro || ent.isFounder) {
+        this.resumeAfterQuotaUpgrade();
+      }
+    });
   }
 
   /**
@@ -126,8 +133,24 @@ class ProcessingQueueService {
   /**
    * Save queue metadata to persistent storage (without holding massive binary blobs)
    */
+  private trimFinishedHistory(): void {
+    const active: ProcessingJob[] = [];
+    const finished: ProcessingJob[] = [];
+    for (const j of this.jobs) {
+      if (j.status === "Completed" || j.status === "Failed") {
+        finished.push(j);
+      } else {
+        active.push(j);
+      }
+    }
+    if (finished.length > 200) {
+      this.jobs = [...active, ...finished.slice(-200)];
+    }
+  }
+
   private persistQueue(): void {
     try {
+      this.trimFinishedHistory();
       // Save lightweight job objects
       const lightweightJobs = this.jobs.map((job) => ({
         ...job,
@@ -230,17 +253,38 @@ class ProcessingQueueService {
     }
 
     const currentStored = loadStoredScreenshots();
-    const quotaCheck = SubscriptionManager.canIndexScreenshot(currentStored.length);
+    const activeCount = currentStored.filter((s) => !s.isDeleted && !s.is_deleted).length;
+    const quotaCheck = SubscriptionManager.canIndexScreenshot(activeCount);
     if (!quotaCheck.allowed) {
       console.warn(`[ProcessingQueue] ${quotaCheck.reason}`);
-      window.dispatchEvent(
-        new CustomEvent("snapfind_quota_exceeded", {
-          detail: {
-            title: quotaCheck.upgradePromptTitle,
-            message: quotaCheck.upgradePromptMessage,
-          },
-        })
-      );
+      const pausedJob: ProcessingJob = {
+        id: `job_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        imageId: candidate.id,
+        imageUri: candidate.imageUri,
+        fileName: candidate.fileName || `image_${candidate.id}.png`,
+        folder: candidate.folder || "Screenshots",
+        sha256Hash: candidate.sha256Hash,
+        hash: candidate.sha256Hash,
+        status: "waiting_for_verification",
+        progressPercent: 0,
+        attempts: 0,
+        maxAttempts: MAX_RETRIES,
+        queuedAt: new Date().toISOString(),
+        errorMessage: "Quota limit reached — upgrade to resume indexing",
+      };
+      this.jobs.push(pausedJob);
+      this.persistQueue();
+      this.notifyListeners();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("snapfind_quota_exceeded", {
+            detail: {
+              title: quotaCheck.upgradePromptTitle,
+              message: quotaCheck.upgradePromptMessage,
+            },
+          })
+        );
+      }
       return null;
     }
 
@@ -309,6 +353,32 @@ class ProcessingQueueService {
   public resumeQueue(): void {
     this.isPaused = false;
     this.processNextInQueue();
+  }
+
+  public resumeAfterQuotaUpgrade(): void {
+    let resumedAny = false;
+    const stored = loadStoredScreenshots();
+    const activeCount = stored.filter((s) => !s.isDeleted && !s.is_deleted).length;
+    if (!SubscriptionManager.canIndexScreenshot(activeCount).allowed) return;
+
+    this.jobs = this.jobs.map((j) => {
+      if (j.status === "waiting_for_verification") {
+        resumedAny = true;
+        return {
+          ...j,
+          status: "Queued" as ProcessingJobStatus,
+          errorMessage: undefined,
+          progressPercent: 0,
+        };
+      }
+      return j;
+    });
+    if (resumedAny) {
+      this.isPaused = false;
+      this.persistQueue();
+      this.notifyListeners();
+      this.processNextInQueue();
+    }
   }
 
   /**

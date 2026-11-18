@@ -134,14 +134,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               </div>
               <h3 className="text-lg font-bold">You Have Full Lifetime Pro Access</h3>
               <p className={`text-xs leading-relaxed ${isDark ? "text-[#94A3B8]" : "text-slate-600"}`}>
-                As one of SnapFind's first 50 Founder users, all AI Collections, Multimodal Search, and unlimited screenshot capacity limits are permanently unlocked for your account.
+                As a SnapFind VIP User (1 of 50 VIP Seats), all AI Collections, Multimodal Search, and 150,000 screenshot capacity are permanently unlocked for your account.
               </p>
             </div>
             <button
               onClick={onClose}
-              className="w-full py-2.5 rounded-xl text-xs font-bold bg-[#D9B08C] hover:bg-[#D9B08C]/90 text-[#2C3531] transition-all shadow-md active:scale-98 cursor-pointer"
+              className="w-full py-2.5 rounded-xl text-xs font-bold bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] transition-all shadow-md active:scale-98 cursor-pointer"
             >
-              Continue with Founder Pro
+              Continue with VIP Access
             </button>
           </motion.div>
         </div>
@@ -172,7 +172,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
       });
 
       if (result.success) {
-        setSuccessMsg("Opening secure Paddle checkout...");
+        setSuccessMsg("Opening secure checkout...");
         if (onUpgradeSuccess) onUpgradeSuccess();
       } else {
         setErrorMsg(result.error || "Secure checkout is temporarily unavailable. Please try again later.");
@@ -195,7 +195,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           className={`max-w-lg w-full rounded-3xl border p-5 sm:p-7 shadow-2xl relative my-auto transition-all ${
             isDark
               ? "bg-[#1E293B] border-[#334155] text-[#F1F5F9] shadow-2xl"
-              : "bg-white border-blue-200 text-slate-900 shadow-xl"
+              : "bg-[#141714] border-[#30362E] text-[#F7F8F5] shadow-xl"
           }`}
         >
           {/* Close Button */}
@@ -217,7 +217,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 shadow-lg ${
                 isDark
                   ? "bg-[#116466]/20 border-[#116466]/40 text-[#D1E8E2] shadow-[#116466]/15"
-                  : "bg-blue-50 border-blue-200 text-blue-600 shadow-blue-500/10"
+                  : "bg-[#1B1F1A] border-[#30362E] text-[#B7F36B]"
               }`}
             >
               <IconComponent className="w-6 h-6" />
@@ -315,7 +315,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               {/* Price Tag */}
               <div className="text-right">
                 <div className="text-lg font-black text-[#D1E8E2]">
-                  {billingCycle === "monthly" ? `$2.99/month` : `${yearlyMonthlyEquivalent}/mo`}
+                  {billingCycle === "monthly" ? `PKR 249/month` : `${yearlyMonthlyEquivalent}/mo`}
                 </div>
                 <div className="text-[11px] text-[#94A3B8]">
                   {billingCycle === "monthly" ? "Billed monthly" : `Billed annually (${yearlyPrice}/yr)`}

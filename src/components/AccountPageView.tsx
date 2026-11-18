@@ -119,7 +119,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   const [showManualPaymentModal, setShowManualPaymentModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
 
-  // Fetch Authoritative Entitlement from Supabase & Payment Requests
+  // Fetch Authoritative Entitlement & Payment Requests
   const fetchAuthoritativeStatus = async () => {
     try {
       setIsRefreshingEntitlement(true);
@@ -164,9 +164,17 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   }, [user.name]);
 
   // Derived Authoritative Entitlement Status
-  const isFounder = Boolean(user.entitlement?.isFounder || entitlement?.isFounder || user.plan === "Founder");
+  const isFounder = Boolean(
+    user.entitlement?.isFounder ||
+      entitlement?.isFounder ||
+      user.plan === "Founder" ||
+      user.entitlement?.plan === "founder" ||
+      entitlement?.plan === "founder" ||
+      user.entitlement?.tier === "Founder" ||
+      entitlement?.tier === "Founder"
+  );
   const founderNum = user.entitlement?.founderNumber || entitlement?.founderNumber || (user as any).founderNumber;
-  const founderNumStr = founderNum ? `#${String(founderNum).padStart(2, "0")}` : "#01";
+  const founderNumStr = founderNum ? `#${String(founderNum).padStart(2, "0")}` : "Verified";
 
   const isLifetimePro = !isFounder && Boolean(
     user.entitlement?.isPro ||
@@ -345,11 +353,15 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     }
   };
 
-  // Handle Sign Out from All Devices
-  const handleSignOutAll = async () => {
-    if (!confirm("Are you sure you want to invalidate all active sessions across all devices?")) {
-      return;
-    }
+  const [showSignOutAllModal, setShowSignOutAllModal] = useState(false);
+
+  // Handle Sign Out from All Devices (confirmed via in-app modal)
+  const handleSignOutAll = () => {
+    setShowSignOutAllModal(true);
+  };
+
+  const confirmSignOutAll = async () => {
+    setShowSignOutAllModal(false);
     setSignOutAllLoading(true);
     const res = await signOutAllDevices();
     setSignOutAllLoading(false);
@@ -404,12 +416,12 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   const storageUsagePercent = Math.min(100, Math.max(2, (Number(storageUsedMB) / storageLimitMB) * 100));
 
   const avatarPresets = [
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+    "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="#141714"/><circle cx="60" cy="46" r="22" fill="#B7F36B"/><path d="M26 104c4-20 18-30 34-30s30 10 34 30" fill="#222720" stroke="#30362E" stroke-width="4"/></svg>'),
+    "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="#1B1F1A"/><polygon points="60,18 98,42 84,96 36,96 22,42" fill="#141714" stroke="#B7F36B" stroke-width="5"/><circle cx="60" cy="58" r="14" fill="#B7F36B"/></svg>'),
+    "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="#0D0F0D"/><rect x="26" y="26" width="68" height="68" rx="18" fill="#141714" stroke="#B7F36B" stroke-width="4"/><circle cx="48" cy="52" r="7" fill="#F7F8F5"/><circle cx="72" cy="52" r="7" fill="#B7F36B"/><path d="M44 74h32" stroke="#A5AAA1" stroke-width="5" stroke-linecap="round"/></svg>'),
+    "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="#141714"/><circle cx="60" cy="60" r="34" fill="#1B1F1A" stroke="#30362E" stroke-width="4"/><path d="M40 60h40M60 40v40" stroke="#B7F36B" stroke-width="7" stroke-linecap="round"/></svg>'),
+    "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="#1B1F1A"/><path d="M28 84L48 40l18 28 12-16 14 32z" fill="#B7F36B"/></svg>'),
+    "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="#0D0F0D"/><circle cx="60" cy="60" r="32" fill="none" stroke="#B7F36B" stroke-width="6"/><circle cx="60" cy="60" r="14" fill="#F7F8F5"/></svg>'),
   ];
 
   return (
@@ -537,9 +549,9 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
               {/* Plan Tier Pill & Action */}
               <div className="flex items-center justify-center gap-2">
                 {isFounder ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-amber-500/15 border-amber-500/35 text-amber-300">
-                    <Crown className="w-3.5 h-3.5 text-amber-400" />
-                    <span>👑 Founder {founderNumStr}</span>
+                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 shadow-sm bg-[#B7F36B]/15 border-[#B7F36B]/35 text-[#B7F36B]">
+                    <Crown className="w-3.5 h-3.5 text-[#B7F36B]" />
+                    <span>VIP User • Seat {founderNumStr}</span>
                   </div>
                 ) : isLifetimePro ? (
                   <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#B7F36B]/15 border-[#B7F36B]/35 text-[#B7F36B]">
@@ -548,7 +560,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                   </div>
                 ) : isPaymentPending ? (
                   <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-amber-500/20 border-amber-500/40 text-amber-300">
-                    <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
                     <span>Payment Pending</span>
                   </div>
                 ) : isPaymentRejected ? (
@@ -603,7 +615,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/10">
               <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                 <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-blue-400" /> Joined
+                  <Calendar className="w-3 h-3 text-[#B7F36B]" /> Joined
                 </span>
                 <span className="text-xs font-bold text-slate-200 mt-1 block truncate">
                   {accountCreatedDate}
@@ -612,9 +624,9 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
               <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                 <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <Layers className="w-3 h-3 text-cyan-400" /> Screenshots
+                  <Layers className="w-3 h-3 text-[#B7F36B]" /> Screenshots
                 </span>
-                <span className="text-xs font-bold text-cyan-300 mt-1 block font-mono">
+                <span className="text-xs font-bold text-[#F7F8F5] mt-1 block font-mono">
                   {indexedCount} indexed
                 </span>
               </div>
@@ -630,9 +642,9 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
               <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
                 <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3 text-indigo-400" /> Last Sync
+                  <RefreshCw className="w-3 h-3 text-[#B7F36B]" /> Last Sync
                 </span>
-                <span className="text-xs font-bold text-indigo-300 mt-1 block font-mono">
+                <span className="text-xs font-bold text-[#F7F8F5] mt-1 block font-mono">
                   {syncState.lastSyncedAt
                     ? new Date(syncState.lastSyncedAt).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -655,32 +667,32 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
         }`}
       >
         {isFounder ? (
-          /* ================= FOUNDER STATE ================= */
+          /* ================= VIP USER STATE ================= */
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-400/30 shadow-md shadow-amber-500/10">
-                  <Crown className="w-6 h-6 text-amber-400" />
+                <div className="p-3 rounded-2xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
+                  <Crown className="w-6 h-6 text-[#B7F36B]" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-semibold text-amber-400/80 uppercase tracking-wider">Founder VIP Status</span>
-                  <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">👑 Founder {founderNumStr}</h3>
+                  <span className="text-[11px] font-semibold text-[#B7F36B] uppercase tracking-wider">VIP Program Status</span>
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#F7F8F5] tracking-tight">VIP User • Seat {founderNumStr}</h3>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-400/40 shadow-sm shadow-amber-500/10 self-start sm:self-auto">
-                Lifetime Pro
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#B7F36B]/15 text-[#B7F36B] border border-[#B7F36B]/35 self-start sm:self-auto">
+                VIP Access • Lifetime Pro
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1.5">
+            <div className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#30362E] space-y-1.5">
               <div className="flex items-baseline justify-between">
-                <span className="text-xs text-amber-300/80 font-medium">Screenshot Capacity</span>
-                <span className="text-lg font-bold font-mono text-amber-300">
-                  Unlimited screenshots
+                <span className="text-xs text-[#A5AAA1] font-medium">Screenshot Capacity</span>
+                <span className="text-lg font-bold font-mono text-[#B7F36B]">
+                  150,000 AI-indexed screenshots
                 </span>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                First 50 users pioneer privilege. Permanent VIP recognition, founder badge, golden crown, and lifetime unlimited AI indexing.
+              <p className="text-xs text-[#A5AAA1] leading-relaxed">
+                VIP Program member (Seat {founderNumStr} of 50). Permanent VIP Badge (#1–#50), Lifetime Pro access, and up to 150,000 AI-indexed screenshots free forever.
               </p>
             </div>
 
@@ -701,28 +713,28 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-300 border border-blue-400/30 shadow-md shadow-blue-500/10">
-                  <Gem className="w-6 h-6 text-blue-400" />
+                <div className="p-3 rounded-2xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
+                  <Gem className="w-6 h-6 text-[#B7F36B]" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-semibold text-blue-400/80 uppercase tracking-wider">Authoritative Plan</span>
-                  <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">💎 Lifetime Pro</h3>
+                  <span className="text-[11px] font-semibold text-[#B7F36B] uppercase tracking-wider">Authoritative Plan</span>
+                  <h3 className="text-xl sm:text-2xl font-black text-[#F7F8F5] tracking-tight">Lifetime Pro</h3>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/40 self-start sm:self-auto">
+              <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-[#B7F36B] text-[#080908] self-start sm:self-auto">
                 Active
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 space-y-1.5">
+            <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] space-y-1.5">
               <div className="flex items-baseline justify-between">
-                <span className="text-xs text-blue-300/80 font-medium">Screenshot Capacity</span>
-                <span className="text-lg font-bold font-mono text-blue-300">
-                  Unlimited screenshots
+                <span className="text-xs text-[#A5AAA1] font-medium">Screenshot Capacity</span>
+                <span className="text-lg font-bold font-mono text-[#B7F36B]">
+                  100,000 AI-indexed screenshots
                 </span>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                One-time purchase • Permanent lifetime access with neural OCR, advanced semantic search, cloud sync, and priority queue.
+              <p className="text-xs text-[#A5AAA1] leading-relaxed">
+                One-time purchase (PKR 5,999) • Permanent lifetime access with neural OCR, semantic search, 50 GB encrypted cloud sync, and priority queue.
               </p>
             </div>
 
@@ -744,7 +756,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                  <Clock className="w-6 h-6 text-amber-400 animate-pulse" />
+                  <Clock className="w-6 h-6 text-amber-400" />
                 </div>
                 <div>
                   <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">Payment Status</span>
@@ -758,7 +770,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-2">
               <p className="text-xs text-amber-200 leading-relaxed">
-                Your Lifetime Pro payment confirmation (PKR 7,999) has been submitted and is currently being verified by our team.
+                Your Lifetime Pro payment confirmation (PKR 5,999) has been submitted and is currently being verified by our team.
               </p>
               {latestPayment && (
                 <div className="pt-2 border-t border-amber-500/20 text-[11px] font-mono text-slate-300 space-y-0.5">
@@ -835,46 +847,46 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
-                  <Sparkles className="w-6 h-6 text-blue-400" />
+                <div className="p-3 rounded-2xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
+                  <Sparkles className="w-6 h-6 text-[#B7F36B]" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Current Tier</span>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Free Plan</h3>
+                  <span className="text-[11px] font-semibold text-[#A5AAA1] uppercase tracking-wider">Current Tier</span>
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#F7F8F5] tracking-tight">Free Plan</h3>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 self-start sm:self-auto">
-                70 lifetime limit
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E] self-start sm:self-auto">
+                250 lifetime limit
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
+            <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] space-y-2.5">
               <div className="flex items-baseline justify-between">
-                <span className="text-xs text-slate-400">Screenshot Quota</span>
-                <span className="text-xl font-bold font-mono text-white">
-                  {indexedCount} <span className="text-slate-400 text-sm font-normal">/ 70 screenshots</span>
+                <span className="text-xs text-[#A5AAA1]">Screenshot Quota</span>
+                <span className="text-xl font-bold font-mono text-[#F7F8F5]">
+                  {indexedCount} <span className="text-[#A5AAA1] text-sm font-normal">/ 250 screenshots</span>
                 </span>
               </div>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-[#0D0F0D] overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.round((indexedCount / 70) * 100))}%` }}
+                  className="h-full bg-[#B7F36B] rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.round((indexedCount / 250) * 100))}%` }}
                 />
               </div>
-              <p className="text-[11px] text-slate-400">
-                {indexedCount >= 70
-                  ? "You've reached your 70 screenshot Free lifetime limit."
-                  : `${Math.max(0, 70 - indexedCount)} free screenshots remaining.`}
+              <p className="text-[11px] text-[#A5AAA1]">
+                {indexedCount >= 250
+                  ? "You've reached your 250 screenshot Free lifetime limit."
+                  : `${Math.max(0, 250 - indexedCount)} free AI-indexed screenshots remaining.`}
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
               <button
                 onClick={() => setShowProModal(true)}
-                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
               >
-                <Zap className="w-4 h-4 text-amber-300" />
-                <span>Upgrade to Lifetime Pro (PKR 7,999)</span>
+                <Zap className="w-4 h-4 text-[#080908]" />
+                <span>Upgrade to Lifetime Pro (PKR 5,999)</span>
               </button>
               <button
                 onClick={fetchAuthoritativeStatus}
@@ -914,19 +926,19 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
         <div
           className={`p-6 rounded-3xl border space-y-4 ${
             isDark
-              ? "bg-gradient-to-br from-blue-950/40 via-slate-900 to-indigo-950/40 border-blue-500/30"
-              : "bg-blue-50/70 border-blue-200"
+              ? "bg-[#141714] border-[#30362E]"
+              : "bg-[#141714] border-[#30362E]"
           }`}
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <div className="p-3 rounded-2xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-base text-white">Admin Payments Management</h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
                     /admin/payments
                   </span>
                 </div>
@@ -946,7 +958,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                   window.location.hash = "#admin/payments";
                 }
               }}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition cursor-pointer shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-black/40 transition cursor-pointer shrink-0"
             >
               <ShieldCheck className="w-4 h-4" />
               Open Payments Hub
@@ -977,7 +989,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <button
             onClick={() => SyncEngine.scheduleSync(0)}
             disabled={syncState.isSyncing}
-            className="px-3.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-blue-600/30 text-[#B7F36B] border border-[#30362E] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncState.isSyncing ? "animate-spin" : ""}`} />
             <span>Force Sync</span>
@@ -993,7 +1005,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           </div>
           <div className="w-full h-2.5 rounded-full bg-slate-800/80 overflow-hidden p-0.5 border border-white/5">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
+              className="h-full bg-[#B7F36B] rounded-full transition-all duration-500"
               style={{ width: `${storageUsagePercent}%` }}
             />
           </div>
@@ -1013,7 +1025,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
         }`}
       >
         <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-          <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <div className="p-2.5 rounded-2xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
@@ -1028,7 +1040,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           {/* Change Password Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
+              <div className="p-2 rounded-xl bg-[#1B1F1A] text-[#B7F36B]">
                 <Lock className="w-4 h-4" />
               </div>
               <div>
@@ -1043,7 +1055,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 setShowPassModal(true);
                 setPassMsg(null);
               }}
-              className="px-4 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all cursor-pointer self-start sm:self-auto"
+              className="px-4 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] text-xs font-bold transition-all cursor-pointer self-start sm:self-auto"
             >
               Change Password
             </button>
@@ -1052,7 +1064,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           {/* Change Email Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+              <div className="p-2 rounded-xl bg-[#1B1F1A] text-[#B7F36B]">
                 <Mail className="w-4 h-4" />
               </div>
               <div>
@@ -1068,7 +1080,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 setEmailMsg(null);
                 setNewEmail(user.email || "");
               }}
-              className="px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-bold transition-all cursor-pointer self-start sm:self-auto"
+              className="px-4 py-2 rounded-xl bg-[#1B1F1A] hover:bg-blue-600/30 text-[#B7F36B] border border-[#30362E] text-xs font-bold transition-all cursor-pointer self-start sm:self-auto"
             >
               Change Email
             </button>
@@ -1143,7 +1155,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <div className="max-w-md w-full p-6 rounded-3xl bg-[#18181F] border border-white/10 text-white space-y-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
-                <Camera className="w-5 h-5 text-blue-400" />
+                <Camera className="w-5 h-5 text-[#B7F36B]" />
                 <h3 className="text-base font-bold">Update Profile Picture</h3>
               </div>
               <button
@@ -1167,7 +1179,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={avatarLoading}
-                className="w-full py-3 px-4 rounded-2xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-2xl bg-[#1B1F1A] hover:bg-blue-600/30 border border-[#30362E] text-[#B7F36B] text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <UploadCloud className="w-4 h-4" />
                 <span>{avatarLoading ? "Uploading..." : "Choose Image from Device"}</span>
@@ -1183,7 +1195,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                     key={idx}
                     onClick={() => handlePresetAvatar(preset)}
                     disabled={avatarLoading}
-                    className="w-12 h-12 rounded-2xl overflow-hidden border border-white/10 hover:border-blue-500 hover:scale-105 transition-all cursor-pointer"
+                    className="w-12 h-12 rounded-2xl overflow-hidden border border-white/10 hover:border-[#B7F36B] hover:scale-105 transition-all cursor-pointer"
                   >
                     <img src={preset} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
                   </button>
@@ -1209,7 +1221,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <div className="max-w-md w-full p-6 rounded-3xl bg-[#18181F] border border-white/10 text-white space-y-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
-                <Lock className="w-5 h-5 text-indigo-400" />
+                <Lock className="w-5 h-5 text-[#B7F36B]" />
                 <h3 className="text-base font-bold">Change Password</h3>
               </div>
               <button
@@ -1231,7 +1243,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                     onChange={(e) => setCurrentPasswordForPass(e.target.value)}
                     placeholder="Enter your current password"
                     required
-                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-indigo-500"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
                   />
                   <button
                     type="button"
@@ -1254,7 +1266,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                     placeholder="Minimum 6 characters"
                     required
                     minLength={6}
-                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-indigo-500"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
                   />
                   <button
                     type="button"
@@ -1275,7 +1287,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter new password"
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
                 />
               </div>
 
@@ -1300,7 +1312,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 <button
                   type="submit"
                   disabled={passLoading}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                 >
                   {passLoading ? "Updating..." : "Update Password"}
                 </button>
@@ -1316,7 +1328,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <div className="max-w-md w-full p-6 rounded-3xl bg-[#18181F] border border-white/10 text-white space-y-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
-                <Mail className="w-5 h-5 text-blue-400" />
+                <Mail className="w-5 h-5 text-[#B7F36B]" />
                 <h3 className="text-base font-bold">Change Email Address</h3>
               </div>
               <button
@@ -1328,7 +1340,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             </div>
 
             <form onSubmit={handleChangeEmailSubmit} className="space-y-4 text-xs">
-              <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-slate-300 text-[11px] leading-relaxed">
+              <div className="p-3 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-slate-300 text-[11px] leading-relaxed">
                 A confirmation email will be dispatched to both your old address and your new address for security verification.
               </div>
 
@@ -1341,7 +1353,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="name@example.com"
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
                 />
               </div>
 
@@ -1354,7 +1366,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                   onChange={(e) => setCurrentPasswordForEmail(e.target.value)}
                   placeholder="Enter current password"
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
                 />
               </div>
 
@@ -1379,7 +1391,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 <button
                   type="submit"
                   disabled={emailLoading}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                 >
                   {emailLoading ? "Sending Verification..." : "Send Verification"}
                 </button>
@@ -1472,6 +1484,34 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
         }}
         addToast={addToast}
       />
+
+      {/* Sign Out All Devices Confirmation Modal */}
+      {showSignOutAllModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#141714] border border-[#30362E] p-6 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-[#F7F8F5]">Sign out from all devices?</h3>
+            <p className="text-xs text-[#A5AAA1] leading-relaxed">
+              This will invalidate all active sessions across your web and mobile devices. You will need to sign in again.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSignOutAllModal(false)}
+                className="px-4 py-2 rounded-xl border border-[#30362E] hover:bg-[#1B1F1A] text-xs font-medium text-[#A5AAA1] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmSignOutAll}
+                className="px-4 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold cursor-pointer"
+              >
+                Sign Out All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Payment Requests Review Modal */}
       <AdminPaymentRequestsModal

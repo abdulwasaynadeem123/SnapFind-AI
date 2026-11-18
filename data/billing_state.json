@@ -1,5 +1,5 @@
 {
-  "founderCounter": 3,
+  "founderCounter": 0,
   "entitlements": {
     "d00cf7d1-34eb-43ed-a91e-86619c172cf8": {
       "userId": "d00cf7d1-34eb-43ed-a91e-86619c172cf8",
@@ -10,7 +10,7 @@
       "isLifetime": true,
       "founderNumber": 1,
       "founderRank": 1,
-      "founderGrantedAt": "2026-10-13T14:09:24.463Z",
+      "founderGrantedAt": "2026-11-14T09:39:07.628Z",
       "founderExpiresAt": null,
       "features": {
         "maxIndexedScreenshots": 150000,
@@ -26,7 +26,7 @@
       "canAiMultimodalSearch": true,
       "priorityProcessing": true,
       "status": "active",
-      "updatedAt": "2026-10-13T14:09:24.463Z"
+      "updatedAt": "2026-11-14T09:39:07.628Z"
     },
     "67484df8-d65e-4c7c-aa60-c361955655da": {
       "userId": "67484df8-d65e-4c7c-aa60-c361955655da",
@@ -37,7 +37,7 @@
       "isLifetime": true,
       "founderNumber": 2,
       "founderRank": 2,
-      "founderGrantedAt": "2026-10-13T14:09:24.463Z",
+      "founderGrantedAt": "2026-11-14T09:39:07.628Z",
       "founderExpiresAt": null,
       "features": {
         "maxIndexedScreenshots": 150000,
@@ -53,7 +53,7 @@
       "canAiMultimodalSearch": true,
       "priorityProcessing": true,
       "status": "active",
-      "updatedAt": "2026-10-13T14:09:24.463Z"
+      "updatedAt": "2026-11-14T09:39:07.628Z"
     },
     "2e87bf41-8f8a-4d10-a0e4-6231c60b60af": {
       "userId": "2e87bf41-8f8a-4d10-a0e4-6231c60b60af",
@@ -64,7 +64,7 @@
       "isLifetime": true,
       "founderNumber": 3,
       "founderRank": 3,
-      "founderGrantedAt": "2026-10-13T14:09:24.463Z",
+      "founderGrantedAt": "2026-11-14T09:39:07.628Z",
       "founderExpiresAt": null,
       "features": {
         "maxIndexedScreenshots": 150000,
@@ -80,7 +80,31 @@
       "canAiMultimodalSearch": true,
       "priorityProcessing": true,
       "status": "active",
-      "updatedAt": "2026-10-13T14:09:24.463Z"
+      "updatedAt": "2026-11-14T09:39:07.628Z"
+    },
+    "1816bdc7-eab4-4493-aa23-571f37a58ca6": {
+      "userId": "1816bdc7-eab4-4493-aa23-571f37a58ca6",
+      "plan": "free",
+      "tier": "Free",
+      "isPro": false,
+      "isFounder": false,
+      "founderNumber": null,
+      "founderGrantedAt": null,
+      "founderExpiresAt": null,
+      "features": {
+        "maxIndexedScreenshots": 250,
+        "maxAIScansPerMonth": 250,
+        "maxStorageMB": 1000,
+        "cloudSync": false,
+        "advancedSearch": true,
+        "aiCollections": true,
+        "priorityProcessing": false
+      },
+      "maxScreenshots": 250,
+      "canCloudSync": false,
+      "canAiMultimodalSearch": true,
+      "priorityProcessing": false,
+      "updatedAt": "2026-11-14T09:35:09.669Z"
     }
   },
   "subscriptions": {},
@@ -88,6 +112,19 @@
   "paymentRequests": {},
   "subscriptionEvents": [],
   "processedPaddleEvents": [],
-  "usageStore": {},
-  "updatedAt": "2026-10-13T14:09:24.463Z"
+  "usageStore": {
+    "dev_sf_dev_w8pe61": {
+      "userKey": "dev_sf_dev_w8pe61",
+      "userId": "guest",
+      "deviceId": "sf_dev_w8pe61",
+      "screenshotsIndexed": 0,
+      "aiAnalysesUsed": 0,
+      "storageBytesUsed": 0,
+      "cloudSyncCount": 0,
+      "periodStart": "2026-11-01T00:00:00.000Z",
+      "monthlyResetDate": "2026-12-01T00:00:00.000Z",
+      "lastUpdated": "2026-11-14T09:30:00.787Z"
+    }
+  },
+  "updatedAt": "2026-11-17T12:55:59.120Z"
 }

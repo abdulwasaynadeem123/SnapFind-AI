@@ -180,8 +180,8 @@ export const PLAN_CONFIG: Record<string, PlanDefinition> = {
   founder: {
     id: "founder",
     tier: "Founder",
-    name: "Founder Plan",
-    badge: "First 50 Users Only",
+    name: "VIP Access",
+    badge: "First 50 VIP Seats",
     monthlyPrice: 0,
     yearlyPrice: 0,
     lifetimePrice: 0,
@@ -189,7 +189,7 @@ export const PLAN_CONFIG: Record<string, PlanDefinition> = {
     formattedYearlyPrice: "Free",
     formattedLifetimePrice: "Free (No payment required)",
     yearlySavingsPercent: 100,
-    description: "Limited to first 50 users: Lifetime Free for 150,000 AI-indexed screenshots + Founder crown badge + permanent rank (#1–#50).",
+    description: "Limited to 50 VIP seats: Lifetime Free for 150,000 AI-indexed screenshots + VIP Badge + permanent VIP seat (#1–#50).",
     features: {
       maxIndexedScreenshots: 150000,
       maxAIScansPerMonth: 150000,
@@ -200,13 +200,13 @@ export const PLAN_CONFIG: Record<string, PlanDefinition> = {
       priorityProcessing: true,
     },
     featureList: [
-      "Free forever • No payment required (Strict 50-seat limit)",
-      "Permanent Founder rank (👑 #1 to #50)",
+      "Free forever • No payment required (50 total VIP seats)",
+      "Permanent VIP Seat number (#1 to #50)",
       "150,000 AI-indexed screenshots lifetime",
       "Lifetime free Pro access with zero recurring fees",
-      "Founder badge and recognition",
+      "VIP Badge and recognition",
       "Early access to major new features",
-      "Founder-exclusive priority queue",
+      "VIP priority processing queue",
     ],
   },
   // Backward compatibility alias for "pro"

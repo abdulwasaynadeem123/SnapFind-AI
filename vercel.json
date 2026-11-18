@@ -19,7 +19,11 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!sitemap\\.xml|robots\\.txt|favicon\\.ico|logo\\.png|logo\\.svg|.*\\..*).*)",
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!api(?:/|$)|sitemap\\.xml|robots\\.txt|favicon\\.ico|logo\\.png|logo\\.svg|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]

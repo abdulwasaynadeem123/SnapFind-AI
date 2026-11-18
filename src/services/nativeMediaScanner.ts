@@ -93,6 +93,11 @@ class NativeMediaScannerService {
 
   public async scanScreenshots(forceFullScan: boolean = false): Promise<void> {
     try {
+      const perm = await this.checkPermission();
+      if (!perm.granted) {
+        console.warn('[NativeMediaScanner] Skipping scanScreenshots: gallery permission not granted.');
+        return;
+      }
       let sinceTimestamp = 0;
       if (!forceFullScan) {
         const lastScanIso = indexingEngine.getLastScanTimestamp();
@@ -124,6 +129,11 @@ class NativeMediaScannerService {
       return;
     }
     try {
+      const perm = await this.checkPermission();
+      if (!perm.granted) {
+        console.warn('[NativeMediaScanner] Skipping startMonitoring: gallery permission not granted.');
+        return;
+      }
       console.log('[NativeMediaScanner] Starting Android foreground-service screenshot monitoring...');
       await SnapFindMediaScanner.startScreenshotMonitoring();
     } catch (err) {

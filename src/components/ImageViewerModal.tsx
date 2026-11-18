@@ -1204,7 +1204,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between border-b border-[#334155] pb-3">
                       <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-purple-400" />
+                        <Layers className="w-4 h-4 text-[#B7F36B]" />
                         <h3 className="text-sm font-bold text-white">Categories &amp; Vault</h3>
                       </div>
                     </div>
@@ -1450,7 +1450,13 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                   onClick={() => {
                     const target = confirmLinkUrl;
                     setConfirmLinkUrl(null);
-                    window.open(target, "_blank", "noopener,noreferrer");
+                    const a = document.createElement("a");
+                    a.href = target;
+                    a.target = "_blank";
+                    a.rel = "noopener noreferrer";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-xs font-bold text-[#10130D] shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >

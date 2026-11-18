@@ -49,7 +49,8 @@ export const AdminPaymentRequestsModal: React.FC<AdminPaymentRequestsModalProps>
   const [filterStatus, setFilterStatus] = useState<"all" | PaymentRequestStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Reject Modal State
+  // Approve / Reject Modal State
+  const [confirmApproveReq, setConfirmApproveReq] = useState<PaymentRequest | null>(null);
   const [selectedRejectReq, setSelectedRejectReq] = useState<PaymentRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -80,11 +81,12 @@ export const AdminPaymentRequestsModal: React.FC<AdminPaymentRequestsModalProps>
 
   const adminEmail = user?.email || "ash.mary.2006@gmail.com";
 
-  const handleApprove = async (req: PaymentRequest) => {
-    if (!window.confirm(`Approve payment request for ${req.user_email || req.user_id}?\n\nTransaction ID: ${req.transaction_id || req.transactionId}\nAmount: PKR 7,999\n\nThis will activate Lifetime Pro for the user immediately.`)) {
-      return;
-    }
+  const handleApprove = (req: PaymentRequest) => {
+    setConfirmApproveReq(req);
+  };
 
+  const executeApprove = async (req: PaymentRequest) => {
+    setConfirmApproveReq(null);
     try {
       setIsProcessing(true);
       const res = await ManualPaymentService.approvePaymentRequest(req.id, adminEmail);
@@ -199,7 +201,7 @@ export const AdminPaymentRequestsModal: React.FC<AdminPaymentRequestsModalProps>
                 </span>
               </div>
               <p className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
-                Verify customer transactions and approve Lifetime Pro entitlements (PKR 7,999)
+                Verify customer transactions and approve Lifetime Pro entitlements (PKR 5,999)
               </p>
             </div>
           </div>
@@ -344,7 +346,7 @@ export const AdminPaymentRequestsModal: React.FC<AdminPaymentRequestsModalProps>
                             {method.replace("_", " ")}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 bg-emerald-500/10">
-                            PKR 7,999
+                            PKR 5,999
                           </span>
                         </div>
 
@@ -487,6 +489,37 @@ export const AdminPaymentRequestsModal: React.FC<AdminPaymentRequestsModalProps>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Approve Confirmation Dialog */}
+      {confirmApproveReq && (
+        <div className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#141714] border border-[#30362E] p-6 space-y-4 shadow-2xl">
+            <h4 className="text-base font-bold text-[#F7F8F5]">Approve Lifetime Pro Payment?</h4>
+            <div className="p-3 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-xs space-y-1 text-[#A5AAA1]">
+              <div>User: <span className="text-[#F7F8F5] font-semibold">{confirmApproveReq.user_email || confirmApproveReq.user_id}</span></div>
+              <div>Transaction ID: <span className="text-[#B7F36B] font-mono font-bold">{confirmApproveReq.transaction_id || confirmApproveReq.transactionId}</span></div>
+              <div>Amount: <span className="text-[#F7F8F5] font-bold">PKR {Number(confirmApproveReq.amount || 5999).toLocaleString()}</span></div>
+            </div>
+            <p className="text-xs text-[#A5AAA1]">This activates Lifetime Pro (100,000 AI-indexed screenshots) immediately.</p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmApproveReq(null)}
+                className="px-4 py-2 rounded-xl border border-[#30362E] hover:bg-[#1B1F1A] text-xs font-medium text-[#A5AAA1] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeApprove(confirmApproveReq)}
+                className="px-4 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold cursor-pointer"
+              >
+                Approve & Activate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Zoom Receipt Image */}
       <AnimatePresence>

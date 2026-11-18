@@ -4,6 +4,7 @@ import { Crown, Sparkles, Check, ArrowRight, X, Shield, Zap, Cloud } from "lucid
 import { SubscriptionManager } from "../../services/billing/SubscriptionManager";
 import { CurrencyService, CANONICAL_PRICING_USD } from "../../services/billing/CurrencyService";
 import { useFounder } from "../../context/FounderContext";
+import { useAuth } from "../../context/AuthContext";
 import { UserProfile } from "../../types";
 
 interface SignupUpgradeModalProps {
@@ -25,65 +26,71 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
   onFounderClaimed,
   isDark = true,
 }) => {
+  const { entitlement, loading: authLoading, refreshEntitlement } = useAuth();
   const [isClaiming, setIsClaiming] = useState(false);
-  const founderStats = useFounder();
-  const [founderInfo, setFounderInfo] = useState<{
-    claimedSpots: number;
-    totalSpots: number;
-    remainingSpots: number;
-    isAvailable: boolean;
-  }>({
-    claimedSpots: founderStats.claimed,
-    totalSpots: founderStats.totalSpots || 50,
-    remainingSpots: founderStats.remaining,
-    isAvailable: founderStats.isAvailable,
-  });
+  const {
+    claimed: rawClaimed,
+    totalSpots = 50,
+    remaining: rawRemaining,
+    isLoading: isLoadingVip,
+    error: vipError,
+    refreshFounderStats,
+    claimFounderSpot,
+  } = useFounder();
 
-  const isFounder = Boolean(user?.entitlement?.isFounder || user?.plan === "Founder");
-  const founderNumber = user?.entitlement?.founderNumber;
+  const hasValidVipStats =
+    !vipError &&
+    typeof rawClaimed === "number" &&
+    typeof rawRemaining === "number";
+  const claimedSpots = hasValidVipStats ? Math.max(0, Math.min(totalSpots, rawClaimed as number)) : null;
+  const remainingSpots = hasValidVipStats ? Math.max(0, totalSpots - (claimedSpots as number)) : null;
+
+  const isFounder = Boolean(
+    user?.entitlement?.isFounder ||
+      entitlement?.isFounder ||
+      user?.plan === "Founder" ||
+      user?.entitlement?.plan === "founder" ||
+      entitlement?.plan === "founder" ||
+      user?.entitlement?.tier === "Founder" ||
+      entitlement?.tier === "Founder"
+  );
+  const founderNumber = user?.entitlement?.founderNumber || entitlement?.founderNumber || null;
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    // Fetch live founder availability status directly from authoritative endpoints
-    fetch("/api/billing/founder-stats")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          const total = data.totalSpots || 50;
-          const claimed = typeof data.claimedSpots === "number" ? data.claimedSpots : typeof data.claimed === "number" ? data.claimed : 0;
-          const remaining = Math.max(0, total - claimed);
-          setFounderInfo({
-            claimedSpots: claimed,
-            totalSpots: total,
-            remainingSpots: remaining,
-            isAvailable: remaining > 0 || isFounder,
-          });
-        }
-      })
-      .catch((err) => {
-        console.warn("[SignupUpgradeModal] Error fetching founder status:", err);
-      });
-  }, [isOpen, isFounder]);
+    if (isOpen) {
+      refreshFounderStats();
+    }
+  }, [isOpen, refreshFounderStats]);
 
   const handleClaimFounder = async () => {
     if (!user || user.id === "guest" || user.id.startsWith("local-guest")) {
       addToast?.({
         title: "Sign-In Required",
-        description: "Please create an account or sign in to claim your Founder 50 spot.",
+        description: "Please create an account or sign in to claim your VIP Seat.",
         type: "error",
+      });
+      return;
+    }
+
+    if (isFounder) {
+      addToast?.({
+        title: "VIP Access Active",
+        description: `You already hold ${founderNumber ? `VIP Seat #${founderNumber}` : "your VIP Seat"} with Lifetime Pro access.`,
+        type: "success",
       });
       return;
     }
 
     try {
       setIsClaiming(true);
-      const res = await SubscriptionManager.claimFounder(user.id);
+      const res = await claimFounderSpot(user.id);
 
-      if (res.success && res.entitlement) {
+      if (res.success && (res as any).founderNumber) {
+        await refreshEntitlement();
+        await refreshFounderStats();
         addToast?.({
-          title: "👑 Founder Status Activated!",
-          description: `Congratulations! You are officially Founder #${res.founderNumber || "50"} with complimentary Lifetime Pro access.`,
+          title: "VIP Access Activated",
+          description: `Welcome, VIP User! You hold VIP Seat #${res.founderNumber} with Lifetime Pro access.`,
           type: "success",
         });
         if (onFounderClaimed) onFounderClaimed();
@@ -92,15 +99,15 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
         }, 1200);
       } else {
         addToast?.({
-          title: "Founder Allocation Full",
-          description: res.error || "Founder spots have been fully allocated. You can upgrade to Pro anytime!",
+          title: "VIP Allocation Notice",
+          description: res.error || "All 50 VIP seats have been occupied. You can upgrade to Pro anytime!",
           type: "info",
         });
       }
     } catch (err: any) {
       addToast?.({
         title: "Claim Failed",
-        description: err.message || "Failed to claim founder position.",
+        description: err.message || "Failed to claim VIP Seat.",
         type: "error",
       });
     } finally {
@@ -118,10 +125,10 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-[#0F111A] border border-blue-500/30 text-white shadow-2xl shadow-blue-500/10"
+          className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-[#141714] border border-[#30362E] text-[#F7F8F5] shadow-2xl"
         >
           {/* Subtle decorative glow */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-[#B7F36B]/5 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 right-0 w-60 h-60 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
 
           {/* Close Button */}
@@ -136,108 +143,124 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
           <div className="p-6 sm:p-8 space-y-6 relative z-10">
             {/* Header */}
             <div className="text-center space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-blue-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold tracking-wide">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1B1F1A] border border-[#30362E] text-amber-300 text-xs font-bold tracking-wide">
                 <Crown className="w-3.5 h-3.5 text-amber-400" />
                 <span>WELCOME TO SNAPFIND AI</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#F7F8F5] tracking-tight">
                 {isFounder ? (
-                  "Welcome, Founding Pioneer!"
-                ) : founderInfo.remainingSpots > 0 ? (
+                  "Welcome, VIP User!"
+                ) : hasValidVipStats && (remainingSpots as number) > 0 ? (
                   <>
-                    Claim Your Free <span className="text-amber-400">Founder 50</span> Lifetime Spot
+                    Claim Your Free <span className="text-[#B7F36B]">VIP Seat</span>
                   </>
                 ) : (
                   "Choose Your SnapFind AI Plan"
                 )}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto">
+              <p className="text-xs sm:text-sm text-[#A5AAA1] max-w-md mx-auto">
                 {isFounder
-                  ? `Your account is permanently upgraded with Lifetime Pro as Founder #${founderNumber || "VIP"}.`
-                  : founderInfo.remainingSpots > 0
-                  ? "As one of our first 50 pioneer members, you are eligible for 100% free Lifetime Pro access with an official Crown tag!"
+                  ? `Your account is permanently upgraded with Lifetime Pro and ${founderNumber ? `VIP Seat #${founderNumber} of 50` : "your VIP Seat"}.`
+                  : hasValidVipStats && (remainingSpots as number) > 0
+                  ? "Claim 1 of 50 VIP seats for 100% free Lifetime Pro access, 150,000 screenshots, and a permanent VIP Badge."
                   : "Supercharge your workflow with instant OCR, multimodal AI vision search, and cloud sync."}
               </p>
             </div>
 
-            {/* Founder 50 Special Promotion Box */}
-            {!isFounder && founderInfo.remainingSpots > 0 ? (
-              <div className="rounded-2xl p-5 bg-gradient-to-b from-amber-500/15 via-amber-500/5 to-transparent border border-amber-400/40 space-y-4">
-                <div className="flex items-center justify-between">
+            {!isFounder && authLoading ? (
+              <div className="rounded-2xl p-4 bg-[#1B1F1A] border border-[#30362E] text-center text-xs text-[#A5AAA1]">
+                Verifying your account entitlement...
+              </div>
+            ) : !isFounder && !hasValidVipStats ? (
+              <div className="rounded-2xl p-4 bg-[#1B1F1A] border border-[#30362E] flex items-center justify-between gap-3">
+                <span className="text-xs text-[#A5AAA1]">
+                  {isLoadingVip ? "Loading live VIP seat availability..." : vipError || "VIP seat availability temporarily unavailable."}
+                </span>
+                {!isLoadingVip && (
+                  <button
+                    type="button"
+                    onClick={() => refreshFounderStats()}
+                    className="px-3 py-1.5 rounded-xl bg-[#B7F36B] text-[#10130D] text-xs font-bold cursor-pointer shrink-0"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            ) : !isFounder && hasValidVipStats && (remainingSpots as number) > 0 ? (
+              <div className="rounded-2xl p-5 bg-[#141714] border border-[#30362E] space-y-4">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300">
+                    <div className="p-2 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B]">
                       <Crown className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-sm font-black text-amber-200">First 50 Users Offer</div>
-                      <div className="text-xs text-amber-400/80">Lifetime Pro · $0 Forever</div>
+                      <div className="text-sm font-bold text-[#F7F8F5]">VIP Program Offer</div>
+                      <div className="text-xs text-[#B7F36B]">Lifetime Access · PKR 0 Forever</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs font-mono font-bold text-amber-300">
-                      {founderInfo.claimedSpots} / {founderInfo.totalSpots} claimed
+                    <span className="text-xs font-mono font-bold text-[#B7F36B]">
+                      {claimedSpots} / {totalSpots} occupied
                     </span>
-                    <div className="w-20 bg-slate-900 rounded-full h-1.5 mt-1 overflow-hidden border border-amber-400/30">
+                    <div className="w-24 bg-[#0D0F0D] rounded-full h-1.5 mt-1 overflow-hidden border border-[#30362E]">
                       <div
-                        className="bg-amber-400 h-full transition-all duration-500"
+                        className="bg-[#B7F36B] h-full transition-all duration-500"
                         style={{
-                          width: `${Math.min(100, (founderInfo.claimedSpots / founderInfo.totalSpots) * 100)}%`,
+                          width: `${Math.min(100, Math.max(0, ((claimedSpots as number) / totalSpots) * 100))}%`,
                         }}
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Advantages List */}
-                <div className="space-y-2 pt-1 border-t border-amber-400/20">
-                  <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                    Founder 50 Advantages
+                <div className="space-y-2 pt-2 border-t border-[#30362E]">
+                  <div className="text-xs font-bold text-[#A5AAA1] uppercase tracking-wider">
+                    VIP Access Benefits ({remainingSpots} of {totalSpots} seats available)
                   </div>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-200">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#F7F8F5]">
                     <li className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>👑 Official Founder Crown Tag on account</span>
+                      <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                      <span>Official VIP Badge (#1–#50) on account</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>💎 100% Free Lifetime Pro ($39.99 value)</span>
+                      <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                      <span>100% Free Lifetime Pro access</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>🚀 Unlimited indexed screenshot quota</span>
+                      <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                      <span>150,000 AI-indexed screenshots</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>🧠 Multimodal Vision AI</span>
+                      <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                      <span>Multimodal Vision AI search</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>☁️ Multi-device encrypted cloud sync</span>
+                      <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                      <span>Multi-device encrypted cloud sync</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>🛡️ Zero subscription fees forever</span>
+                      <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+                      <span>Zero subscription fees forever</span>
                     </li>
                   </ul>
                 </div>
 
-                {/* Claim Button */}
                 <button
                   onClick={handleClaimFounder}
                   disabled={isClaiming}
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-400/20 transition duration-200 cursor-pointer active:scale-[0.98]"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm flex items-center justify-center gap-2 transition duration-200 cursor-pointer active:scale-[0.98]"
                 >
                   <Crown className="w-4 h-4" />
-                  <span>{isClaiming ? "Securing Founder Spot..." : "Claim Free Founder 👑 Lifetime Spot"}</span>
+                  <span>{isClaiming ? "Allocating VIP Seat..." : `Claim Free VIP Seat (${remainingSpots} Available)`}</span>
                 </button>
               </div>
             ) : isFounder ? (
-              <div className="rounded-2xl p-5 bg-gradient-to-r from-amber-500/20 to-blue-500/20 border border-amber-400/40 text-center space-y-3">
-                <Crown className="w-8 h-8 text-amber-400 mx-auto" />
-                <div className="text-lg font-black text-amber-300">
-                  Founder 👑 VIP #{founderNumber || "50"} Active
+              <div className="rounded-2xl p-5 bg-[#1B1F1A] border border-[#30362E] text-center space-y-3">
+                <Crown className="w-8 h-8 text-[#B7F36B] mx-auto" />
+                <div className="text-lg font-bold text-[#B7F36B]">
+                  VIP User • {founderNumber ? `VIP Seat #${founderNumber} Active` : "VIP Seat Active"}
                 </div>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-[#A5AAA1]">
                   Your account enjoys permanent Lifetime Pro access. You will never be asked to pay or subscribe.
                 </p>
               </div>
@@ -247,20 +270,20 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
             <div className="rounded-2xl p-4 bg-white/5 border border-white/10 space-y-3">
               <div className="flex items-center justify-between text-xs text-slate-300">
                 <span className="font-semibold text-white">SnapFind AI Plans Available:</span>
-                <span className="text-slate-400">Free · Pro ($2.99/mo or $24.99/yr) · Lifetime ($39.99)</span>
+                <span className="text-[#A5AAA1]">Free (250) · Pro (PKR 249/mo or 1,999/yr) · Lifetime (PKR 5,999)</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2.5 rounded-xl bg-slate-900/60 border border-white/5">
-                  <div className="font-bold text-white">Free</div>
-                  <div className="text-[11px] text-slate-400">100 items</div>
+                <div className="p-2.5 rounded-xl bg-[#1B1F1A] border border-[#30362E]">
+                  <div className="font-bold text-[#F7F8F5]">Free</div>
+                  <div className="text-[11px] text-[#A5AAA1]">250 items</div>
                 </div>
-                <div className="p-2.5 rounded-xl bg-blue-900/40 border border-blue-500/30">
-                  <div className="font-bold text-blue-300">Pro</div>
-                  <div className="text-[11px] text-slate-300">$2.99 / mo</div>
+                <div className="p-2.5 rounded-xl bg-[#1B1F1A] border border-[#30362E]">
+                  <div className="font-bold text-[#F7F8F5]">Pro</div>
+                  <div className="text-[11px] text-[#A5AAA1]">PKR 249 / mo</div>
                 </div>
-                <div className="p-2.5 rounded-xl bg-purple-900/40 border border-purple-500/30">
-                  <div className="font-bold text-purple-300">Lifetime</div>
-                  <div className="text-[11px] text-slate-300">$39.99 once</div>
+                <div className="p-2.5 rounded-xl bg-[#1B1F1A] border border-[#B7F36B]/50">
+                  <div className="font-bold text-[#B7F36B]">Lifetime</div>
+                  <div className="text-[11px] text-[#A5AAA1]">PKR 5,999 once</div>
                 </div>
               </div>
             </div>
@@ -272,7 +295,7 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
                   onClose();
                   onNavigateToPricing();
                 }}
-                className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition duration-200 cursor-pointer shadow-lg shadow-blue-600/20"
+                className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition duration-200 cursor-pointer shadow-lg shadow-blue-600/20"
               >
                 <span>View Full Pricing & Plans</span>
                 <ArrowRight className="w-4 h-4" />

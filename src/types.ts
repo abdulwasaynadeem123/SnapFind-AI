@@ -481,7 +481,7 @@ export interface PaymentRequest {
   user_name?: string;
   userName?: string;
   plan: string; // 'lifetime'
-  amount: number; // 7999
+  amount: number; // 5999
   currency: string; // 'PKR'
   payment_method: ManualPaymentMethod;
   paymentMethod?: ManualPaymentMethod;

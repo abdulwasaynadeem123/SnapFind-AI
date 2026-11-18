@@ -72,13 +72,13 @@ export const FEATURE_UPGRADE_CONFIG: Record<UpgradeFeatureKey, UpgradeFeatureDet
   aiLimit: {
     key: "aiLimit",
     title: "You've reached your free monthly AI processing limit",
-    subtitle: "Free tier includes 20 AI vision scans each month. Upgrade to Pro for 2,000 monthly scans.",
+    subtitle: "Free tier includes 250 lifetime AI-indexed screenshots. Upgrade to Pro for 2,500 monthly or up to 100,000 lifetime scans.",
     iconName: "Sparkles",
     isLimit: true,
     limitType: "aiScans",
     benefits: [
-      "2,000 monthly AI vision scans",
-      "10,000 screenshot library capacity",
+      "2,500 monthly to 100,000 lifetime AI scans",
+      "Up to 100,000 screenshot library capacity",
       "AI-powered collections & smart tagging",
       "Encrypted cloud backup & sync",
     ],
@@ -86,12 +86,12 @@ export const FEATURE_UPGRADE_CONFIG: Record<UpgradeFeatureKey, UpgradeFeatureDet
   screenshotQuota: {
     key: "screenshotQuota",
     title: "You've reached your free screenshot limit",
-    subtitle: "Free tier includes 30 indexed screenshots. Upgrade to Pro for up to 15,000+ screenshots.",
+    subtitle: "Free tier includes 250 AI-indexed screenshots. Upgrade to Pro for 2,500/mo up to 100,000 lifetime screenshots.",
     iconName: "HardDrive",
     isLimit: true,
     limitType: "screenshots",
     benefits: [
-      "Up to 15,000 – 100,000 indexed screenshots capacity",
+      "Up to 2,500/mo or 100,000 lifetime AI-indexed screenshots",
       "Higher monthly AI processing limits",
       "Automated AI Collections",
       "Cross-device encrypted sync",

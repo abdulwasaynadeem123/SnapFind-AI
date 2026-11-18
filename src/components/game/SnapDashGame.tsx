@@ -795,7 +795,7 @@ export const SnapDashGame: React.FC<SnapDashGameProps> = ({
           </div>
 
           {multiplierActive && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400/20 border border-amber-400/50 text-amber-300 text-xs font-black animate-pulse">
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400/20 border border-amber-400/50 text-amber-300 text-xs font-black">
               <Zap className="w-3.5 h-3.5 fill-amber-400" />
               <span>2X BOOST</span>
             </div>
@@ -839,7 +839,7 @@ export const SnapDashGame: React.FC<SnapDashGameProps> = ({
               id="snapdash-resume-btn"
               onClick={togglePause}
               aria-label="Resume game"
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-all flex items-center gap-1.5"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
               <span>Resume</span>
@@ -894,7 +894,7 @@ export const SnapDashGame: React.FC<SnapDashGameProps> = ({
           type="button"
           id="snapdash-jump-btn"
           onClick={handleJump}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/25 active:scale-95 transition-all"
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] font-bold text-xs shadow-lg shadow-cyan-500/25 active:scale-95 transition-all"
         >
           <ArrowUp className="w-4 h-4" />
           <span>{gameState === "READY" ? "LAUNCH" : "JUMP"}</span>

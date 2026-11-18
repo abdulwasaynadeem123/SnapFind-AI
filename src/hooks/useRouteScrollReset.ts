@@ -24,41 +24,50 @@ export function useRouteScrollReset(
     }
   }, []);
 
-  // Trigger instantaneous scroll reset whenever the route/view changes
+  // Trigger smooth scroll reset whenever the route/view changes (honoring reduced motion)
   useEffect(() => {
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const scrollBehavior: ScrollBehavior =
+      isFirstMount.current || prefersReduced ? "auto" : "smooth";
+
     const resetScroll = () => {
       // 1. Reset main content container if ref provided
       if (containerRef?.current) {
-        containerRef.current.scrollTop = 0;
-        containerRef.current.scrollLeft = 0;
+        try {
+          containerRef.current.scrollTo({ top: 0, left: 0, behavior: scrollBehavior });
+        } catch {
+          containerRef.current.scrollTop = 0;
+          containerRef.current.scrollLeft = 0;
+        }
       }
 
       // 2. Also query DOM element for main content container
       if (typeof document !== "undefined") {
         const mainContainer = document.getElementById("main-content-scroll-container");
-        if (mainContainer) {
-          mainContainer.scrollTop = 0;
-          mainContainer.scrollLeft = 0;
-        }
-
-        if (document.documentElement) {
-          document.documentElement.scrollTop = 0;
-          document.documentElement.scrollLeft = 0;
-        }
-
-        if (document.body) {
-          document.body.scrollTop = 0;
-          document.body.scrollLeft = 0;
+        if (mainContainer && mainContainer !== containerRef?.current) {
+          try {
+            mainContainer.scrollTo({ top: 0, left: 0, behavior: scrollBehavior });
+          } catch {
+            mainContainer.scrollTop = 0;
+            mainContainer.scrollLeft = 0;
+          }
         }
       }
 
       // 3. Reset window
-      if (typeof window !== "undefined") {
-        window.scrollTo({
-          top: 0,
-          left: 0,
-          behavior: "instant",
-        });
+      if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+        try {
+          window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: scrollBehavior,
+          });
+        } catch {
+          window.scrollTo(0, 0);
+        }
       }
     };
 

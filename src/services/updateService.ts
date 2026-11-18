@@ -7,7 +7,7 @@
  * - Automatic startup & resume checks with a 4-hour cooldown.
  * - Non-intrusive: remembers dismissed versions, does not spam notifications.
  * - Secure: only downloads from verified HTTPS GitHub domains.
- * - Preserves all user data (SQLite database, Vault, collections, Founder status).
+ * - Preserves all user data (SQLite database, Vault, collections, VIP status).
  */
 
 import {

@@ -34,7 +34,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Documents": {
     icon: "FileText",
-    color: "from-blue-600 to-slate-800",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "PDFs, official records, certificates, IDs, and scanned documents",
   },
   "Shopping": {
@@ -44,12 +44,12 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Conversations": {
     icon: "MessageSquare",
-    color: "from-cyan-500 to-blue-700",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "WhatsApp chats, Slack discussions, SMS, and messaging threads",
   },
   "Social Media": {
     icon: "Share2",
-    color: "from-purple-500 to-pink-600",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "Twitter/X posts, Instagram stories, YouTube captures, and viral feeds",
   },
   "Travel": {
@@ -59,7 +59,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Education": {
     icon: "GraduationCap",
-    color: "from-violet-500 to-indigo-800",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "Course notes, lecture slides, study materials, and certificates",
   },
   "Finance": {
@@ -79,7 +79,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Travel & Identity": {
     icon: "Plane",
-    color: "from-blue-500 to-indigo-600",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "Passports, ID cards, flight tickets, and travel itineraries",
   },
   "Utility Bills": {
@@ -94,7 +94,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Education & Passes": {
     icon: "GraduationCap",
-    color: "from-purple-500 to-violet-600",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "Certificates, QR event passes, student IDs, and admission cards",
   },
   "Shopping & Receipts": {
@@ -104,7 +104,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "Chats & Messages": {
     icon: "MessageSquare",
-    color: "from-cyan-500 to-blue-600",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "Important chat logs, messages, social media conversations",
   },
   "Development & Code": {
@@ -124,7 +124,7 @@ const COLLECTION_PRESETS: Record<string, { icon: string; color: string; descript
   },
   "General Vault": {
     icon: "Folder",
-    color: "from-indigo-600 to-purple-800",
+    color: "from-[#1B1F1A] to-[#141714]",
     description: "Unsorted & miscellaneous indexed screenshots",
   },
 };
@@ -184,7 +184,7 @@ export function deriveAndSyncCollections(
     } else {
       const preset = COLLECTION_PRESETS[name] || {
         icon: "Folder",
-        color: "from-blue-600 to-indigo-700",
+        color: "from-[#1B1F1A] to-[#141714]",
         description: `AI Classified collection for ${name}`,
       };
 
@@ -278,7 +278,7 @@ export function deriveAndSyncCollections(
       } else {
         const preset = COLLECTION_PRESETS[colName] || {
           icon: "Folder",
-          color: "from-blue-600 to-indigo-700",
+          color: "from-[#1B1F1A] to-[#141714]",
           description: colName,
         };
         collectionMap.set(colName, {
@@ -373,7 +373,7 @@ export function createCustomCollection(
     isAiGenerated: false,
     createdAt: new Date().toISOString(),
     itemCount: 0,
-    color: "from-purple-600 to-pink-600",
+    color: "from-[#1B1F1A] to-[#141714]",
     icon: "FolderPlus",
   };
 

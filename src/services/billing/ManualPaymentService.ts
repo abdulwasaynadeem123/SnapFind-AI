@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from "../supabase";
+import { supabase, isSupabaseConfigured, getAuthBearerHeader } from "../supabase";
 import { PaymentRequest, ManualPaymentMethod, PaymentAccountDetails, UserEntitlement } from "../../types";
 import { SubscriptionManager } from "./SubscriptionManager";
 
@@ -14,7 +14,7 @@ export const DEFAULT_PAYMENT_ACCOUNTS: PaymentAccountDetails[] = [
       "Open your Easypaisa Mobile App.",
       "Select 'Send Money' -> 'Easypaisa Mobile Account'.",
       "Enter Receiver Mobile Number: EASYPAISA_ACCOUNT_NUMBER (Account Name: EASYPAISA_ACCOUNT_NAME).",
-      "Enter exact amount: PKR 7,999.",
+      "Enter exact amount: PKR 5,999.",
       "Save the 11-digit Transaction ID (TID) from the SMS or Receipt.",
       "Submit your Transaction ID and optional receipt screenshot below for admin verification.",
     ],
@@ -33,7 +33,7 @@ export const DEFAULT_PAYMENT_ACCOUNTS: PaymentAccountDetails[] = [
       "Select Destination Bank: BANK_NAME.",
       "Enter IBAN: BANK_IBAN.",
       "Verify Account Title: BANK_ACCOUNT_TITLE.",
-      "Transfer PKR 7,999 and copy the Transaction Reference / UTR Number.",
+      "Transfer PKR 5,999 and copy the Transaction Reference / UTR Number.",
       "Submit the confirmation form below with your Transaction ID.",
     ],
     badge: "All Pakistani Banks Supported",
@@ -123,9 +123,10 @@ class ManualPaymentServiceEngine {
 
     try {
       // 1. Call server endpoint to record and validate
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const response = await fetch("/api/payment-requests", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           userId: params.userId,
           userEmail: params.userEmail || "",
@@ -171,7 +172,7 @@ class ManualPaymentServiceEngine {
               user_email: params.userEmail,
               user_name: params.userName,
               plan: "lifetime",
-              amount: 7999,
+              amount: 5999,
               currency: "PKR",
               payment_method: params.paymentMethod,
               transaction_id: trimmedTxId,
@@ -188,7 +189,7 @@ class ManualPaymentServiceEngine {
           if (error) {
             return {
               success: false,
-              error: error.message || "Failed to submit payment request via Supabase.",
+              error: error.message || "Failed to submit payment request. Please try again.",
             };
           }
 
@@ -223,8 +224,9 @@ class ManualPaymentServiceEngine {
     if (!userId || userId === "guest") return [];
 
     try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch(`/api/payment-requests/my`, {
-        headers: { "x-user-id": userId },
+        headers: { "x-user-id": userId, ...authHeaders },
       });
       if (res.ok) {
         const data = await res.json();
@@ -311,7 +313,7 @@ class ManualPaymentServiceEngine {
               pending,
               approved,
               rejected,
-              totalAmountPkr: approved * 7999,
+              totalAmountPkr: reqs.filter((r) => r.status === "approved").reduce((sum, r) => sum + (Number(r.amount) || 5999), 0),
             },
           };
         }
@@ -331,7 +333,7 @@ class ManualPaymentServiceEngine {
         pending,
         approved,
         rejected,
-        totalAmountPkr: approved * 7999,
+        totalAmountPkr: this.localRequests.filter((r) => r.status === "approved").reduce((sum, r) => sum + (Number(r.amount) || 5999), 0),
       },
     };
   }

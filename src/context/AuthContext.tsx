@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase, isSupabaseConfigured } from "../services/supabase";
+import { supabase, isSupabaseConfigured, getAuthBearerHeader } from "../services/supabase";
 import { UserProfile, UserEntitlement } from "../types";
 import { loadUserProfile, saveUserProfile, clearUserCache } from "../services/storage.ts";
 import { StorageManager } from "../services/storage/StorageManager";
@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updated = {
           ...prev,
           plan: newEntitlement.tier,
-          storageLimitMB: newEntitlement.isPro ? 10000 : 500,
+          storageLimitMB: newEntitlement.features?.maxStorageMB ?? (newEntitlement.isPro || newEntitlement.isFounder ? 50000 : 1000),
           entitlement: newEntitlement,
         };
         saveUserProfile(updated);
@@ -178,13 +178,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 2. Fetch current active session
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
         setSession(session);
         setSupabaseUser(session?.user ?? null);
         if (session?.user) {
-          syncProfile(session.user);
           SyncEngine.setCurrentUserId(session.user.id);
+          await syncProfile(session.user);
         } else {
+          SubscriptionManager.resetToFree();
           SyncEngine.setCurrentUserId("guest");
         }
         setLoading(false);
@@ -198,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 3. Listen to persistent Auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       console.log(`[AuthContext] onAuthStateChange event: ${_event}`);
       setSession(session);
       setSupabaseUser(session?.user ?? null);
@@ -206,13 +207,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsRecoveryMode(true);
       }
       if (session?.user) {
-        syncProfile(session.user);
         SyncEngine.setCurrentUserId(session.user.id);
+        await syncProfile(session.user);
       } else if (_event === "SIGNED_OUT") {
         // Logged out
+        SubscriptionManager.resetToFree();
         SyncEngine.setCurrentUserId("guest");
-        const guestUser = loadUserProfile();
-        const loggedOutUser = { ...guestUser, isLoggedIn: false };
+        clearUserCache();
+        const loggedOutUser: UserProfile = {
+          id: "guest",
+          name: "Sign In",
+          email: "",
+          avatarUrl: "",
+          isLoggedIn: false,
+          plan: "Free",
+          storageLimitMB: 1000,
+        };
         setUser(loggedOutUser);
         saveUserProfile(loggedOutUser);
       }
@@ -235,6 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Fetch authoritative server-verified entitlement
     const userEntitlement = await SubscriptionManager.syncEntitlementsFromServer(sbUser.id);
+    setEntitlement(userEntitlement);
 
     const updatedProfile: UserProfile = {
       id: sbUser.id,
@@ -243,7 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       avatarUrl,
       isLoggedIn: true,
       plan: userEntitlement.tier,
-      storageLimitMB: (userEntitlement.isPro || userEntitlement.isFounder) ? 10000 : 500,
+      storageLimitMB: userEntitlement.features?.maxStorageMB ?? ((userEntitlement.isPro || userEntitlement.isFounder) ? 50000 : 1000),
       createdAt: sbUser.created_at,
       emailConfirmedAt: sbUser.email_confirmed_at,
       provider: sbUser.app_metadata?.provider || "email",
@@ -275,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: cleanEmail,
         isLoggedIn: true,
         plan: currentEnt.tier,
-        storageLimitMB: currentEnt.isPro || currentEnt.isFounder ? 10000 : 500,
+        storageLimitMB: currentEnt.features?.maxStorageMB ?? ((currentEnt.isPro || currentEnt.isFounder) ? 50000 : 1000),
         createdAt: new Date().toISOString(),
         provider: "email",
         entitlement: currentEnt,
@@ -302,8 +313,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
     if (data?.session?.user) {
-      syncProfile(data.session.user);
       SyncEngine.setCurrentUserId(data.session.user.id);
+      await syncProfile(data.session.user);
       NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
     }
     return {};
@@ -331,7 +342,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: cleanEmail,
         isLoggedIn: true,
         plan: currentEnt.tier,
-        storageLimitMB: currentEnt.isPro || currentEnt.isFounder ? 10000 : 500,
+        storageLimitMB: currentEnt.features?.maxStorageMB ?? ((currentEnt.isPro || currentEnt.isFounder) ? 50000 : 1000),
         createdAt: new Date().toISOString(),
         provider: "email",
         entitlement: currentEnt,
@@ -510,7 +521,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       avatarUrl: "",
       isLoggedIn: false,
       plan: "Free",
-      storageLimitMB: 500,
+      storageLimitMB: 1000,
     };
     setUser(guestUser);
     saveUserProfile(guestUser);
@@ -535,7 +546,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatarUrl: "",
         isLoggedIn: false,
         plan: "Free",
-        storageLimitMB: 500,
+        storageLimitMB: 1000,
       };
       setUser(guestUser);
       saveUserProfile(guestUser);
@@ -741,11 +752,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (isSupabaseConfigured && supabaseUser) {
-        const uid = supabaseUser.id;
-        await supabase.from("screenshots").delete().eq("user_id", uid);
-        await supabase.from("search_history").delete().eq("user_id", uid);
-        await supabase.from("settings").delete().eq("user_id", uid);
-        await supabase.from("profiles").delete().eq("id", uid);
+        try {
+          const authHeaders = await getAuthBearerHeader();
+          const delRes = await fetch("/api/account/delete", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...authHeaders,
+            },
+          });
+          if (!delRes.ok) {
+            const uid = supabaseUser.id;
+            await supabase.from("screenshots").delete().eq("user_id", uid);
+            await supabase.from("search_history").delete().eq("user_id", uid);
+            await supabase.from("settings").delete().eq("user_id", uid);
+            await supabase.from("profiles").delete().eq("id", uid);
+          }
+        } catch {
+          const uid = supabaseUser.id;
+          await supabase.from("screenshots").delete().eq("user_id", uid);
+          await supabase.from("search_history").delete().eq("user_id", uid);
+          await supabase.from("settings").delete().eq("user_id", uid);
+          await supabase.from("profiles").delete().eq("id", uid);
+        }
         await supabase.auth.signOut();
       }
 
@@ -759,7 +788,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: "guest@snapfind.ai",
         isLoggedIn: false,
         plan: "Free",
-        storageLimitMB: 500,
+        storageLimitMB: 1000,
       };
       setUser(loggedOutUser);
       saveUserProfile(loggedOutUser);

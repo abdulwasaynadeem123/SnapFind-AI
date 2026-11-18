@@ -25,7 +25,8 @@ import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -63,7 +64,32 @@ public class SnapFindMediaScannerPlugin extends Plugin {
     private static final String TAG = "SnapFindMediaScanner";
     private static SnapFindMediaScannerPlugin activeInstance = null;
     private ContentObserver screenshotObserver = null;
-    private static final Set<String> processedUris = new HashSet<>();
+    private static final int MAX_PROCESSED_URIS = 5000;
+    private static final Set<String> processedUris = Collections.synchronizedSet(new LinkedHashSet<>());
+
+    private boolean hasGalleryReadPermission() {
+        if (Build.VERSION.SDK_INT >= 34) {
+            return getPermissionState("images") == PermissionState.GRANTED
+                    || getPermissionState("selected_images") == PermissionState.GRANTED;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return getPermissionState("images") == PermissionState.GRANTED;
+        }
+        return getPermissionState("storage") == PermissionState.GRANTED;
+    }
+
+    private static boolean markUriProcessedIfNew(String uriStr) {
+        synchronized (processedUris) {
+            if (processedUris.contains(uriStr)) {
+                return false;
+            }
+            if (processedUris.size() >= MAX_PROCESSED_URIS) {
+                String oldest = processedUris.iterator().next();
+                processedUris.remove(oldest);
+            }
+            processedUris.add(uriStr);
+            return true;
+        }
+    }
 
     @Override
     public void load() {
@@ -197,6 +223,10 @@ public class SnapFindMediaScannerPlugin extends Plugin {
 
     @PluginMethod
     public void scanExistingScreenshots(PluginCall call) {
+        if (!hasGalleryReadPermission()) {
+            call.reject("Gallery permission is required to scan screenshots.");
+            return;
+        }
         long sinceTimestamp = call.hasOption("sinceTimestamp") ? call.getLong("sinceTimestamp") : 0L;
 
         getBridge().executeOnMainThread(() -> {
@@ -240,8 +270,12 @@ public class SnapFindMediaScannerPlugin extends Plugin {
                 argsList.add("%DCIM/Screenshots%");
 
                 if (sinceTimestamp > 0) {
-                    selectionBuilder.append(" AND ").append(MediaStore.Images.Media.DATE_ADDED).append(" > ?");
-                    argsList.add(String.valueOf(sinceTimestamp / 1000));
+                    String sinceSec = String.valueOf(sinceTimestamp / 1000);
+                    selectionBuilder.append(" AND (")
+                            .append(MediaStore.Images.Media.DATE_ADDED).append(" > ? OR ")
+                            .append(MediaStore.Images.Media.DATE_MODIFIED).append(" > ?)");
+                    argsList.add(sinceSec);
+                    argsList.add(sinceSec);
                 }
 
                 String selection = selectionBuilder.toString();
@@ -291,7 +325,7 @@ public class SnapFindMediaScannerPlugin extends Plugin {
                             item.put("size", size);
 
                             screenshots.add(item);
-                            processedUris.add(uriStr);
+                            markUriProcessedIfNew(uriStr);
                             scanned++;
 
                             JSObject progress = new JSObject();
@@ -326,6 +360,10 @@ public class SnapFindMediaScannerPlugin extends Plugin {
 
     @PluginMethod
     public void startScreenshotMonitoring(PluginCall call) {
+        if (!hasGalleryReadPermission()) {
+            call.reject("Gallery permission is required to monitor screenshots.");
+            return;
+        }
         Context context = getContext();
 
         // 1. Start ForegroundService for ongoing notification and persistent ContentObserver
@@ -446,8 +484,7 @@ public class SnapFindMediaScannerPlugin extends Plugin {
                             Uri contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
                             String uriStr = contentUri.toString();
 
-                            if (!processedUris.contains(uriStr)) {
-                                processedUris.add(uriStr);
+                            if (markUriProcessedIfNew(uriStr)) {
 
                                 JSObject item = new JSObject();
                                 item.put("uri", uriStr);
@@ -488,8 +525,7 @@ public class SnapFindMediaScannerPlugin extends Plugin {
                         Uri contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
                         String uriStr = contentUri.toString();
 
-                        if (!processedUris.contains(uriStr)) {
-                            processedUris.add(uriStr);
+                        if (markUriProcessedIfNew(uriStr)) {
 
                             JSObject item = new JSObject();
                             item.put("uri", uriStr);

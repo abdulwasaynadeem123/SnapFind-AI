@@ -18,8 +18,8 @@ const VIEW_SEO_CONFIG: Record<NavViewType, PageSeoConfig> = {
     isPublic: true,
   },
   founders: {
-    title: "Founders Lifetime Access – SnapFind AI",
-    description: "Claim lifetime access to SnapFind AI. Zero subscriptions, premium indexing quota, and founding member perks.",
+    title: "VIP Program Lifetime Access – SnapFind AI",
+    description: "Claim 1 of 50 VIP seats for lifetime access to SnapFind AI. Zero subscriptions, 150,000 AI-indexed screenshots, and VIP Badge perks.",
     isPublic: true,
   },
   demo: {

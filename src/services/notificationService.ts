@@ -552,10 +552,10 @@ class NotificationServiceEngine {
   // ==========================================
 
   public notifySubscriptionStarted(planName: string = "Pro", isFounder: boolean = false, userEmail?: string): AppNotification | null {
-    const title = isFounder ? "🎉 Founder Status Activated!" : "🎉 Pro subscription activated";
+    const title = isFounder ? "VIP Access Activated!" : "Pro subscription activated";
     const msg = isFounder
-      ? "Welcome Early Adopter! You have lifetime access to 10,000 screenshots, instant OCR, and all future AI features."
-      : `Your SnapFind ${planName} plan is now active. 10,000 screenshot capacity and neural search unlocked.`;
+      ? "Welcome, VIP User! Your VIP Seat is active with Lifetime Pro access, 150,000 AI-indexed screenshots, instant OCR, and all AI features."
+      : `Your SnapFind ${planName} plan is now active. Expanded screenshot capacity and neural search unlocked.`;
 
     const notification = this.pushNotification("SUBSCRIPTION", title, msg, {
       priority: "high",
@@ -609,7 +609,7 @@ class NotificationServiceEngine {
           eventType: "manual_payment_submitted",
           requestId: options.requestId,
           transactionId: options.transactionId,
-          amount: options.amount || "PKR 7,999",
+          amount: options.amount || "PKR 5,999",
           paymentMethod: options.paymentMethod,
         },
       }
@@ -647,7 +647,7 @@ class NotificationServiceEngine {
     const notification = this.pushNotification(
       "SUBSCRIPTION",
       "💎 Lifetime Pro Activated!",
-      `Your manual payment${tx} has been verified. You now have permanent Lifetime Pro access with unlimited screenshots.`,
+      `Your manual payment${tx} has been verified. You now have permanent Lifetime Pro access with up to 100,000 AI-indexed screenshots.`,
       {
         id: canonicalId,
         userId: options.userId,
@@ -657,7 +657,7 @@ class NotificationServiceEngine {
           eventType: "manual_payment_approved",
           requestId: options.requestId,
           transactionId: options.transactionId,
-          amount: options.amount || "PKR 7,999",
+          amount: options.amount || "PKR 5,999",
           plan: "lifetime",
         },
       }
@@ -668,7 +668,7 @@ class NotificationServiceEngine {
         recipient: options.userEmail,
         eventType: "manual_payment_approved",
         subject: "Your SnapFind Lifetime Pro Access is Activated! 💎",
-        body: `Your payment confirmation${tx} has been verified by the SnapFind administration. Your account is now upgraded to permanent Lifetime Pro with unlimited screenshots, deep AI OCR, and cloud sync.`,
+        body: `Your payment confirmation${tx} has been verified by SnapFind Administration. Your account is now upgraded to permanent Lifetime Pro with 100,000 AI-indexed screenshots, smart visual search, and cloud sync.`,
       });
     }
 

@@ -95,7 +95,7 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
                   Unlock SnapFind Lifetime Pro
                 </h3>
                 <p className="text-xs text-[#A5AAA1] max-w-sm mx-auto">
-                  Unlimited screenshots, on-device OCR, AI search, and permanent lifetime access.
+                  100,000 AI-indexed screenshots, on-device OCR, semantic search, and permanent lifetime access.
                 </p>
               </div>
 
@@ -111,7 +111,7 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
               <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] space-y-1.5 text-center shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)]">
                 <div className="flex items-center justify-center gap-2 font-bold text-sm">
                   <Crown className="w-4 h-4 text-[#B7F36B]" />
-                  <span>Founder VIP #{founderNumber || "VIP"} Active</span>
+                  <span>VIP User • VIP Seat #{founderNumber || 1} Active</span>
                 </div>
                 <p className="text-xs text-[#A5AAA1]">
                   You already have permanent complimentary Lifetime Pro access!
@@ -130,7 +130,7 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
                       <span className="text-xs font-bold text-[#A5AAA1]">Lifetime Pass</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-2xl font-bold text-[#F7F8F5]">PKR 7,999</span>
+                      <span className="text-2xl font-bold text-[#F7F8F5]">PKR 5,999</span>
                       <span className="text-[10px] text-[#777E74] block font-medium">No recurring fees</span>
                     </div>
                   </div>
@@ -138,7 +138,7 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
                   <ul className="space-y-2 text-xs text-[#A5AAA1] pt-2 border-t border-[#30362E]">
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
-                      <span><strong className="text-[#F7F8F5]">25,000 screenshots</strong> (Free limit: 70)</span>
+                      <span><strong className="text-[#F7F8F5]">100,000 lifetime screenshots</strong> (Free limit: 250)</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
@@ -185,7 +185,7 @@ export const SubscriptionProModal: React.FC<SubscriptionProModalProps> = ({
                   className="w-full py-4 px-4 rounded-xl font-bold text-sm bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] flex items-center justify-center gap-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.98]"
                 >
                   <Crown className="w-4 h-4 text-[#10130D]" />
-                  <span>Get Lifetime Pro for PKR 7,999</span>
+                  <span>Get Lifetime Pro for PKR 5,999</span>
                   <ArrowRight className="w-4 h-4 text-[#10130D]" />
                 </button>
               </div>

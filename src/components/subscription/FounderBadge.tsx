@@ -56,7 +56,7 @@ export const FounderBadge: React.FC<FounderBadgeProps> = ({
       onClick={onClick}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      title="SnapFind Founder 100 - Lifetime Pro Access"
+      title="SnapFind VIP User — Lifetime Pro Access"
       className={`inline-flex items-center justify-center rounded-full tracking-wide transition-all select-none ${
         sizeClasses[size]
       } ${variantClasses[variant]} ${
@@ -64,7 +64,7 @@ export const FounderBadge: React.FC<FounderBadgeProps> = ({
       } ${className}`}
     >
       <Crown className={`${iconSizes[size]} shrink-0 text-[#D9B08C]`} />
-      <span>Founder</span>
+      <span>VIP User</span>
       {showNumber && formattedNumber && (
         <span className="font-mono opacity-90">{formattedNumber}</span>
       )}

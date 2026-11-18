@@ -117,7 +117,7 @@ export const PaymentHistoryCard: React.FC<PaymentHistoryCardProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold text-[#F7F8F5]">Lifetime Pro (PKR 7,999)</span>
+                      <span className="text-xs font-bold text-[#F7F8F5]">Lifetime Pro (PKR {Number(req.amount || 5999).toLocaleString()})</span>
                       <span className="text-[10px] text-[#777E74] capitalize">• {method.replace("_", " ")}</span>
                     </div>
                     <p className="text-[11px] font-mono text-[#A5AAA1]">TRX: {txId}</p>
@@ -128,7 +128,7 @@ export const PaymentHistoryCard: React.FC<PaymentHistoryCardProps> = ({
                   {/* Status Badge */}
                   {status === "pending" && (
                     <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E] flex items-center space-x-1">
-                      <Clock className="w-3 h-3 text-[#B7F36B] animate-pulse" />
+                      <Clock className="w-3 h-3 text-[#B7F36B]" />
                       <span>Pending Review</span>
                     </span>
                   )}

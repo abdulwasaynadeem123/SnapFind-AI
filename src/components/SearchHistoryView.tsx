@@ -75,11 +75,11 @@ export const SearchHistoryView: React.FC<SearchHistoryViewProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <SnapFindLogo className="w-12 h-12 rounded-2xl object-cover border-2 border-blue-500/40 shadow-lg shadow-blue-500/25 ring-2 ring-blue-500/20 bg-slate-900 shrink-0" />
+          <SnapFindLogo className="w-12 h-12 rounded-2xl object-cover border border-[#30362E] bg-slate-900 shrink-0" />
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold tracking-tight">Search History</h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-[#B7F36B] border border-blue-500/20">
                 {totalSearches} records
               </span>
             </div>
@@ -107,11 +107,11 @@ export const SearchHistoryView: React.FC<SearchHistoryViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="p-3.5 rounded-2xl border border-white/10 bg-[#121216]/60 backdrop-blur-md">
             <div className="text-[11px] text-slate-400 font-medium">Total Searches Logged</div>
-            <div className="text-xl font-extrabold text-blue-400 mt-0.5">{totalSearches}</div>
+            <div className="text-xl font-extrabold text-[#B7F36B] mt-0.5">{totalSearches}</div>
           </div>
           <div className="p-3.5 rounded-2xl border border-white/10 bg-[#121216]/60 backdrop-blur-md">
             <div className="text-[11px] text-slate-400 font-medium">Unique Queries</div>
-            <div className="text-xl font-extrabold text-purple-400 mt-0.5">{uniqueQueries}</div>
+            <div className="text-xl font-extrabold text-[#B7F36B] mt-0.5">{uniqueQueries}</div>
           </div>
           <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl border border-white/10 bg-[#121216]/60 backdrop-blur-md">
             <div className="text-[11px] text-slate-400 font-medium">Search Response</div>
@@ -130,7 +130,7 @@ export const SearchHistoryView: React.FC<SearchHistoryViewProps> = ({
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Filter search history..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl text-xs bg-[#18181B] border border-white/10 text-white outline-none focus:border-blue-500 transition-colors"
+              className="w-full pl-10 pr-4 py-2 rounded-xl text-xs bg-[#18181B] border border-white/10 text-white outline-none focus:border-[#B7F36B] transition-colors"
             />
             {searchFilter && (
               <button
@@ -151,7 +151,7 @@ export const SearchHistoryView: React.FC<SearchHistoryViewProps> = ({
           {groupedHistory.today.length > 0 && (
             <div className="space-y-2">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-blue-400" />
+                <Clock className="w-3.5 h-3.5 text-[#B7F36B]" />
                 <span>Today</span>
               </div>
               <div className="space-y-2">
@@ -172,7 +172,7 @@ export const SearchHistoryView: React.FC<SearchHistoryViewProps> = ({
           {groupedHistory.yesterday.length > 0 && (
             <div className="space-y-2">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                <Calendar className="w-3.5 h-3.5 text-[#A5AAA1]" />
                 <span>Yesterday</span>
               </div>
               <div className="space-y-2">
@@ -242,7 +242,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, isDark, onExecu
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between transition-all group hover:border-blue-500/60 ${
+      className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between transition-all group hover:border-[#B7F36B] ${
         isDark ? "bg-[#121216]/80 border-white/10 hover:bg-[#181820]" : "bg-white border-slate-200 hover:bg-blue-50/40"
       }`}
     >
@@ -250,11 +250,11 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, isDark, onExecu
         onClick={() => onExecute(item.query)}
         className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
       >
-        <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+        <div className="w-9 h-9 rounded-xl bg-[#1B1F1A] text-[#B7F36B] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
           <Search className="w-4 h-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-sm truncate text-slate-100 group-hover:text-blue-400 transition-colors">
+          <p className="font-semibold text-sm truncate text-slate-100 group-hover:text-[#B7F36B] transition-colors">
             {item.query}
           </p>
           <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
@@ -263,11 +263,11 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, isDark, onExecu
               {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
             <span>•</span>
-            <span className="text-blue-400 font-mono">{item.resultCount} results</span>
+            <span className="text-[#B7F36B] font-mono">{item.resultCount} results</span>
             {item.categoryFilter && item.categoryFilter !== "All" && (
               <>
                 <span>•</span>
-                <span className="px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300 font-medium">
+                <span className="px-1.5 py-0.2 rounded bg-[#1B1F1A] text-[#B7F36B] font-medium">
                   {item.categoryFilter}
                 </span>
               </>
@@ -279,7 +279,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, isDark, onExecu
       <div className="flex items-center gap-2 shrink-0 ml-3">
         <button
           onClick={() => onExecute(item.query)}
-          className="text-xs font-semibold text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 transition-all flex items-center gap-1 cursor-pointer"
+          className="text-xs font-semibold text-[#B7F36B] hover:text-blue-300 px-2.5 py-1 rounded-lg bg-[#1B1F1A] hover:bg-[#222720] transition-all flex items-center gap-1 cursor-pointer"
         >
           <span>Search</span>
           <ArrowUpRight className="w-3.5 h-3.5" />

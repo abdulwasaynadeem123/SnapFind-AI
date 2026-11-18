@@ -48,7 +48,7 @@ const DEFAULT_PRODUCTS: GooglePlayProduct[] = [
     title: "SnapFind Pro (Monthly)",
     name: "SnapFind Pro Monthly Plan",
     description: "Unlimited indexed screenshots, advanced AI search, cloud sync, priority processing",
-    formattedPrice: "$1.99/month",
+    formattedPrice: "PKR 249/month",
     priceCurrencyCode: "USD",
     priceAmountMicros: 1990000,
     billingPeriod: "P1M",

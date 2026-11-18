@@ -379,7 +379,7 @@ export const YourUsageCard: React.FC<YourUsageCardProps> = ({
           <div className="flex items-center gap-1.5 text-[#D1E8E2] text-xs font-medium">
             <ShieldCheck className="w-4 h-4 text-[#116466]" />
             <span>
-              {isFounder ? "Founder VIP Entitlement Active" : "Pro Capacity Active (10,000 items)"}
+              {isFounder ? "VIP Access Active" : "Pro Capacity Active"}
             </span>
           </div>
         )}

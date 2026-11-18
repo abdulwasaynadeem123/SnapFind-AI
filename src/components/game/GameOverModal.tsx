@@ -52,7 +52,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         {/* Header Badge */}
         <div className="space-y-1">
           {isNewBest ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-bold uppercase tracking-wider animate-pulse">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
               <span>New Personal Best!</span>
             </div>
@@ -72,7 +72,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">
               Final Score
             </span>
-            <div className="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
+            <div className="text-4xl font-black tracking-tight text-[#B7F36B]">
               {score.toLocaleString()}
             </div>
           </div>
@@ -98,14 +98,14 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         {/* Guest Warning / CTA */}
         {isGuest && (
           <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-800/40 text-left flex items-start gap-2.5">
-            <LogIn className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+            <LogIn className="w-4 h-4 text-[#B7F36B] flex-shrink-0 mt-0.5" />
             <div className="text-xs text-slate-300">
               <span className="font-semibold text-white">Save your high score:</span> Sign in to claim your rank on the global leaderboard.
               {onOpenAuthModal && (
                 <button
                   type="button"
                   onClick={onOpenAuthModal}
-                  className="block mt-1 text-blue-400 hover:text-blue-300 font-bold underline"
+                  className="block mt-1 text-[#B7F36B] hover:text-[#B7F36B] font-bold underline"
                 >
                   Sign In / Register →
                 </button>
@@ -120,7 +120,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             type="button"
             id="play-again-btn"
             onClick={onPlayAgain}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] font-bold text-sm shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Play Again (Space)</span>
@@ -149,7 +149,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                 </>
               ) : (
                 <>
-                  <Share2 className="w-3.5 h-3.5 text-blue-400" />
+                  <Share2 className="w-3.5 h-3.5 text-[#B7F36B]" />
                   <span>Share Score</span>
                 </>
               )}

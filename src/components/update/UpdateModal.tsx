@@ -235,7 +235,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             {/* Safety & Persistence Assurance Note */}
             <div className="flex items-center gap-2 text-[11px] text-[#94A3B8]">
               <ShieldCheck className="w-4 h-4 text-[#00FF66] shrink-0" />
-              <span>Safe update: All screenshots, Vault, collections & Founder status remain intact.</span>
+              <span>Safe update: All screenshots, Vault, collections & VIP status remain intact.</span>
             </div>
 
             {/* Footer Buttons */}

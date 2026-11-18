@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.NonNull;
 
+import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
@@ -155,10 +156,13 @@ public class SnapFindBillingPlugin extends Plugin implements PurchasesUpdatedLis
     }
 
     private void fetchAndLaunchPurchase(String productId, String basePlanId, PluginCall call) {
+        String productType = productId.contains("lifetime")
+                ? BillingClient.ProductType.INAPP
+                : BillingClient.ProductType.SUBS;
         List<QueryProductDetailsParams.Product> productList = new ArrayList<>();
         productList.add(QueryProductDetailsParams.Product.newBuilder()
                 .setProductId(productId)
-                .setProductType(BillingClient.ProductType.SUBS)
+                .setProductType(productType)
                 .build());
 
         QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
@@ -228,6 +232,12 @@ public class SnapFindBillingPlugin extends Plugin implements PurchasesUpdatedLis
         if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && purchases != null) {
             for (Purchase purchase : purchases) {
                 if (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                    if (!purchase.isAcknowledged() && billingClient != null) {
+                        AcknowledgePurchaseParams ackParams = AcknowledgePurchaseParams.newBuilder()
+                                .setPurchaseToken(purchase.getPurchaseToken())
+                                .build();
+                        billingClient.acknowledgePurchase(ackParams, ackResult -> {});
+                    }
                     JSObject res = new JSObject();
                     res.put("success", true);
                     res.put("purchaseToken", purchase.getPurchaseToken());
@@ -256,35 +266,53 @@ public class SnapFindBillingPlugin extends Plugin implements PurchasesUpdatedLis
             return;
         }
 
+        final JSArray purchasesArray = new JSArray();
         billingClient.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder()
                         .setProductType(BillingClient.ProductType.SUBS)
                         .build(),
-                new PurchasesResponseListener() {
-                    @Override
-                    public void onQueryPurchasesResponse(@NonNull BillingResult billingResult, @NonNull List<Purchase> list) {
-                        JSObject result = new JSObject();
-                        JSArray purchasesArray = new JSArray();
-
-                        if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                            for (Purchase purchase : list) {
-                                if (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
-                                    JSObject item = new JSObject();
-                                    item.put("purchaseToken", purchase.getPurchaseToken());
-                                    item.put("orderId", purchase.getOrderId());
-                                    item.put("purchaseTime", purchase.getPurchaseTime());
-                                    item.put("acknowledged", purchase.isAcknowledged());
-                                    if (!purchase.getProducts().isEmpty()) {
-                                        item.put("productId", purchase.getProducts().get(0));
-                                    }
-                                    purchasesArray.put(item);
+                (subsResult, subsList) -> {
+                    if (subsResult.getResponseCode() == BillingClient.BillingResponseCode.OK && subsList != null) {
+                        for (Purchase purchase : subsList) {
+                            if (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                                JSObject item = new JSObject();
+                                item.put("purchaseToken", purchase.getPurchaseToken());
+                                item.put("orderId", purchase.getOrderId());
+                                item.put("purchaseTime", purchase.getPurchaseTime());
+                                item.put("acknowledged", purchase.isAcknowledged());
+                                if (!purchase.getProducts().isEmpty()) {
+                                    item.put("productId", purchase.getProducts().get(0));
                                 }
+                                purchasesArray.put(item);
                             }
                         }
-
-                        result.put("purchases", purchasesArray);
-                        call.resolve(result);
                     }
+
+                    billingClient.queryPurchasesAsync(
+                            QueryPurchasesParams.newBuilder()
+                                    .setProductType(BillingClient.ProductType.INAPP)
+                                    .build(),
+                            (inappResult, inappList) -> {
+                                if (inappResult.getResponseCode() == BillingClient.BillingResponseCode.OK && inappList != null) {
+                                    for (Purchase purchase : inappList) {
+                                        if (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                                            JSObject item = new JSObject();
+                                            item.put("purchaseToken", purchase.getPurchaseToken());
+                                            item.put("orderId", purchase.getOrderId());
+                                            item.put("purchaseTime", purchase.getPurchaseTime());
+                                            item.put("acknowledged", purchase.isAcknowledged());
+                                            if (!purchase.getProducts().isEmpty()) {
+                                                item.put("productId", purchase.getProducts().get(0));
+                                            }
+                                            purchasesArray.put(item);
+                                        }
+                                    }
+                                }
+                                JSObject result = new JSObject();
+                                result.put("purchases", purchasesArray);
+                                call.resolve(result);
+                            }
+                    );
                 }
         );
     }

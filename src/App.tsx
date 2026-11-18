@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, MotionConfig } from "motion/react";
+import { ArrowUp } from "lucide-react";
+import { SubscriptionManager } from "./services/billing/SubscriptionManager";
 import {
   ScreenshotItem,
   SearchResultMatch,
@@ -338,12 +340,12 @@ function AppContent() {
   // Listen for plan quota limit exceeded and pricing navigation events
   useEffect(() => {
     const handleQuotaExceeded = (e: any) => {
-      NotificationService.notifyQuotaExceeded(activeScreenshots.length, 500);
+      NotificationService.notifyQuotaExceeded(activeScreenshots.length, SubscriptionManager.getMaxScreenshotLimit(activeUser?.id));
       addToast({
         title: e.detail?.title || "Your indexing limit has been reached.",
         description:
           e.detail?.message ||
-          "Your indexing limit has been reached. Upgrade to Pro Monthly, Pro Annual, or claim a permanent Founder Lifetime seat.",
+          "Your indexing limit has been reached. Upgrade to Pro Monthly, Pro Annual, or claim an available free VIP Seat.",
         type: "info",
       });
       setActiveView("pricing");
@@ -672,7 +674,7 @@ function AppContent() {
     });
   };
 
-  // Toggle favorite status & sync locally + Supabase
+  // Toggle favorite status & sync locally + cloud
   const handleToggleFavorite = (id: string) => {
     let updatedItem: ScreenshotItem | null = null;
     setScreenshots((prev) =>
@@ -1168,18 +1170,35 @@ function AppContent() {
     setSettings((prev) => ({ ...prev, theme: nextTheme }));
   };
 
-  // Reset data
+  // Reset data (confirmed via in-app SettingsView dialog)
   const handleResetAllData = () => {
-    if (window.confirm("Are you sure you want to clear all screenshots and reset search history?")) {
-      setScreenshots([]);
-      setSearchResults([]);
-      setSearchHistory([]);
-      localStorage.clear();
-      addToast({
-        title: "System Reset Complete",
-        description: "Cleared all screenshots & index cache.",
-        type: "info",
-      });
+    setScreenshots([]);
+    setSearchResults([]);
+    setSearchHistory([]);
+    localStorage.clear();
+    addToast({
+      title: "System Reset Complete",
+      description: "Cleared all screenshots & index cache.",
+      type: "info",
+    });
+  };
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const el = mainContentRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      setShowScrollTop(el.scrollTop > 320);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const handleSmoothScrollTop = () => {
+    const el = mainContentRef.current;
+    if (el) {
+      el.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -1219,7 +1238,7 @@ function AppContent() {
         <div
           id="main-content-scroll-container"
           ref={mainContentRef}
-          className="flex-1 h-full min-w-0 flex flex-col overflow-y-auto overflow-x-hidden relative"
+          className="flex-1 h-full min-w-0 flex flex-col overflow-y-auto overflow-x-hidden relative scroll-smooth"
         >
           {/* Top Navbar */}
           <Navbar
@@ -1267,10 +1286,10 @@ function AppContent() {
             {activeView === "landing" && (
               <motion.div
                 key="landing"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <LandingScreen
                   onSignUp={() => openAuthModal("register")}
@@ -1285,10 +1304,10 @@ function AppContent() {
             {activeView === "demo" && (
               <motion.div
                 key="demo"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <DemoView
                   onOpenAuth={() => setIsAuthOpen(true)}
@@ -1307,10 +1326,10 @@ function AppContent() {
             {activeView === "dashboard" && (
               <motion.div
                 key="dashboard"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute
                   title="Sign in to access your dashboard"
@@ -1338,10 +1357,10 @@ function AppContent() {
             {activeView === "collections" && (
               <motion.div
                 key="collections"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute
                   title="Sign in to access your collections"
@@ -1371,10 +1390,10 @@ function AppContent() {
             {activeView === "timeline" && (
               <motion.div
                 key="timeline"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute
                   title="Sign in to access your timeline"
@@ -1401,10 +1420,10 @@ function AppContent() {
             {activeView === "favorites" && (
               <motion.div
                 key="favorites"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute
                   title="Sign in to access your favorites"
@@ -1432,10 +1451,10 @@ function AppContent() {
             {activeView === "trash" && (
               <motion.div
                 key="trash"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute
                   title="Sign in to access recently deleted screenshots"
@@ -1461,10 +1480,10 @@ function AppContent() {
             {activeView === "gallery" && (
               <motion.div
                 key="gallery"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
                 className="space-y-6"
               >
                 <ProtectedRoute
@@ -1524,10 +1543,10 @@ function AppContent() {
             {activeView === "search" && (
               <motion.div
                 key="search"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute
                   title="Sign in to search your snaps"
@@ -1568,10 +1587,10 @@ function AppContent() {
             {activeView === "import" && (
               <motion.div
                 key="import"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute onOpenAuth={() => setIsAuthOpen(true)} isDark={isDark}>
                   <BatchImporter
@@ -1588,10 +1607,10 @@ function AppContent() {
             {activeView === "history" && (
               <motion.div
                 key="history"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute onOpenAuth={() => setIsAuthOpen(true)} isDark={isDark}>
                   <SearchHistoryView
@@ -1611,10 +1630,10 @@ function AppContent() {
             {activeView === "pricing" && (
               <motion.div
                 key="pricing"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <PricingPageView
                   isDark={isDark}
@@ -1629,10 +1648,10 @@ function AppContent() {
             {activeView === "founders" && (
               <motion.div
                 key="founders-redirect"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <PricingPageView
                   isDark={isDark}
@@ -1647,10 +1666,10 @@ function AppContent() {
             {activeView === "notifications" && (
               <motion.div
                 key="notifications"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute onOpenAuth={() => setIsAuthOpen(true)} isDark={isDark}>
                   <NotificationPageView
@@ -1676,10 +1695,10 @@ function AppContent() {
             {activeView === "feedback" && (
               <motion.div
                 key="feedback"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <FeedbackView
                   isDark={isDark}
@@ -1694,10 +1713,10 @@ function AppContent() {
             {activeView === "settings" && (
               <motion.div
                 key="settings"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute onOpenAuth={() => setIsAuthOpen(true)} isDark={isDark}>
                   <SettingsView
@@ -1718,10 +1737,10 @@ function AppContent() {
             {activeView === "account" && (
               <motion.div
                 key="account"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <ProtectedRoute onOpenAuth={() => setIsAuthOpen(true)} isDark={isDark}>
                   <AccountPageView
@@ -1742,10 +1761,10 @@ function AppContent() {
             {activeView === "admin-payments" && (
               <motion.div
                 key="admin-payments"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <AdminPaymentsPage
                   user={activeUser}
@@ -1761,10 +1780,10 @@ function AppContent() {
             {activeView === "game" && (
               <motion.div
                 key="game"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               >
                 <SnapDashPageView
                   user={activeUser}
@@ -1854,6 +1873,24 @@ function AppContent() {
         onCopyText={handleCopyText}
       />
 
+      {/* Smooth Back-to-Top Floating Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            type="button"
+            aria-label="Scroll back to top"
+            onClick={handleSmoothScrollTop}
+            initial={{ opacity: 0, y: 12, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.92 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed bottom-20 lg:bottom-8 right-5 z-40 w-10 h-10 rounded-xl bg-[#141714] hover:bg-[#1B1F1A] border border-[#30362E] hover:border-[#B7F36B] text-[#F7F8F5] hover:text-[#B7F36B] shadow-[4px_4px_14px_rgba(0,0,0,0.75)] flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Free App Update Dialog */}
       <UpdateModal
         isOpen={isUpdateModalOpen}
@@ -1875,9 +1912,11 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <MotionConfig reducedMotion="user">
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </MotionConfig>
     </ErrorBoundary>
   );
 }

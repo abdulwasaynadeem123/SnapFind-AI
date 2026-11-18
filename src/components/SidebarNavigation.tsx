@@ -8,6 +8,9 @@ import {
   Heart,
   Settings,
   Trash2,
+  Bell,
+  UserCircle,
+  CreditCard,
   PanelLeftClose,
   PanelLeft,
   X,
@@ -66,7 +69,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
     } else {
       window.dispatchEvent(
         new CustomEvent("snapfind_open_pro_modal", {
-          detail: { feature: "SnapFind Pro Unlimited Screenshots & AI Vision" },
+          detail: { feature: "SnapFind Pro Expanded AI Indexing & Storage" },
         })
       );
     }
@@ -85,7 +88,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
     (user as any)?.app_metadata?.role === "admin";
 
   // Dedicated page navigation items:
-  // Home, Search, Gallery, Collections, Favorites, Recently Deleted, Settings (+ Admin if admin)
+  // Home, Search, Gallery, Smart Collections, Favorites, Recently Deleted, Notifications, Account, Pricing, Settings (+ Admin if admin)
   const navItems = [
     {
       id: "landing" as NavViewType,
@@ -108,7 +111,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
     },
     {
       id: "collections" as NavViewType,
-      label: "Collections",
+      label: "Smart Collections",
       icon: Layers,
       isActive: activeView === "collections",
     },
@@ -127,15 +130,29 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({
       isActive: activeView === "trash",
     },
     {
+      id: "notifications" as NavViewType,
+      label: "Notifications",
+      icon: Bell,
+      count: unreadNotificationCount,
+      isActive: activeView === "notifications",
+    },
+    {
+      id: "account" as NavViewType,
+      label: "Account",
+      icon: UserCircle,
+      isActive: activeView === "account",
+    },
+    {
+      id: "pricing" as NavViewType,
+      label: "Pricing",
+      icon: CreditCard,
+      isActive: activeView === "pricing" || activeView === "founders",
+    },
+    {
       id: "settings" as NavViewType,
       label: "Settings",
       icon: Settings,
-      isActive:
-        activeView === "settings" ||
-        activeView === "account" ||
-        activeView === "notifications" ||
-        activeView === "pricing" ||
-        activeView === "feedback",
+      isActive: activeView === "settings" || activeView === "feedback",
     },
     ...(isAdmin
       ? [

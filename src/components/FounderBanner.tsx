@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { ShieldCheck, Sparkles } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { UserProfile, AppSettings } from "../types";
 
 export interface FounderBannerProps {
@@ -102,7 +102,7 @@ export const FounderBanner: React.FC<FounderBannerProps> = ({
     <motion.aside
       role="button"
       tabIndex={0}
-      aria-label={`You are a SnapFind Founder, rank ${founderNumber}. Lifetime Pro active.`}
+      aria-label={`VIP Access active, VIP Seat #${founderNumber}. Lifetime Pro active.`}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -112,7 +112,7 @@ export const FounderBanner: React.FC<FounderBannerProps> = ({
       initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className={`w-full select-none cursor-pointer transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-amber-400/60 rounded-2xl md:rounded-3xl ${className}`}
+      className={`w-full select-none cursor-pointer transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#B7F36B]/60 rounded-2xl md:rounded-3xl ${className}`}
       onClick={onNavigateToFounders}
     >
       <div
@@ -131,20 +131,20 @@ export const FounderBanner: React.FC<FounderBannerProps> = ({
         }}
         className={`relative overflow-hidden rounded-2xl md:rounded-3xl p-3 sm:p-4 px-4 sm:px-6 border transition-all duration-300 shadow-2xl group ${
           isRankOne
-            ? "bg-[#121821] border-[#3B82F6]/60 shadow-[0_0_25px_rgba(59,130,246,0.25)] ring-1 ring-[#3B82F6]/30"
+            ? "bg-[#141714] border-[#B7F36B]/50"
             : isDark
-            ? "bg-[#0D1117] border-white/[0.08] hover:border-[#3B82F6]/40 shadow-black/80"
-            : "bg-slate-900 text-white border-blue-500/40 hover:border-blue-400/70 shadow-blue-500/10"
+            ? "bg-[#141714] border-[#30362E] hover:border-[#B7F36B]/50"
+            : "bg-[#141714] text-[#F7F8F5] border-[#30362E] hover:border-[#B7F36B]/50"
         } backdrop-blur-xl`}
       >
         {/* Subtle Ambient Light Reflections & Moving Shimmer */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Blue ambient glow top left */}
-          <div className="absolute -top-12 -left-12 w-44 h-44 rounded-full bg-[#3B82F6]/15 blur-3xl" />
+          <div className="absolute -top-12 -left-12 w-44 h-44 rounded-full bg-[#B7F36B]/10 blur-3xl" />
           {/* Violet ambient glow bottom right */}
-          <div className="absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-[#8B5CF6]/15 blur-3xl" />
+          <div className="absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-[#B7F36B]/5 blur-3xl" />
           {/* Dynamic light shimmer sweep on entrance / hover */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#B7F36B]/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
         </div>
 
         <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-6 min-w-0">
@@ -172,23 +172,21 @@ export const FounderBanner: React.FC<FounderBannerProps> = ({
               </span>
             </motion.div>
 
-            {/* Typography: "YOU ARE A FOUNDER • #17" */}
+            {/* Typography: "VIP USER • VIP SEAT #17" */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-wrap">
-              <h2 className="text-xs sm:text-sm md:text-base font-black tracking-wider uppercase bg-gradient-to-r from-blue-200 via-indigo-100 to-violet-200 bg-clip-text text-transparent truncate flex items-center gap-1.5">
-                <span>YOU ARE A FOUNDER</span>
+              <h2 className="text-xs sm:text-sm md:text-base font-bold tracking-wider uppercase text-[#F7F8F5] truncate flex items-center gap-1.5">
+                <span>VIP ACCESS</span>
               </h2>
 
-              <span className="text-blue-400/60 font-bold text-xs sm:text-sm select-none">•</span>
+              <span className="text-[#A5AAA1] font-bold text-xs sm:text-sm select-none">•</span>
 
-              {/* Founder Rank Tag */}
-              <span className="text-xs sm:text-sm md:text-base font-black font-mono tracking-tight bg-gradient-to-r from-blue-300 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_1px_6px_rgba(59,130,246,0.4)]">
-                #{displayedNumber}
+              <span className="text-xs sm:text-sm md:text-base font-bold font-mono tracking-tight text-[#B7F36B]">
+                VIP Seat #{displayedNumber}
               </span>
 
               {isRankOne && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black uppercase rounded-full bg-[#3B82F6]/20 text-blue-300 border border-blue-400/40 tracking-wider">
-                  <Sparkles className="w-2.5 h-2.5 fill-blue-300" />
-                  FIRST FOUNDER
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold uppercase rounded-full bg-[#1B1F1A] text-[#B7F36B] border border-[#B7F36B]/40 tracking-wider">
+                  VIP SEAT #1
                 </span>
               )}
             </div>
@@ -196,10 +194,10 @@ export const FounderBanner: React.FC<FounderBannerProps> = ({
 
           {/* Right: Lifetime Pro Badge */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#3B82F6]/15 to-[#8B5CF6]/15 border border-blue-400/30 text-blue-300 text-[11px] sm:text-xs font-bold shadow-sm backdrop-blur-sm group-hover:border-blue-400/60 transition-colors">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-              <span className="hidden sm:inline">Lifetime Pro</span>
-              <span className="sm:hidden text-[10px]">Pro</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] text-[11px] sm:text-xs font-bold group-hover:border-[#B7F36B]/60 transition-colors">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
+              <span className="hidden sm:inline">VIP Badge • Lifetime Pro</span>
+              <span className="sm:hidden text-[10px]">VIP</span>
             </div>
           </div>
         </div>

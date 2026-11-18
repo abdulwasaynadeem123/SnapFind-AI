@@ -131,7 +131,7 @@ export const UsageModal: React.FC<UsageModalProps> = ({
             <div className="flex items-center gap-3">
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  isDark ? "bg-[#116466]/20 border border-[#116466]/40 text-[#D1E8E2]" : "bg-indigo-50 text-indigo-600"
+                  isDark ? "bg-[#116466]/20 border border-[#116466]/40 text-[#D1E8E2]" : "bg-[#1B1F1A] text-[#B7F36B]"
                 }`}
               >
                 <Zap className="w-5 h-5 text-[#D1E8E2]" />

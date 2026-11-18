@@ -2,8 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createWorker } from "tesseract.js";
 import multer from "multer";
@@ -49,15 +48,24 @@ app.use((req, res, next) => {
   ];
   res.setHeader("Content-Security-Policy", cspDirectives.join("; "));
 
-  // CORS Origin Hardening
+  // CORS Origin Hardening (Strict URL hostname check, prevents evil-google.com bypasses)
   const origin = req.headers.origin;
   if (origin) {
-    const isAllowedOrigin =
-      origin.includes("localhost") ||
-      origin.includes("127.0.0.1") ||
-      origin.includes("0.0.0.0") ||
-      origin.includes("ai.studio") ||
-      origin.includes("google.com");
+    let isAllowedOrigin = false;
+    try {
+      const hostname = new URL(origin).hostname.toLowerCase();
+      isAllowedOrigin =
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "0.0.0.0" ||
+        hostname === "ai.studio" ||
+        hostname.endsWith(".ai.studio") ||
+        hostname.endsWith(".run.app") ||
+        hostname === "google.com" ||
+        hostname.endsWith(".google.com");
+    } catch {
+      isAllowedOrigin = false;
+    }
     if (isAllowedOrigin) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
@@ -102,9 +110,12 @@ function createRateLimiter(options: {
   name: string;
 }) {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "127.0.0.1";
+    const clientIp = req.ip || req.socket?.remoteAddress || "127.0.0.1";
     const authHeader = req.headers.authorization;
-    const userIdentifier = authHeader?.startsWith("Bearer ") ? authHeader.slice(-16) : clientIp;
+    const tokenHash = authHeader?.startsWith("Bearer ")
+      ? crypto.createHash("sha256").update(authHeader).digest("hex").slice(0, 16)
+      : "";
+    const userIdentifier = tokenHash ? `tok_${tokenHash}` : clientIp;
     const rateLimitKey = `${options.name}:${userIdentifier}`;
 
     const allowed = checkRateLimit(rateLimitKey, options.max, options.windowMs);
@@ -157,6 +168,12 @@ const generalApiLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 150 requests per minute
   message: "API request rate limit exceeded.",
 });
+app.use("/api", (req, res, next) => {
+  if (req.path === "/payments/paddle/webhook" || req.path === "/health") {
+    return next();
+  }
+  return generalApiLimiter(req, res, next);
+});
 
 // Clean up stale rate limits every 10 minutes
 setInterval(() => {
@@ -170,11 +187,19 @@ setInterval(() => {
 let supabaseServer: SupabaseClient | null = null;
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 // Support Supabase's newer secret key system (SUPABASE_SECRET_KEY) alongside legacy SUPABASE_SERVICE_ROLE_KEY
+const hasSupabaseServiceRole = Boolean(
+  process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 const supabaseKey =
   process.env.SUPABASE_SECRET_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_ANON_KEY;
+
+const supabaseAnonKey =
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  supabaseKey;
 
 if (supabaseUrl && supabaseKey) {
   try {
@@ -184,6 +209,22 @@ if (supabaseUrl && supabaseKey) {
     console.log("[Server] Supabase client initialized successfully.");
   } catch (err) {
     console.warn("[Server] Supabase client initialization error:", err);
+  }
+}
+
+function createSupabaseClientWithToken(token?: string): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseAnonKey || !token) return null;
+  try {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+  } catch {
+    return null;
   }
 }
 
@@ -522,7 +563,7 @@ Extract and return ALL legible printed or handwritten text, numbers, codes, symb
 Do not summarize. Output only the extracted raw text.`;
 
       const response = await getAI().models.generateContent({
-        model: "gemini-3.8-flash",
+        model: "gemini-4-hydrogen",
         contents: {
           parts: [
             { inlineData: { mimeType, data: cleanBase64 } },
@@ -553,7 +594,7 @@ Do not summarize. Output only the extracted raw text.`;
   }
 );
 
-// Endpoint: Analyze single screenshot using Gemini 3.6 Flash (Rate-limited, Input-validated)
+// Endpoint: Analyze single screenshot using Vision AI (Rate-limited, Input-validated)
 app.post("/api/analyze-screenshot", aiRateLimiter, async (req, res) => {
   try {
     const {
@@ -577,33 +618,24 @@ app.post("/api/analyze-screenshot", aiRateLimiter, async (req, res) => {
     }
 
     // Authoritative Server-side Quota Check
-    const { userKey, userId, deviceId } = getEffectiveUserKey(req);
+    const { userKey, userId, deviceId } = await resolveEffectiveUserContext(req);
     const usage = getOrInitServerUsage(userKey, userId, deviceId);
     const ent = serverEntitlements.get(userId) || { plan: "free", isPro: false, isFounder: false };
+    const planFeatures = resolvePlanFeatures(ent);
 
-    const maxScreenshots = ent.isFounder
-      ? PLAN_FEATURES_MAP.founder.maxIndexedScreenshots
-      : ent.isPro
-      ? PLAN_FEATURES_MAP.pro.maxIndexedScreenshots
-      : PLAN_FEATURES_MAP.free.maxIndexedScreenshots;
-
-    // Never trust screenshot counts supplied by the browser.
+    const maxScreenshots = planFeatures.maxIndexedScreenshots;
     const countToCheck = usage.screenshotsIndexed;
 
     if (countToCheck >= maxScreenshots) {
       return res.status(429).json({
         success: false,
         code: "LIMIT_REACHED",
-        error: `Screenshot indexing limit reached (${maxScreenshots} max). Upgrade to Lifetime Pro for unlimited screenshots.`,
+        error: `Screenshot indexing limit reached (${maxScreenshots.toLocaleString()} max). Upgrade your plan to index additional screenshots.`,
         quotaExceeded: true,
       });
     }
 
-    const maxScans = ent.isFounder
-      ? PLAN_FEATURES_MAP.founder.maxAIScansPerMonth
-      : ent.isPro
-      ? PLAN_FEATURES_MAP.pro.maxAIScansPerMonth
-      : PLAN_FEATURES_MAP.free.maxAIScansPerMonth;
+    const maxScans = planFeatures.maxAIScansPerMonth;
 
     if (usage.aiAnalysesUsed >= maxScans) {
       return res.status(429).json({
@@ -675,7 +707,7 @@ CRITICAL INSTRUCTIONS:
         attempts++;
         try {
           response = await getAI().models.generateContent({
-            model: "gemini-3.8-flash",
+            model: "gemini-4-hydrogen",
             contents: {
               parts: [
                 {
@@ -903,11 +935,10 @@ Screenshots dataset:
 ${JSON.stringify(itemsSummary, null, 2)}`;
 
     const response = await getAI().models.generateContent({
-      model: "gemini-3.8-flash",
+      model: "gemini-4-hydrogen",
       contents: prompt,
       config: {
-        temperature: 0.1,
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -1013,7 +1044,7 @@ Instructions:
     };
 
     const responseStream = await getAI().models.generateContentStream({
-      model: "gemini-3.8-flash",
+      model: "gemini-4-hydrogen",
       contents,
     });
 
@@ -1041,7 +1072,11 @@ Instructions:
 // MONETIZATION, SUBSCRIPTION ENGINE & FOUNDER 50 LIFETIME ALLOCATION
 // ==============================================================================
 
-const BILLING_DATA_DIR = path.join(process.cwd(), "data");
+const BILLING_DATA_DIR = process.env.SNAPFIND_BILLING_DATA_DIR
+  ? path.resolve(process.env.SNAPFIND_BILLING_DATA_DIR)
+  : process.env.VITEST === "true"
+  ? path.join(process.cwd(), "data", ".vitest-tmp")
+  : path.join(process.cwd(), "data");
 const BILLING_DATA_FILE = path.join(BILLING_DATA_DIR, "billing_state.json");
 
 const CANONICAL_PRODUCTS = [
@@ -1103,15 +1138,15 @@ const CANONICAL_PRODUCTS = [
   {
     productId: "snapfind_founder_lifetime",
     type: "founder",
-    title: "SnapFind Founders Plan",
-    name: "Founder 50 Pioneer",
-    description: "First 50 users only: Lifetime Free for Founder, 150,000 AI-indexed screenshots, and Founder Crown badge (No payment required).",
+    title: "SnapFind VIP Program",
+    name: "VIP Access (First 50 Seats)",
+    description: "First 50 verified users only: Lifetime Free VIP Access, 150,000 AI-indexed screenshots, and VIP Badge (No payment required).",
     formattedPrice: "Free (PKR 0)",
     priceCurrencyCode: "PKR",
     priceAmount: 0,
     priceAmountMicros: 0,
     billingPeriod: "lifetime",
-    badge: "First 50 Users Only",
+    badge: "50 VIP Seats Total",
     maxScreenshots: 150000,
   },
 ];
@@ -1211,6 +1246,7 @@ const serverUsageStore = new Map<string, ServerUsageRecord>();
 
 // Helper to save state to disk
 function saveBillingStateToDisk(): void {
+  if (process.env.VERCEL) return;
   try {
     if (!fs.existsSync(BILLING_DATA_DIR)) {
       fs.mkdirSync(BILLING_DATA_DIR, { recursive: true });
@@ -1335,22 +1371,70 @@ function createFounderEntitlement(userId: string, founderNumber: number = 1): an
   };
 }
 
-// Authoritative Source of Truth: Supabase Storage & Database
-async function getAuthoritativeFounderRegistry(): Promise<AuthoritativeFounderRegistry> {
-  const defaultRegistry: AuthoritativeFounderRegistry = {
-    totalSeats: 50,
-    claims: [],
-    updatedAt: new Date().toISOString(),
-  };
+class RegistryUnavailableError extends Error {
+  constructor(message = "VIP seat registry is temporarily unavailable.") {
+    super(message);
+    this.name = "RegistryUnavailableError";
+  }
+}
 
-  if (!supabaseServer) {
-    const localClaims: FounderClaimRecord[] = [];
-    for (const [userId, ent] of serverEntitlements.entries()) {
-      if (ent.isFounder) {
-        const rank = ent.founderNumber || ent.founderRank || (localClaims.length + 1);
+// Test-only overrides (never active outside Vitest)
+let testRegistryFetchOverride: (() => Promise<AuthoritativeFounderRegistry>) | null = null;
+let testAuthUserResolverOverride: ((req: express.Request) => Promise<{ id: string; email?: string; isAuthenticated: boolean }> | null) | null = null;
+
+function deduplicateAndNormalizeClaims(claims: FounderClaimRecord[]): FounderClaimRecord[] {
+  const sorted = [...claims]
+    .filter((c) => c && c.userId && c.userId !== "guest" && !String(c.userId).startsWith("local-guest") && c.status === "claimed")
+    .map((c) => {
+      const rank = Number(c.founderRank || c.founderNumber || 0);
+      return {
+        ...c,
+        id: c.id || `fc_founder_${rank}`,
+        userEmail: c.userEmail ? String(c.userEmail).trim().toLowerCase() : undefined,
+        founderRank: rank,
+        founderNumber: rank,
+        status: "claimed" as const,
+        claimedAt: c.claimedAt || new Date().toISOString(),
+        tier: "Founder",
+        plan: "founder",
+        isFounder: true,
+        isPro: true,
+      };
+    })
+    .filter((c) => Number.isInteger(c.founderRank) && c.founderRank >= 1 && c.founderRank <= 50)
+    .sort((a, b) => a.founderRank - b.founderRank);
+
+  const seenUsers = new Set<string>();
+  const seenEmails = new Set<string>();
+  const seenRanks = new Set<number>();
+  const deduped: FounderClaimRecord[] = [];
+
+  for (const claim of sorted) {
+    const emailKey = claim.userEmail ? claim.userEmail.toLowerCase() : "";
+    if (seenUsers.has(claim.userId)) continue;
+    if (emailKey && seenEmails.has(emailKey)) continue;
+    if (seenRanks.has(claim.founderRank)) continue;
+
+    seenUsers.add(claim.userId);
+    if (emailKey) seenEmails.add(emailKey);
+    seenRanks.add(claim.founderRank);
+    deduped.push(claim);
+    if (deduped.length >= 50) break;
+  }
+
+  return deduped;
+}
+
+function collectLocalVipClaims(): FounderClaimRecord[] {
+  const localClaims: FounderClaimRecord[] = [];
+  for (const [userId, ent] of serverEntitlements.entries()) {
+    if (ent && ent.isFounder && userId && userId !== "guest" && !userId.startsWith("local-guest")) {
+      const rank = Number(ent.founderNumber || ent.founderRank || 0);
+      if (rank >= 1 && rank <= 50) {
         localClaims.push({
           id: `fc_founder_${rank}`,
           userId,
+          userEmail: ent.userEmail ? String(ent.userEmail).toLowerCase() : undefined,
           founderRank: rank,
           founderNumber: rank,
           status: "claimed",
@@ -1362,141 +1446,245 @@ async function getAuthoritativeFounderRegistry(): Promise<AuthoritativeFounderRe
         });
       }
     }
-    localClaims.sort((a, b) => a.founderRank - b.founderRank);
+  }
+  return deduplicateAndNormalizeClaims(localClaims);
+}
+
+let missingGetVipStatsRpcUntil = 0;
+let lastRegistryWarnAt = 0;
+
+function isMissingRpcError(err: any): boolean {
+  if (!err) return false;
+  const text = `${String(err.code || "")} ${String(err.message || "")}`;
+  return /42883|PGRST202|could not find the function/i.test(text);
+}
+
+function logRegistryWarningOnce(message: string): void {
+  const now = Date.now();
+  if (now - lastRegistryWarnAt > 60_000) {
+    lastRegistryWarnAt = now;
+    console.warn(message);
+  }
+}
+
+async function queryPostgresFounderTables(
+  client: SupabaseClient,
+  validUsersMap: Map<string, { email?: string; name?: string }> | null,
+  requireFounderClaimsReadable = false
+): Promise<FounderClaimRecord[]> {
+  const combinedClaims: FounderClaimRecord[] = [];
+  const parsedUpdatedAt = new Date().toISOString();
+
+  const [{ data: claimRows, error: claimErr }, { data: entRows, error: entErr }] = await Promise.all([
+    client
+      .from("founder_claims")
+      .select("user_id, founder_rank, claimed_at, status")
+      .eq("status", "claimed"),
+    client
+      .from("user_entitlements")
+      .select("user_id, founder_number, founder_granted_at, tier, plan")
+      .eq("is_founder", true),
+  ]);
+
+  if (requireFounderClaimsReadable && claimErr) {
+    logRegistryWarningOnce(
+      `[FounderRegistry] Direct founder_claims read unavailable (${claimErr.message}). Apply supabase/migrations/20261117_vip_seat_persistence_and_exact_count.sql or configure SUPABASE_SERVICE_ROLE_KEY.`
+    );
+    throw new RegistryUnavailableError("Authoritative VIP seat database is temporarily unreachable.");
+  }
+
+  if (claimErr && entErr) {
+    logRegistryWarningOnce(
+      `[FounderRegistry] Postgres registry query failed: ${claimErr.message} | ${entErr.message}`
+    );
+    throw new RegistryUnavailableError("Authoritative VIP seat database is temporarily unreachable.");
+  }
+
+  if (!claimErr && Array.isArray(claimRows)) {
+    for (const row of claimRows) {
+      const uid = String(row.user_id || "");
+      const rank = Number(row.founder_rank || 0);
+      if (!uid || rank < 1 || rank > 50) continue;
+      if (validUsersMap && !validUsersMap.has(uid)) continue;
+      const userMeta = validUsersMap?.get(uid);
+      combinedClaims.push({
+        id: `fc_founder_${rank}`,
+        userId: uid,
+        userEmail: userMeta?.email,
+        userName: userMeta?.name,
+        founderRank: rank,
+        founderNumber: rank,
+        status: "claimed",
+        claimedAt: row.claimed_at || parsedUpdatedAt,
+        tier: "Founder",
+        plan: "founder",
+        isFounder: true,
+        isPro: true,
+      });
+    }
+  }
+
+  if (!entErr && Array.isArray(entRows)) {
+    for (const row of entRows) {
+      const uid = String(row.user_id || "");
+      const rank = Number(row.founder_number || 0);
+      if (!uid || rank < 1 || rank > 50) continue;
+      if (validUsersMap && !validUsersMap.has(uid)) continue;
+      const userMeta = validUsersMap?.get(uid);
+      combinedClaims.push({
+        id: `fc_founder_${rank}`,
+        userId: uid,
+        userEmail: userMeta?.email,
+        userName: userMeta?.name,
+        founderRank: rank,
+        founderNumber: rank,
+        status: "claimed",
+        claimedAt: row.founder_granted_at || parsedUpdatedAt,
+        tier: "Founder",
+        plan: "founder",
+        isFounder: true,
+        isPro: true,
+      });
+    }
+  }
+
+  return deduplicateAndNormalizeClaims(combinedClaims);
+}
+
+// Authoritative Source of Truth: Supabase Postgres Database ONLY (never local cache / Storage JSON when DB is configured)
+async function getAuthoritativeFounderRegistry(callerToken?: string): Promise<AuthoritativeFounderRegistry> {
+  if (process.env.VITEST === "true" && testRegistryFetchOverride) {
+    const overridden = await testRegistryFetchOverride();
+    const deduped = deduplicateAndNormalizeClaims(overridden.claims || []);
     return {
       totalSeats: 50,
-      claims: localClaims,
+      claims: deduped,
+      updatedAt: overridden.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  // Only use local persistent file when no database is configured (e.g., local test / offline mode)
+  if (!supabaseServer) {
+    return {
+      totalSeats: 50,
+      claims: collectLocalVipClaims(),
       updatedAt: new Date().toISOString(),
     };
   }
 
-  try {
-    const dl = await supabaseServer.storage.from("screenshots").download("_system/founder_registry.json");
-    if (!dl.error && dl.data) {
-      const text = await dl.data.text();
-      const parsed = JSON.parse(text);
-      if (parsed && Array.isArray(parsed.claims)) {
-        const validClaims: FounderClaimRecord[] = parsed.claims
-          .filter((c: any) => c && c.userId && c.status === "claimed")
-          .map((c: any) => ({
-            id: c.id || `fc_founder_${c.founderRank || 1}`,
-            userId: c.userId,
-            userEmail: c.userEmail,
-            userName: c.userName,
-            founderRank: Number(c.founderRank || c.founderNumber || 1),
-            founderNumber: Number(c.founderNumber || c.founderRank || 1),
-            status: "claimed",
-            claimedAt: c.claimedAt || new Date().toISOString(),
-            tier: "Founder",
-            plan: "founder",
-            isFounder: true,
-            isPro: true,
-          }));
+  const parsedUpdatedAt = new Date().toISOString();
 
-        // Deduplicate claims by userId and founderRank
-        const seenUsers = new Set<string>();
-        const seenRanks = new Set<number>();
-        const deduped: FounderClaimRecord[] = [];
-        for (const claim of validClaims) {
-          if (!seenUsers.has(claim.userId) && !seenRanks.has(claim.founderRank) && claim.founderRank >= 1 && claim.founderRank <= 50) {
-            seenUsers.add(claim.userId);
-            seenRanks.add(claim.founderRank);
-            deduped.push(claim);
-          }
-        }
-        deduped.sort((a, b) => a.founderRank - b.founderRank);
-
-        return {
-          totalSeats: 50,
-          claims: deduped,
-          updatedAt: parsed.updatedAt || new Date().toISOString(),
-        };
-      }
-    }
-  } catch (err) {
-    console.warn("[FounderRegistry] Supabase download error (will attempt fallback):", err);
-  }
-
-  // If storage file is missing, attempt Auth user scan to preserve existing founders
-  try {
-    const { data: usersData } = await supabaseServer.auth.admin.listUsers();
-    if (usersData?.users) {
-      const authFounders: FounderClaimRecord[] = [];
-      for (const u of usersData.users) {
-        if (u.app_metadata?.is_founder || u.app_metadata?.founder_rank) {
-          const rank = Number(u.app_metadata?.founder_rank || u.app_metadata?.founder_number || (authFounders.length + 1));
-          authFounders.push({
-            id: `fc_founder_${rank}`,
-            userId: u.id,
-            userEmail: u.email,
-            userName: u.user_metadata?.full_name || u.user_metadata?.name,
-            founderRank: rank,
-            founderNumber: rank,
-            status: "claimed",
-            claimedAt: u.created_at || new Date().toISOString(),
-            tier: "Founder",
-            plan: "founder",
-            isFounder: true,
-            isPro: true,
+  // 1. Service-role mode: read strictly from authoritative Postgres tables (founder_claims + user_entitlements)
+  if (hasSupabaseServiceRole) {
+    let validUsersMap: Map<string, { email?: string; name?: string }> | null = null;
+    try {
+      const { data: usersData, error: usersErr } = await supabaseServer.auth.admin.listUsers({ perPage: 1000 });
+      if (!usersErr && usersData?.users) {
+        validUsersMap = new Map();
+        for (const u of usersData.users) {
+          validUsersMap.set(u.id, {
+            email: u.email ? String(u.email).trim().toLowerCase() : undefined,
+            name: u.user_metadata?.full_name || u.user_metadata?.name,
           });
         }
       }
-      if (authFounders.length > 0) {
-        authFounders.sort((a, b) => a.founderRank - b.founderRank);
-        const reconstructed: AuthoritativeFounderRegistry = {
-          totalSeats: 50,
-          claims: authFounders,
-          updatedAt: new Date().toISOString(),
-        };
-        await saveAuthoritativeFounderRegistry(reconstructed);
-        return reconstructed;
-      }
-    }
-  } catch (err) {
-    console.warn("[FounderRegistry] Auth user scan error:", err);
+    } catch {}
+
+    const deduped = await queryPostgresFounderTables(supabaseServer, validUsersMap, false);
+    return {
+      totalSeats: 50,
+      claims: deduped,
+      updatedAt: parsedUpdatedAt,
+    };
   }
 
-  return defaultRegistry;
+  const queryClient = createSupabaseClientWithToken(callerToken) || supabaseServer;
+
+  // 2. Anon-key / user-token mode: prefer SECURITY DEFINER RPC get_vip_seat_stats() when deployed
+  if (Date.now() > missingGetVipStatsRpcUntil) {
+    const { data: rpcStats, error: rpcErr } = await queryClient.rpc("get_vip_seat_stats");
+    const row = Array.isArray(rpcStats) ? rpcStats[0] : rpcStats;
+
+    if (!rpcErr && row && typeof row.occupied_spots === "number") {
+      const dbOccupied = Math.max(0, Math.min(50, Number(row.occupied_spots)));
+      const rpcClaims: FounderClaimRecord[] = [];
+      for (let rank = 1; rank <= dbOccupied; rank++) {
+        rpcClaims.push({
+          id: `fc_rpc_${rank}`,
+          userId: `verified_cloud_vip_${rank}`,
+          founderRank: rank,
+          founderNumber: rank,
+          status: "claimed",
+          claimedAt: parsedUpdatedAt,
+          tier: "Founder",
+          plan: "founder",
+          isFounder: true,
+          isPro: true,
+        });
+      }
+      return {
+        totalSeats: 50,
+        claims: rpcClaims,
+        updatedAt: parsedUpdatedAt,
+      };
+    }
+
+    if (rpcErr && isMissingRpcError(rpcErr)) {
+      if (missingGetVipStatsRpcUntil === 0) {
+        console.warn("[FounderRegistry] get_vip_seat_stats RPC not installed yet; falling back to Postgres founder_claims query.");
+      }
+      missingGetVipStatsRpcUntil = Date.now() + 5 * 60 * 1000;
+    } else {
+      logRegistryWarningOnce(
+        `[FounderRegistry] get_vip_seat_stats RPC unavailable: ${rpcErr?.message || "Invalid RPC response"}`
+      );
+      throw new RegistryUnavailableError("Authoritative VIP seat database is temporarily unreachable.");
+    }
+  }
+
+  // Fallback when get_vip_seat_stats RPC is not yet deployed: require founder_claims to be readable
+  // so per-user RLS on user_entitlements never produces a false 0/50 count.
+  const directClaims = await queryPostgresFounderTables(queryClient, null, true);
+  return {
+    totalSeats: 50,
+    claims: directClaims,
+    updatedAt: parsedUpdatedAt,
+  };
 }
 
-// Persist Authoritative Founder Registry to Supabase Storage, DB, and Memory
+// Persist Authoritative Founder Registry to Supabase Auth metadata & local cache
 async function saveAuthoritativeFounderRegistry(registry: AuthoritativeFounderRegistry): Promise<boolean> {
   if (registry.claims.length > 50) {
     registry.claims = registry.claims.slice(0, 50);
   }
   registry.updatedAt = new Date().toISOString();
 
-  // 1. Sync memory state
-  serverFounderCounter = registry.claims.filter(c => c.status === "claimed").length;
-  for (const claim of registry.claims) {
-    if (claim.status === "claimed") {
-      const ent = createFounderEntitlement(claim.userId, claim.founderNumber);
+  const deduped = deduplicateAndNormalizeClaims(registry.claims);
+  registry.claims = deduped;
+
+  // 1. Sync in-memory counter & local disk state (used only in non-DB/Vitest mode)
+  serverFounderCounter = deduped.length;
+  for (const claim of deduped) {
+    if (!claim.userId.startsWith("verified_cloud_vip_")) {
+      const existing = serverEntitlements.get(claim.userId);
+      const ent = existing && existing.isFounder && existing.founderNumber === claim.founderNumber
+        ? existing
+        : createFounderEntitlement(claim.userId, claim.founderNumber);
+      if (claim.userEmail) ent.userEmail = claim.userEmail;
       serverEntitlements.set(claim.userId, ent);
     }
   }
-  saveBillingStateToDisk();
+  if (!supabaseServer) {
+    saveBillingStateToDisk();
+    return true;
+  }
 
-  if (!supabaseServer) return true;
+  if (!hasSupabaseServiceRole) return true;
 
   try {
-    // 2. Upload to Supabase Storage
-    const fileBuffer = Buffer.from(JSON.stringify(registry, null, 2), "utf-8");
-    const { error: uploadError } = await supabaseServer.storage
-      .from("screenshots")
-      .upload("_system/founder_registry.json", fileBuffer, {
-        contentType: "application/json",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.warn("[FounderRegistry] Supabase Storage upload warning:", uploadError.message);
-    } else {
-      console.log(`[FounderRegistry] Saved authoritative registry to Supabase Storage (${registry.claims.length}/50 claims)`);
-    }
-
-    // 3. Cross-sync each claim to Supabase Auth & Screenshots record
+    // 2. Sync verified claims to Supabase Auth app_metadata for redundancy
     for (const claim of registry.claims) {
-      if (claim.status === "claimed") {
+      if (claim.status === "claimed" && !claim.userId.startsWith("verified_cloud_vip_")) {
         try {
           await supabaseServer.auth.admin.updateUserById(claim.userId, {
             app_metadata: {
@@ -1508,35 +1696,11 @@ async function saveAuthoritativeFounderRegistry(registry: AuthoritativeFounderRe
             },
           });
         } catch {}
-
-        try {
-          const deterministicId = `00000000-0000-0000-0000-${String(claim.founderRank).padStart(12, "0")}`;
-          await supabaseServer.from("screenshots").upsert({
-            id: deterministicId,
-            user_id: claim.userId,
-            title: `[FOUNDER VIP #${claim.founderRank}] Pioneer Seat Record`,
-            image_url: "https://bdrdcaxinjjsvjtrgqyj.supabase.co/storage/v1/object/public/screenshots/_system/founder_registry.json",
-            tags: ["founder_claim", `founder_${claim.founderRank}`, "pioneer_50", "vip"],
-            ocr_text: `FOUNDER SEAT #${claim.founderRank} ALLOCATED TO USER ${claim.userId} (${claim.userEmail || "verified"}).`,
-            analysis: JSON.stringify({
-              founderRank: claim.founderRank,
-              founderNumber: claim.founderNumber,
-              userId: claim.userId,
-              userEmail: claim.userEmail,
-              claimedAt: claim.claimedAt,
-              status: "claimed",
-              tier: "Founder",
-              plan: "founder",
-              maxIndexedScreenshots: 150000,
-            }),
-            created_at: claim.claimedAt,
-          });
-        } catch {}
       }
     }
     return true;
   } catch (err) {
-    console.error("[FounderRegistry] Error saving authoritative registry:", err);
+    console.error("[FounderRegistry] Error syncing authoritative registry:", err);
     return false;
   }
 }
@@ -1548,31 +1712,53 @@ async function loadAuthoritativeFounderStateFromSupabase(): Promise<void> {
     const validClaims = registry.claims.filter(c => c.status === "claimed");
     serverFounderCounter = validClaims.length;
 
-    for (const claim of validClaims) {
-      const ent = createFounderEntitlement(claim.userId, claim.founderNumber);
-      serverEntitlements.set(claim.userId, ent);
+    if (!supabaseServer) {
+      for (const claim of validClaims) {
+        if (!claim.userId.startsWith("verified_cloud_vip_")) {
+          const existing = serverEntitlements.get(claim.userId);
+          const ent = existing && existing.isFounder && existing.founderNumber === claim.founderNumber
+            ? existing
+            : createFounderEntitlement(claim.userId, claim.founderNumber);
+          if (claim.userEmail) ent.userEmail = claim.userEmail;
+          serverEntitlements.set(claim.userId, ent);
+        }
+      }
+      saveBillingStateToDisk();
+    } else {
+      // Clear any stale non-DB VIP claims from serverEntitlements when Supabase is authoritative
+      const authoritativeIds = new Set(validClaims.map(c => c.userId));
+      for (const [uid, ent] of serverEntitlements.entries()) {
+        if (ent?.isFounder && hasSupabaseServiceRole && !authoritativeIds.has(uid)) {
+          serverEntitlements.delete(uid);
+        }
+      }
     }
-    saveBillingStateToDisk();
-    console.log(`[Founder50] Authoritative Supabase Founder State synced: ${validClaims.length}/50 seats claimed, ${Math.max(0, 50 - validClaims.length)} available.`);
+    console.log(`[VIP50] Authoritative VIP Seat State synced: ${validClaims.length}/50 seats occupied, ${Math.max(0, 50 - validClaims.length)} available.`);
   } catch (err) {
-    console.warn("[Founder50] Error loading authoritative founder state from Supabase:", err);
+    console.warn("[VIP50] Authoritative VIP seat state sync warning:", err);
   }
 }
 
 // Load Supabase state immediately in background on server boot
 loadAuthoritativeFounderStateFromSupabase().catch(() => {});
 
-// Helper to sync entitlement to Supabase if configured
-async function syncEntitlementToSupabase(entitlement: any): Promise<void> {
-  if (!supabaseServer || !entitlement || !entitlement.userId || entitlement.userId === "guest" || entitlement.userId.startsWith("local-")) {
+// Helper to sync entitlement to Supabase if configured (service role or explicit user-scoped client)
+async function syncEntitlementToSupabase(entitlement: any, explicitClient?: SupabaseClient | null): Promise<void> {
+  const client = explicitClient || (hasSupabaseServiceRole ? supabaseServer : null);
+  if (!client || !entitlement || !entitlement.userId || entitlement.userId === "guest" || entitlement.userId.startsWith("local-")) {
     return;
   }
   try {
     const isFounder = Boolean(entitlement.isFounder);
     const isPro = Boolean(entitlement.isPro || isFounder);
-    const plan = isFounder ? "founder" : isPro ? "pro" : "free";
+    const rawPlan = String(entitlement.plan || "").toLowerCase();
+    const plan = isFounder
+      ? "founder"
+      : isPro
+      ? (["monthly", "yearly", "lifetime", "pro"].includes(rawPlan) ? rawPlan : "pro")
+      : "free";
 
-    await supabaseServer.from("user_entitlements").upsert({
+    const { error: entErr } = await client.from("user_entitlements").upsert({
       user_id: entitlement.userId,
       is_founder: isFounder,
       founder_number: entitlement.founderNumber || null,
@@ -1586,14 +1772,19 @@ async function syncEntitlementToSupabase(entitlement: any): Promise<void> {
       active_subscription_id: entitlement.activeSubscriptionId || null,
       updated_at: new Date().toISOString(),
     });
+    if (entErr) {
+      console.warn("[Billing] Supabase user_entitlements upsert error:", entErr.message);
+    }
 
-    // Also update public.profiles plan
-    await supabaseServer.from("profiles").update({
+    const { error: profErr } = await client.from("profiles").update({
       plan: entitlement.tier || (isFounder ? "Founder" : isPro ? "Pro" : "Free"),
       is_founder: isFounder,
       founder_rank: entitlement.founderNumber || null,
       updated_at: new Date().toISOString(),
     }).eq("id", entitlement.userId);
+    if (profErr) {
+      console.warn("[Billing] Supabase profiles update warning:", profErr.message);
+    }
   } catch (err) {
     console.warn("[Billing] Supabase sync error (non-fatal):", err);
   }
@@ -1606,11 +1797,39 @@ function getNextMonthlyResetDate(): { periodStart: string; nextResetDate: string
   return { periodStart, nextResetDate };
 }
 
+function resolvePlanFeatures(ent: any) {
+  if (ent?.isFounder || ent?.plan === "founder") return PLAN_FEATURES_MAP.founder;
+  const p = String(ent?.plan || "").toLowerCase();
+  if (p === "monthly") return PLAN_FEATURES_MAP.monthly;
+  if (p === "yearly") return PLAN_FEATURES_MAP.yearly;
+  if (p === "lifetime") return PLAN_FEATURES_MAP.lifetime;
+  if (ent?.isPro || p === "pro") return PLAN_FEATURES_MAP.pro;
+  return PLAN_FEATURES_MAP.free;
+}
+
+async function resolveEffectiveUserContext(req: express.Request): Promise<{ userKey: string; userId: string; deviceId: string; isAuthenticated: boolean; email?: string }> {
+  const authUser = await getAuthenticatedUser(req);
+  const rawDeviceId = String((req.headers["x-device-id"] as string) || (req.query.deviceId as string) || (req.body?.deviceId as string) || "default-device").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "default-device";
+  if (authUser.isAuthenticated && authUser.id && authUser.id !== "guest") {
+    return {
+      userKey: `usr_${authUser.id}`,
+      userId: authUser.id,
+      deviceId: rawDeviceId,
+      isAuthenticated: true,
+      email: authUser.email,
+    };
+  }
+  return {
+    userKey: `dev_${rawDeviceId}`,
+    userId: "guest",
+    deviceId: rawDeviceId,
+    isAuthenticated: false,
+  };
+}
+
 function getEffectiveUserKey(req: express.Request): { userKey: string; userId: string; deviceId: string } {
-  const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string) || (req.body?.userId as string) || "guest";
-  const deviceId = (req.headers["x-device-id"] as string) || (req.query.deviceId as string) || (req.body?.deviceId as string) || "default-device";
-  const userKey = userId && userId !== "guest" && !userId.startsWith("local-guest") ? `usr_${userId}` : `dev_${deviceId}`;
-  return { userKey, userId, deviceId };
+  const rawDeviceId = String((req.headers["x-device-id"] as string) || (req.query.deviceId as string) || (req.body?.deviceId as string) || "default-device").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "default-device";
+  return { userKey: `dev_${rawDeviceId}`, userId: "guest", deviceId: rawDeviceId };
 }
 
 function getOrInitServerUsage(userKey: string, userId: string = "guest", deviceId: string = "default-device"): ServerUsageRecord {
@@ -1645,13 +1864,14 @@ function getOrInitServerUsage(userKey: string, userId: string = "guest", deviceI
 
 // Endpoint: Query Available Subscription Products
 app.get("/api/billing/products", async (_req, res) => {
-  let liveFounders = 0;
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  let liveFounders: number | null = null;
   try {
     const registry = await getAuthoritativeFounderRegistry();
-    liveFounders = registry.claims.filter(c => c.status === "claimed").length;
+    liveFounders = Math.min(50, registry.claims.filter(c => c.status === "claimed").length);
     serverFounderCounter = liveFounders;
-  } catch (e) {
-    liveFounders = serverFounderCounter;
+  } catch {
+    liveFounders = null;
   }
 
   return res.json({
@@ -1662,39 +1882,42 @@ app.get("/api/billing/products", async (_req, res) => {
   });
 });
 
-// Endpoint: Public Founder Stats for Pricing Page (Authoritative Supabase Source of Truth)
-const handleFounderStats = async (_req: express.Request, res: express.Response) => {
+// Endpoint: Public VIP Seat Stats for Pricing & VIP Pages (Authoritative Source of Truth)
+const handleFounderStats = async (req: express.Request, res: express.Response) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
   try {
-    const registry = await getAuthoritativeFounderRegistry();
-    const claimed = registry.claims.filter(c => c.status === "claimed").length;
+    const authHeader = req.headers.authorization;
+    const callerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined;
+    const registry = await getAuthoritativeFounderRegistry(callerToken);
+    const occupied = Math.min(50, registry.claims.filter(c => c.status === "claimed").length);
     const totalSpots = 50;
-    const remaining = Math.max(0, totalSpots - claimed);
-    serverFounderCounter = claimed;
+    const remaining = Math.max(0, totalSpots - occupied);
+    serverFounderCounter = occupied;
 
     return res.json({
       success: true,
-      claimed,
-      claimedSpots: claimed,
+      occupied,
+      occupiedSpots: occupied,
+      claimed: occupied,
+      claimedSpots: occupied,
       totalSpots,
       remaining,
       remainingSpots: remaining,
-      isFull: claimed >= totalSpots,
+      isFull: occupied >= totalSpots,
+      updatedAt: registry.updatedAt,
     });
   } catch (err: any) {
-    return res.json({
-      success: true,
-      claimed: serverFounderCounter,
-      claimedSpots: serverFounderCounter,
-      totalSpots: 50,
-      remaining: Math.max(0, 50 - serverFounderCounter),
-      remainingSpots: Math.max(0, 50 - serverFounderCounter),
-      isFull: serverFounderCounter >= 50,
+    logRegistryWarningOnce(`[VIPStats] Authoritative registry unavailable: ${err?.message || err}`);
+    return res.status(503).json({
+      success: false,
+      error: "VIP seat availability is temporarily unavailable. Please try again shortly.",
     });
   }
 };
 
 app.get("/api/billing/founder-stats", handleFounderStats);
 app.get("/api/billing/founder-status", handleFounderStats);
+app.get("/api/billing/vip-status", handleFounderStats);
 
 // Endpoint: Real-time Multi-Currency Exchange Rates with caching & fallback
 const SERVER_FX_RATES: Record<string, number> = {
@@ -1744,8 +1967,8 @@ app.post("/api/billing/purchase-lifetime", async (req, res) => {
     expiryDate.setFullYear(expiryDate.getFullYear() + 100); // 100 years for lifetime
 
     const subId = `sub_lifetime_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const paymentId = `pay_pkr7999_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const orderId = `LIFETIME.PKR7999.${Date.now()}`;
+    const paymentId = `pay_pkr5999_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const orderId = `LIFETIME.PKR5999.${Date.now()}`;
 
     // 1. Subscription Record
     const subscriptionRecord = {
@@ -1763,8 +1986,8 @@ app.post("/api/billing/purchase-lifetime", async (req, res) => {
       orderId,
       autoRenewing: false,
       priceCurrencyCode: "PKR",
-      priceAmount: 7999,
-      priceAmountMicros: 7999000000,
+      priceAmount: 5999,
+      priceAmountMicros: 5999000000,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     };
@@ -1779,8 +2002,8 @@ app.post("/api/billing/purchase-lifetime", async (req, res) => {
       provider: "direct_payment",
       providerOrderId: orderId,
       productId: "snapfind_pro_lifetime",
-      amount: 7999,
-      amountMicros: 7999000000,
+      amount: 5999,
+      amountMicros: 5999000000,
       currency: "PKR",
       status: "succeeded",
       createdAt: now.toISOString(),
@@ -1827,20 +2050,20 @@ app.post("/api/billing/purchase-lifetime", async (req, res) => {
         subId,
         paymentId,
         productId: "snapfind_pro_lifetime",
-        amount: 7999,
+        amount: 5999,
         currency: "PKR",
       },
       createdAt: now.toISOString(),
     });
 
-    console.log(`[BillingServer] Lifetime Pro activated for user ${userId} (PKR 7,999)`);
+    console.log(`[BillingServer] Lifetime Pro activated for user ${userId} (PKR 5,999)`);
 
     return res.json({
       success: true,
       subscription: subscriptionRecord,
       payment: paymentRecord,
       entitlement: updatedEntitlement,
-      message: "Lifetime Pro activated successfully for PKR 7,999. Unlimited screenshots unlocked!",
+      message: "Lifetime Pro activated successfully for PKR 5,999. Up to 100,000 AI-indexed screenshots unlocked!",
     });
   } catch (error: any) {
     console.error("[BillingServer] Lifetime purchase error:", error);
@@ -1852,7 +2075,7 @@ app.post("/api/billing/purchase-lifetime", async (req, res) => {
 });
 
 // ==============================================================================
-// MANUAL PAYMENT SYSTEM (Easypaisa & Bank Transfer) - LIFETIME PRO (PKR 7,999)
+// MANUAL PAYMENT SYSTEM (Easypaisa & Bank Transfer) - LIFETIME PRO (PKR 5,999)
 // ==============================================================================
 
 // Dynamic secure payment configuration loader
@@ -1874,7 +2097,7 @@ function getManualPaymentAccounts() {
         "Open your Easypaisa Mobile App.",
         "Select 'Send Money' -> 'Easypaisa Mobile Account'.",
         `Enter Receiver Mobile Number: ${easypaisaAccountNumber} (Account Name: ${easypaisaAccountName}).`,
-        "Enter the exact amount: PKR 7,999.",
+        "Enter the exact amount: PKR 5,999.",
         "Complete payment and note down the 11-digit Transaction ID (TID) from the SMS or Receipt.",
         "Submit your Transaction ID and optional receipt screenshot below for admin verification.",
       ],
@@ -1893,7 +2116,7 @@ function getManualPaymentAccounts() {
         `Select Destination Bank: ${bankName}.`,
         `Enter IBAN: ${bankIban}.`,
         `Verify Account Title: ${bankAccountTitle}.`,
-        "Enter amount: PKR 7,999 and complete transaction.",
+        "Enter amount: PKR 5,999 and complete transaction.",
         "Copy your Transaction Reference / UTR Number and submit below.",
       ],
       badge: "All Pakistani Banks Supported",
@@ -1906,7 +2129,7 @@ app.get("/api/payment-requests/accounts", (_req, res) => {
   const accounts = getManualPaymentAccounts();
   return res.json({
     success: true,
-    price: 7999,
+    price: 5999,
     currency: "PKR",
     plan: "lifetime",
     accounts,
@@ -1930,13 +2153,13 @@ app.post("/api/payment-requests", billingRateLimiter, async (req, res) => {
       notes = null,
     } = req.body;
 
-    const userId = authUser.isAuthenticated ? authUser.id : (bodyUserId !== "guest" ? bodyUserId : null);
-    if (!userId || userId === "guest" || userId.startsWith("local-guest")) {
+    if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest" || authUser.id.startsWith("local-guest")) {
       return res.status(401).json({
         success: false,
-        error: "Please sign in or create an account before submitting a payment confirmation.",
+        error: "Please sign in with a verified account before submitting a payment confirmation.",
       });
     }
+    const userId = authUser.id;
 
     const validMethods = ["easypaisa", "jazzcash", "bank_transfer", "nayapay", "sadapay", "manual"];
     if (!paymentMethod || !validMethods.includes(paymentMethod.toLowerCase())) {
@@ -2021,7 +2244,7 @@ app.post("/api/payment-requests", billingRateLimiter, async (req, res) => {
       user_name: userName,
       userName,
       plan: "lifetime",
-      amount: 7999,
+      amount: 5999,
       currency: "PKR",
       payment_method: paymentMethod,
       paymentMethod,
@@ -2061,7 +2284,7 @@ app.post("/api/payment-requests", billingRateLimiter, async (req, res) => {
           user_email: userEmail,
           user_name: userName,
           plan: "lifetime",
-          amount: 7999,
+          amount: 5999,
           currency: "PKR",
           payment_method: paymentMethod,
           transaction_id: trimmedTxId,
@@ -2083,7 +2306,7 @@ app.post("/api/payment-requests", billingRateLimiter, async (req, res) => {
           userId,
           type: "SUBSCRIPTION",
           title: "📝 Payment Submitted",
-          message: `Your manual payment confirmation (PKR 7,999, TID: ${trimmedTxId}) has been submitted and is pending verification.`,
+          message: `Your manual payment confirmation (PKR 5,999, TID: ${trimmedTxId}) has been submitted and is pending verification.`,
           priority: "high",
           read: false,
           created_at: nowIso,
@@ -2097,7 +2320,7 @@ app.post("/api/payment-requests", billingRateLimiter, async (req, res) => {
             user_id: userId,
             type: "SUBSCRIPTION",
             title: "📝 Payment Submitted",
-            message: `Your manual payment confirmation (PKR 7,999, TID: ${trimmedTxId}) has been submitted and is pending verification.`,
+            message: `Your manual payment confirmation (PKR 5,999, TID: ${trimmedTxId}) has been submitted and is pending verification.`,
             priority: "high",
             read: false,
             created_at: nowIso,
@@ -2114,7 +2337,7 @@ app.post("/api/payment-requests", billingRateLimiter, async (req, res) => {
         userId,
         type: "SUBSCRIPTION",
         title: "📝 Payment Submitted",
-        message: `Your manual payment confirmation (PKR 7,999, TID: ${trimmedTxId}) has been submitted and is pending verification.`,
+        message: `Your manual payment confirmation (PKR 5,999, TID: ${trimmedTxId}) has been submitted and is pending verification.`,
         priority: "high",
         read: false,
         created_at: nowIso,
@@ -2198,7 +2421,11 @@ class AsyncLock {
 const serverTransactionLock = new AsyncLock();
 
 // Server helper: Cryptographically verified user extraction
-async function getAuthenticatedUser(req: express.Request): Promise<{ id: string; email?: string; isAuthenticated: boolean }> {
+async function getAuthenticatedUser(req: express.Request): Promise<{ id: string; email?: string; isAuthenticated: boolean; token?: string; appMetadata?: Record<string, any> }> {
+  if (process.env.VITEST === "true" && testAuthUserResolverOverride) {
+    const testUser = await testAuthUserResolverOverride(req);
+    if (testUser) return testUser;
+  }
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith("Bearer ") && supabaseServer) {
     const token = authHeader.split(" ")[1]?.trim();
@@ -2210,6 +2437,8 @@ async function getAuthenticatedUser(req: express.Request): Promise<{ id: string;
             id: data.user.id,
             email: data.user.email,
             isAuthenticated: true,
+            token,
+            appMetadata: data.user.app_metadata || {},
           };
         }
       } catch (e) {
@@ -2329,7 +2558,9 @@ app.get("/api/admin/payment-requests", adminRateLimiter, async (req, res) => {
   const pendingCount = allRequests.filter((r) => r.status === "pending").length;
   const approvedCount = allRequests.filter((r) => r.status === "approved").length;
   const rejectedCount = allRequests.filter((r) => r.status === "rejected").length;
-  const totalAmountPkr = approvedCount * 7999;
+  const totalAmountPkr = allRequests
+    .filter((r) => r.status === "approved")
+    .reduce((sum, r) => sum + (Number(r.amount) || 5999), 0);
 
   return res.json({
     success: true,
@@ -2416,7 +2647,7 @@ app.post("/api/admin/payment-requests/:id/approve", adminRateLimiter, async (req
       founderGrantedAt: existingEntitlement?.founderGrantedAt || null,
       founderExpiresAt: existingEntitlement?.founderExpiresAt || null,
       features: { ...PLAN_FEATURES_MAP.lifetime },
-      maxScreenshots: 999999, // Unlimited screenshots for Lifetime Pro
+      maxScreenshots: PLAN_FEATURES_MAP.lifetime.maxIndexedScreenshots,
       canCloudSync: true,
       canAiMultimodalSearch: true,
       priorityProcessing: true,
@@ -2439,8 +2670,8 @@ app.post("/api/admin/payment-requests/:id/approve", adminRateLimiter, async (req
       provider: targetRequest.payment_method || targetRequest.paymentMethod || "manual",
       providerOrderId: targetRequest.transaction_id || targetRequest.transactionId,
       productId: "snapfind_pro_lifetime",
-      amount: 7999,
-      amountMicros: 7999000000,
+      amount: 5999,
+      amountMicros: 5999000000,
       currency: "PKR",
       status: "succeeded",
       isSandbox: false,
@@ -2457,7 +2688,7 @@ app.post("/api/admin/payment-requests/:id/approve", adminRateLimiter, async (req
       payload: {
         requestId,
         transactionId: targetRequest.transaction_id || targetRequest.transactionId,
-        amount: 7999,
+        amount: 5999,
         currency: "PKR",
         verifiedBy: verifier,
       },
@@ -2476,7 +2707,7 @@ app.post("/api/admin/payment-requests/:id/approve", adminRateLimiter, async (req
       userId,
       type: "SUBSCRIPTION",
       title: "💎 Lifetime Pro Activated!",
-      message: `Your manual payment (PKR 7,999, ID: ${targetRequest.transaction_id || targetRequest.transactionId}) has been verified. You now have permanent Lifetime Pro access with unlimited screenshots.`,
+      message: `Your manual payment (PKR 5,999, ID: ${targetRequest.transaction_id || targetRequest.transactionId}) has been verified. You now have permanent Lifetime Pro access with up to 100,000 AI-indexed screenshots.`,
       priority: "critical",
       read: false,
       created_at: nowIso,
@@ -2505,7 +2736,7 @@ app.post("/api/admin/payment-requests/:id/approve", adminRateLimiter, async (req
           user_id: userId,
           type: "SUBSCRIPTION",
           title: "💎 Lifetime Pro Activated!",
-          message: `Your manual payment (PKR 7,999, ID: ${targetRequest.transaction_id || targetRequest.transactionId}) has been verified. You now have permanent Lifetime Pro access with unlimited screenshots.`,
+          message: `Your manual payment (PKR 5,999, ID: ${targetRequest.transaction_id || targetRequest.transactionId}) has been verified. You now have permanent Lifetime Pro access with up to 100,000 AI-indexed screenshots.`,
           priority: "critical",
           read: false,
           created_at: nowIso,
@@ -2519,7 +2750,7 @@ app.post("/api/admin/payment-requests/:id/approve", adminRateLimiter, async (req
 
     return res.json({
       success: true,
-      message: "Payment request successfully approved. Lifetime Pro has been activated with unlimited screenshots.",
+      message: "Payment request successfully approved. Lifetime Pro has been activated with up to 100,000 AI-indexed screenshots.",
       paymentRequest: targetRequest,
       entitlement: updatedEntitlement,
       notification: {
@@ -2704,12 +2935,8 @@ app.delete("/api/notifications/:id", async (req, res) => {
     }
 
     serverNotifications.delete(id);
-    if (supabaseServer && id) {
-      if (authUser.isAuthenticated) {
-        await supabaseServer.from("notifications").delete().eq("id", id).eq("user_id", userId);
-      } else {
-        await supabaseServer.from("notifications").delete().eq("id", id);
-      }
+    if (supabaseServer && id && authUser.isAuthenticated && userId !== "guest") {
+      await supabaseServer.from("notifications").delete().eq("id", id).eq("user_id", userId);
     }
     return res.json({ success: true, message: `Notification ${id} deleted.` });
   } catch (e: any) {
@@ -2737,10 +2964,17 @@ app.delete("/api/notifications", async (req, res) => {
 });
 
 // Endpoint: Secure Google Play / Sandbox / General Purchase Verification
-app.post("/api/billing/verify-purchase", async (req, res) => {
+app.post("/api/billing/verify-purchase", billingRateLimiter, async (req, res) => {
   try {
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required to verify purchases.",
+      });
+    }
+    const userId = authUser.id;
     const {
-      userId = "guest",
       productId,
       purchaseToken,
       orderId,
@@ -2755,10 +2989,36 @@ app.post("/api/billing/verify-purchase", async (req, res) => {
       });
     }
 
+    const sandboxAllowed = process.env.ALLOW_BILLING_SANDBOX === "true" && process.env.NODE_ENV !== "production";
+    if (!isSandbox || !sandboxAllowed) {
+      return res.status(403).json({
+        success: false,
+        error: "Store receipt verification requires a verified payment webhook or manual payment approval.",
+      });
+    }
+
     const matchedProduct = CANONICAL_PRODUCTS.find((p) => p.productId === productId);
+    if (!matchedProduct || matchedProduct.type === "free") {
+      return res.status(400).json({
+        success: false,
+        error: "Unsupported productId.",
+      });
+    }
+
+    const resolvedPlan =
+      matchedProduct.billingPeriod === "monthly"
+        ? "monthly"
+        : matchedProduct.billingPeriod === "yearly"
+        ? "yearly"
+        : "lifetime";
+    const resolvedFeatures = { ...PLAN_FEATURES_MAP[resolvedPlan] };
+    const resolvedAmount = matchedProduct.priceAmount || 5999;
+
     const now = new Date();
     const expiryDate = new Date(now);
-    expiryDate.setFullYear(expiryDate.getFullYear() + 100); // Lifetime duration
+    if (resolvedPlan === "monthly") expiryDate.setMonth(expiryDate.getMonth() + 1);
+    else if (resolvedPlan === "yearly") expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    else expiryDate.setFullYear(expiryDate.getFullYear() + 100);
 
     const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const effectiveOrderId = orderId || `ORD.${Date.now()}`;
@@ -2768,7 +3028,7 @@ app.post("/api/billing/verify-purchase", async (req, res) => {
     const subscriptionRecord = {
       id: subId,
       userId,
-      plan: "lifetime",
+      plan: resolvedPlan,
       status: "active",
       provider: platform,
       providerCustomerId: userId,
@@ -2781,10 +3041,10 @@ app.post("/api/billing/verify-purchase", async (req, res) => {
       orderId: effectiveOrderId,
       platform,
       isSandbox: Boolean(isSandbox),
-      autoRenewing: false,
+      autoRenewing: resolvedPlan === "monthly" || resolvedPlan === "yearly",
       priceCurrencyCode: "PKR",
-      priceAmount: 7999,
-      priceAmountMicros: 7999000000,
+      priceAmount: resolvedAmount,
+      priceAmountMicros: resolvedAmount * 1000000,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     };
@@ -2800,8 +3060,8 @@ app.post("/api/billing/verify-purchase", async (req, res) => {
       providerOrderId: effectiveOrderId,
       purchaseToken,
       productId,
-      amount: 7999,
-      amountMicros: 7999000000,
+      amount: resolvedAmount,
+      amountMicros: resolvedAmount * 1000000,
       currency: "PKR",
       status: "succeeded",
       isSandbox: Boolean(isSandbox),
@@ -2815,15 +3075,15 @@ app.post("/api/billing/verify-purchase", async (req, res) => {
     const existing = serverEntitlements.get(userId);
     const updatedEntitlement = {
       userId,
-      plan: "lifetime",
+      plan: resolvedPlan,
       tier: "Pro",
       isPro: true,
       isFounder: existing?.isFounder || false,
       founderNumber: existing?.founderNumber || null,
       founderGrantedAt: existing?.founderGrantedAt || null,
       founderExpiresAt: existing?.founderExpiresAt || null,
-      features: { ...PLAN_FEATURES_MAP.lifetime },
-      maxScreenshots: PLAN_FEATURES_MAP.lifetime.maxIndexedScreenshots,
+      features: resolvedFeatures,
+      maxScreenshots: resolvedFeatures.maxIndexedScreenshots,
       canCloudSync: true,
       canAiMultimodalSearch: true,
       priorityProcessing: true,
@@ -2851,7 +3111,7 @@ app.post("/api/billing/verify-purchase", async (req, res) => {
         paymentId,
         productId,
         orderId: effectiveOrderId,
-        amount: 7999,
+        amount: 5999,
         currency: "PKR",
       },
       createdAt: now.toISOString(),
@@ -2875,60 +3135,132 @@ app.post("/api/billing/verify-purchase", async (req, res) => {
 
 // Endpoint: Authoritative Entitlement Query
 app.get("/api/billing/entitlements", async (req, res) => {
-  const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string) || "guest";
-  let existing = serverEntitlements.get(userId);
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  const authUser = await getAuthenticatedUser(req);
+  const userId = authUser.isAuthenticated ? authUser.id : "guest";
 
-  // Check authoritative founder registry first
-  if (!existing || !existing.isFounder) {
-    try {
-      const registry = await getAuthoritativeFounderRegistry();
-      const claim = registry.claims.find(c => c.status === "claimed" && c.userId === userId);
-      if (claim) {
-        existing = createFounderEntitlement(userId, claim.founderNumber);
-        serverEntitlements.set(userId, existing);
+  if (!authUser.isAuthenticated || !userId || userId === "guest") {
+    const freeEnt = {
+      userId: "guest",
+      plan: "free",
+      tier: "Free",
+      isPro: false,
+      isFounder: false,
+      founderNumber: null,
+      founderGrantedAt: null,
+      founderExpiresAt: null,
+      features: { ...PLAN_FEATURES_MAP.free },
+      maxScreenshots: PLAN_FEATURES_MAP.free.maxIndexedScreenshots,
+      canCloudSync: false,
+      canAiMultimodalSearch: PLAN_FEATURES_MAP.free.advancedSearch,
+      priorityProcessing: false,
+      status: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    return res.json({ success: true, entitlement: freeEnt });
+  }
+
+  let existing: any = null;
+
+  // 1. When Supabase is configured, query authoritative Postgres tables directly (using service role or caller JWT)
+  if (supabaseServer && !userId.startsWith("local-") && !(process.env.VITEST === "true" && (testRegistryFetchOverride || testAuthUserResolverOverride))) {
+    const dbClient = hasSupabaseServiceRole
+      ? supabaseServer
+      : createSupabaseClientWithToken(authUser.token);
+
+    if (dbClient) {
+      try {
+        const [{ data: claimData }, { data: entData }] = await Promise.all([
+          dbClient
+            .from("founder_claims")
+            .select("user_id, founder_rank, claimed_at, status")
+            .eq("user_id", userId)
+            .eq("status", "claimed")
+            .maybeSingle(),
+          dbClient
+            .from("user_entitlements")
+            .select("*")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        ]);
+
+        const claimRank = Number(claimData?.founder_rank || 0);
+        const entRank = Number(entData?.founder_number || 0);
+        const metaRank = Number(authUser.appMetadata?.founder_rank || authUser.appMetadata?.founder_number || 0);
+        const resolvedRank =
+          claimRank >= 1 && claimRank <= 50
+            ? claimRank
+            : entData?.is_founder && entRank >= 1 && entRank <= 50
+            ? entRank
+            : authUser.appMetadata?.is_founder && metaRank >= 1 && metaRank <= 50
+            ? metaRank
+            : 0;
+
+        if (resolvedRank >= 1 && resolvedRank <= 50) {
+          existing = createFounderEntitlement(userId, resolvedRank);
+          if (claimData?.claimed_at || entData?.founder_granted_at) {
+            existing.founderGrantedAt = claimData?.claimed_at || entData?.founder_granted_at;
+          }
+          if (authUser.email) existing.userEmail = authUser.email;
+          serverEntitlements.set(userId, existing);
+          return res.json({ success: true, entitlement: existing });
+        }
+
+        if (entData) {
+          const isPro = Boolean(entData.is_pro);
+          const rawDbPlan = String(entData.plan || "").toLowerCase();
+          const plan = isPro
+            ? (["monthly", "yearly", "lifetime", "pro"].includes(rawDbPlan) ? rawDbPlan : "pro")
+            : "free";
+          const tier = isPro ? "Pro" : "Free";
+          const features =
+            (entData.features && Object.keys(entData.features).length > 0 ? entData.features : null) ||
+            PLAN_FEATURES_MAP[plan] ||
+            PLAN_FEATURES_MAP.free;
+
+          existing = {
+            userId: entData.user_id,
+            plan,
+            tier,
+            isPro,
+            isFounder: false,
+            founderNumber: null,
+            founderGrantedAt: null,
+            founderExpiresAt: null,
+            features,
+            maxScreenshots: features.maxIndexedScreenshots || (isPro ? 100000 : 250),
+            canCloudSync: features.cloudSync,
+            canAiMultimodalSearch: features.advancedSearch,
+            priorityProcessing: features.priorityProcessing,
+            status: isPro ? "active" : undefined,
+            updatedAt: entData.updated_at || new Date().toISOString(),
+          };
+          serverEntitlements.set(userId, existing);
+          return res.json({ success: true, entitlement: existing });
+        }
+      } catch (e) {
+        console.warn("[Billing] Supabase entitlement lookup error:", e);
       }
-    } catch (e) {
-      console.warn("[Billing] Authoritative registry lookup warning:", e);
     }
   }
 
-  // If not in memory but user is authenticated, attempt lookup in Supabase
-  if (!existing && supabaseServer && userId !== "guest" && !userId.startsWith("local-")) {
-    try {
-      const { data } = await supabaseServer
-        .from("user_entitlements")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
-
-      if (data) {
-        const isFounder = Boolean(data.is_founder);
-        const isPro = Boolean(data.is_pro || isFounder);
-        const plan = isFounder ? "founder" : isPro ? "pro" : "free";
-        const tier = isFounder ? "Founder" : isPro ? "Pro" : "Free";
-        const features = data.features || PLAN_FEATURES_MAP[plan];
-
-        existing = {
-          userId: data.user_id,
-          plan,
-          tier,
-          isPro,
-          isFounder,
-          founderNumber: data.founder_number || null,
-          founderGrantedAt: data.founder_granted_at || null,
-          founderExpiresAt: data.founder_expires_at || null,
-          features,
-          maxScreenshots: features.maxIndexedScreenshots || (isFounder ? 150000 : isPro ? 100000 : 250),
-          canCloudSync: features.cloudSync,
-          canAiMultimodalSearch: features.advancedSearch,
-          priorityProcessing: features.priorityProcessing,
-          status: isPro ? "active" : undefined,
-          updatedAt: data.updated_at || new Date().toISOString(),
-        };
-        serverEntitlements.set(userId, existing);
+  // 2. Fallback for Vitest / non-Supabase local mode: check authoritative registry & local serverEntitlements
+  if (!supabaseServer || (process.env.VITEST === "true" && (testRegistryFetchOverride || testAuthUserResolverOverride))) {
+    existing = serverEntitlements.get(userId);
+    if (!existing || !existing.isFounder) {
+      try {
+        const registry = await getAuthoritativeFounderRegistry();
+        const emailNorm = authUser.email ? authUser.email.trim().toLowerCase() : "";
+        const claim = registry.claims.find(
+          c => c.status === "claimed" && (c.userId === userId || (emailNorm && c.userEmail?.toLowerCase() === emailNorm))
+        );
+        if (claim) {
+          existing = createFounderEntitlement(userId, claim.founderNumber);
+          serverEntitlements.set(userId, existing);
+        }
+      } catch (e) {
+        console.warn("[Billing] Authoritative registry lookup warning:", e);
       }
-    } catch (e) {
-      console.warn("[Billing] Supabase entitlement lookup error:", e);
     }
   }
 
@@ -2936,120 +3268,442 @@ app.get("/api/billing/entitlements", async (req, res) => {
     return res.json({ success: true, entitlement: existing });
   }
 
-  // Default Free Entitlement for new users (Founder spots are claimed explicitly via /api/billing/claim-founder)
-  const isFounder = false;
-  const founderNumber: number | null = null;
-  const founderGrantedAt: string | null = null;
-  const founderExpiresAt: string | null = null;
-  const plan = "free";
-  const isPro = false;
-  const tier = "Free";
-  const features = { ...PLAN_FEATURES_MAP.free };
-
+  // Default Free Entitlement for new users (VIP seats are claimed explicitly via /api/billing/claim-founder)
   const newEntitlement = {
     userId,
-    plan,
-    tier,
-    isPro,
-    isFounder,
-    founderNumber,
-    founderGrantedAt,
-    founderExpiresAt,
-    features,
-    maxScreenshots: features.maxIndexedScreenshots,
-    canCloudSync: features.cloudSync,
-    canAiMultimodalSearch: features.advancedSearch,
-    priorityProcessing: features.priorityProcessing,
+    plan: "free",
+    tier: "Free",
+    isPro: false,
+    isFounder: false,
+    founderNumber: null,
+    founderGrantedAt: null,
+    founderExpiresAt: null,
+    features: { ...PLAN_FEATURES_MAP.free },
+    maxScreenshots: PLAN_FEATURES_MAP.free.maxIndexedScreenshots,
+    canCloudSync: PLAN_FEATURES_MAP.free.cloudSync,
+    canAiMultimodalSearch: PLAN_FEATURES_MAP.free.advancedSearch,
+    priorityProcessing: PLAN_FEATURES_MAP.free.priorityProcessing,
     status: undefined,
     updatedAt: new Date().toISOString(),
   };
 
-  serverEntitlements.set(userId, newEntitlement);
-  saveBillingStateToDisk();
-  syncEntitlementToSupabase(newEntitlement).catch(() => {});
+  if (!supabaseServer) {
+    serverEntitlements.set(userId, newEntitlement);
+    saveBillingStateToDisk();
+  }
 
   return res.json({ success: true, entitlement: newEntitlement });
 });
 
-// Endpoint: Claim Founder 50 Spot (Strictly 1 to 50, Rate-limited, Verified Auth)
+// Endpoint: Claim VIP 50 Seat (Strictly 1 to 50, Atomic Lock, Verified Auth, DB-Persisted)
 app.post("/api/billing/claim-founder", billingRateLimiter, async (req, res) => {
   return await serverTransactionLock.acquire(async () => {
-    const userId = await getAuthenticatedUserId(req);
-    const isGuest = !userId || userId === "guest" || userId.startsWith("local-guest");
+    const authUser = await getAuthenticatedUser(req);
+    const userId = authUser.id;
+    const isGuest = !authUser.isAuthenticated || !userId || userId === "guest" || userId.startsWith("local-guest");
 
     if (isGuest) {
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
-        error: "Please sign in or create an account to claim your Founder spot.",
+        error: "Please sign in or create an account to claim your VIP seat.",
       });
     }
 
-    // Always fetch fresh authoritative registry directly from Supabase
-    const registry = await getAuthoritativeFounderRegistry();
-    const validClaims = registry.claims.filter(c => c.status === "claimed");
+    const userEmail = authUser.email ? String(authUser.email).trim().toLowerCase() : "";
 
-    // Retrieve user identity details from Supabase Auth
-    let userEmail = "";
-    let userName = "";
-    if (supabaseServer) {
+    // Database-backed flow when Supabase is configured
+    if (supabaseServer && !(process.env.VITEST === "true" && (testRegistryFetchOverride || testAuthUserResolverOverride))) {
+      if (hasSupabaseServiceRole) {
+        let registry: AuthoritativeFounderRegistry;
+        try {
+          registry = await getAuthoritativeFounderRegistry();
+        } catch (err: any) {
+          return res.status(503).json({
+            success: false,
+            error: "VIP seat availability is temporarily unavailable. Please try again shortly.",
+          });
+        }
+
+        const validClaims = deduplicateAndNormalizeClaims(registry.claims);
+        let verifiedEmail = userEmail;
+        let userName = "";
+        try {
+          const { data: userData } = await supabaseServer.auth.admin.getUserById(userId);
+          if (userData?.user) {
+            verifiedEmail = (userData.user.email || verifiedEmail || "").trim().toLowerCase();
+            userName = userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || verifiedEmail.split("@")[0] || "";
+          }
+        } catch {}
+
+        const existingClaim = validClaims.find(
+          c => c.userId === userId || (verifiedEmail && c.userEmail && c.userEmail.toLowerCase() === verifiedEmail)
+        );
+
+        if (existingClaim) {
+          const existingEnt = createFounderEntitlement(userId, existingClaim.founderNumber);
+          if (verifiedEmail) existingEnt.userEmail = verifiedEmail;
+          existingEnt.founderGrantedAt = existingClaim.claimedAt || existingEnt.founderGrantedAt;
+          serverEntitlements.set(userId, existingEnt);
+          await syncEntitlementToSupabase(existingEnt, supabaseServer);
+          return res.json({
+            success: true,
+            alreadyClaimed: true,
+            message: `VIP Seat #${existingClaim.founderNumber} is already active on your account.`,
+            entitlement: existingEnt,
+            founderNumber: existingClaim.founderNumber,
+            founderRank: existingClaim.founderNumber,
+            occupiedSpots: validClaims.length,
+            claimedSpots: validClaims.length,
+            totalSpots: 50,
+            remainingSpots: Math.max(0, 50 - validClaims.length),
+          });
+        }
+
+        if (validClaims.length >= 50) {
+          return res.status(409).json({
+            success: false,
+            error: "All 50 VIP seats have been occupied. You can upgrade to Lifetime Pro anytime.",
+            occupiedSpots: 50,
+            claimedSpots: 50,
+            totalSpots: 50,
+            remainingSpots: 0,
+          });
+        }
+
+        // Persist atomically in Postgres via RPC
+        const { data: rpcRes, error: rpcErr } = await supabaseServer.rpc("claim_founder_seat_atomic", {
+          p_user_id: userId,
+          p_payment_id: "vip_50_free_claim",
+        });
+        const row = Array.isArray(rpcRes) ? rpcRes[0] : rpcRes;
+
+        let allocatedRank: number | null = null;
+        let dbOccupied: number | null = null;
+
+        if (!rpcErr && row) {
+          if (!row.success) {
+            return res.status(409).json({
+              success: false,
+              error: row.message || "All 50 VIP seats have been occupied.",
+              occupiedSpots: row.occupied_spots ?? validClaims.length,
+              claimedSpots: row.occupied_spots ?? validClaims.length,
+              totalSpots: 50,
+              remainingSpots: row.remaining_spots ?? 0,
+            });
+          }
+          allocatedRank = Number(row.founder_rank || 0);
+          dbOccupied = typeof row.occupied_spots === "number" ? row.occupied_spots : null;
+        } else {
+          // Only fall back to direct service_role table writes if RPC is missing in schema cache
+          const isMissingRpc = Boolean(rpcErr && /42883|PGRST202|could not find the function/i.test(String(rpcErr.code || "") + " " + String(rpcErr.message || "")));
+          if (!isMissingRpc) {
+            console.error("[VIP50] Postgres claim_founder_seat_atomic error:", rpcErr?.message);
+            return res.status(503).json({
+              success: false,
+              error: "Unable to persist VIP seat to the database right now. Please try again.",
+            });
+          }
+
+          const takenRanks = new Set(validClaims.map(c => c.founderRank));
+          let nextRank = 1;
+          while (takenRanks.has(nextRank) && nextRank <= 50) nextRank++;
+          if (nextRank > 50) {
+            return res.status(409).json({
+              success: false,
+              error: "All 50 VIP seats have been occupied.",
+              occupiedSpots: 50,
+              claimedSpots: 50,
+              totalSpots: 50,
+              remainingSpots: 0,
+            });
+          }
+
+          const { error: claimInsertErr } = await supabaseServer.from("founder_claims").insert({
+            id: `fc_${userId}`,
+            user_id: userId,
+            founder_rank: nextRank,
+            payment_id: "vip_50_free_claim",
+            status: "claimed",
+            claimed_at: new Date().toISOString(),
+          });
+          if (claimInsertErr && !/duplicate|23505/i.test(claimInsertErr.message || "")) {
+            console.error("[VIP50] Postgres founder_claims insert error:", claimInsertErr.message);
+            return res.status(503).json({
+              success: false,
+              error: "Unable to persist VIP seat to the database right now. Please try again.",
+            });
+          }
+          allocatedRank = nextRank;
+        }
+
+        if (!allocatedRank || allocatedRank < 1 || allocatedRank > 50) {
+          return res.status(503).json({
+            success: false,
+            error: "Unable to verify allocated VIP seat number. Please try again.",
+          });
+        }
+
+        const founderEntitlement = createFounderEntitlement(userId, allocatedRank);
+        if (verifiedEmail) founderEntitlement.userEmail = verifiedEmail;
+        serverEntitlements.set(userId, founderEntitlement);
+        await syncEntitlementToSupabase(founderEntitlement, supabaseServer);
+
+        try {
+          await supabaseServer.auth.admin.updateUserById(userId, {
+            app_metadata: {
+              is_founder: true,
+              founder_rank: allocatedRank,
+              founder_number: allocatedRank,
+              plan: "founder",
+              tier: "Founder",
+            },
+          });
+        } catch {}
+
+        const refreshed = await getAuthoritativeFounderRegistry().catch(() => null);
+        const updatedOccupied = dbOccupied ?? refreshed?.claims.length ?? (validClaims.length + 1);
+        const remaining = Math.max(0, 50 - updatedOccupied);
+        serverFounderCounter = updatedOccupied;
+
+        console.log(`[VIP50] Persisted VIP Seat #${allocatedRank} to DB for user ${userId}. Occupied: ${updatedOccupied}/50, Remaining: ${remaining}`);
+
+        return res.json({
+          success: true,
+          message: `VIP Access activated! You have been assigned VIP Seat #${allocatedRank} of 50 with Lifetime Pro access.`,
+          entitlement: founderEntitlement,
+          founderNumber: allocatedRank,
+          founderRank: allocatedRank,
+          occupiedSpots: updatedOccupied,
+          claimedSpots: updatedOccupied,
+          totalSpots: 50,
+          remainingSpots: remaining,
+        });
+      }
+
+      // Anon-key server mode: persist directly in Postgres via authenticated user-scoped RPC
+      const userClient = createSupabaseClientWithToken(authUser.token);
+      if (!userClient) {
+        return res.status(401).json({
+          success: false,
+          error: "Valid user session required to claim a VIP seat.",
+        });
+      }
+
+      // Check if this user already holds a verified VIP seat before attempting a new allocation
       try {
-        const { data: userData } = await supabaseServer.auth.admin.getUserById(userId);
-        if (userData?.user) {
-          userEmail = userData.user.email || "";
-          userName = userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || userEmail.split("@")[0] || "";
+        const [{ data: existingClaimRow }, { data: existingEntRow }] = await Promise.all([
+          userClient
+            .from("founder_claims")
+            .select("founder_rank, claimed_at")
+            .eq("user_id", userId)
+            .eq("status", "claimed")
+            .maybeSingle(),
+          userClient
+            .from("user_entitlements")
+            .select("is_founder, founder_number, founder_granted_at")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        ]);
+
+        const existingRank =
+          Number(existingClaimRow?.founder_rank || 0) >= 1 && Number(existingClaimRow?.founder_rank || 0) <= 50
+            ? Number(existingClaimRow?.founder_rank)
+            : existingEntRow?.is_founder &&
+              Number(existingEntRow?.founder_number || 0) >= 1 &&
+              Number(existingEntRow?.founder_number || 0) <= 50
+            ? Number(existingEntRow?.founder_number)
+            : 0;
+
+        if (existingRank >= 1 && existingRank <= 50) {
+          const existingEnt = createFounderEntitlement(userId, existingRank);
+          if (userEmail) existingEnt.userEmail = userEmail;
+          existingEnt.founderGrantedAt =
+            existingClaimRow?.claimed_at || existingEntRow?.founder_granted_at || existingEnt.founderGrantedAt;
+          serverEntitlements.set(userId, existingEnt);
+
+          const reg = await getAuthoritativeFounderRegistry(authUser.token).catch(() => null);
+          const occupied = reg ? Math.max(1, Math.min(50, reg.claims.length)) : undefined;
+          if (typeof occupied === "number") serverFounderCounter = occupied;
+          return res.json({
+            success: true,
+            alreadyClaimed: true,
+            message: `VIP Seat #${existingRank} is already active on your account.`,
+            entitlement: existingEnt,
+            founderNumber: existingRank,
+            founderRank: existingRank,
+            ...(typeof occupied === "number"
+              ? {
+                  occupiedSpots: occupied,
+                  claimedSpots: occupied,
+                  totalSpots: 50,
+                  remainingSpots: Math.max(0, 50 - occupied),
+                }
+              : { totalSpots: 50 }),
+          });
         }
       } catch {}
+
+      const { data: rpcRes, error: rpcErr } = await userClient.rpc("claim_vip_seat_for_user", {
+        p_payment_id: "vip_50_free_claim",
+      });
+      const row = Array.isArray(rpcRes) ? rpcRes[0] : rpcRes;
+
+      if (!rpcErr && row) {
+        if (!row.success) {
+          return res.status(409).json({
+            success: false,
+            error: row.message || "All 50 VIP seats have been occupied.",
+            occupiedSpots: row.occupied_spots ?? 50,
+            claimedSpots: row.occupied_spots ?? 50,
+            totalSpots: 50,
+            remainingSpots: row.remaining_spots ?? 0,
+          });
+        }
+
+        const allocatedRank = Number(row.founder_rank || 0);
+        const updatedOccupied = Math.max(1, Math.min(50, Number(row.occupied_spots || 1)));
+        const remaining = Math.max(0, 50 - updatedOccupied);
+        const founderEntitlement = createFounderEntitlement(userId, allocatedRank);
+        if (userEmail) founderEntitlement.userEmail = userEmail;
+        serverEntitlements.set(userId, founderEntitlement);
+        serverFounderCounter = updatedOccupied;
+
+        return res.json({
+          success: true,
+          alreadyClaimed: Boolean(row.already_claimed),
+          message: row.already_claimed
+            ? `VIP Seat #${allocatedRank} is already active on your account.`
+            : `VIP Access activated! You have been assigned VIP Seat #${allocatedRank} of 50 with Lifetime Pro access.`,
+          entitlement: founderEntitlement,
+          founderNumber: allocatedRank,
+          founderRank: allocatedRank,
+          occupiedSpots: updatedOccupied,
+          claimedSpots: updatedOccupied,
+          totalSpots: 50,
+          remainingSpots: remaining,
+        });
+      }
+
+      // If the new claim_vip_seat_for_user RPC isn't installed yet, try legacy claim_founder_seat_atomic RPC
+      if (rpcErr && isMissingRpcError(rpcErr)) {
+        const { data: legacyRes, error: legacyErr } = await userClient.rpc("claim_founder_seat_atomic", {
+          p_user_id: userId,
+          p_payment_id: "vip_50_free_claim",
+        });
+        const legacyRow = Array.isArray(legacyRes) ? legacyRes[0] : legacyRes;
+
+        if (!legacyErr && legacyRow) {
+          if (!legacyRow.success) {
+            return res.status(409).json({
+              success: false,
+              error: legacyRow.message || "All 50 VIP seats have been occupied.",
+              occupiedSpots: legacyRow.occupied_spots ?? 50,
+              claimedSpots: legacyRow.occupied_spots ?? 50,
+              totalSpots: 50,
+              remainingSpots: legacyRow.remaining_spots ?? 0,
+            });
+          }
+
+          const allocatedRank = Number(legacyRow.founder_rank || 0);
+          const refreshed = await getAuthoritativeFounderRegistry(authUser.token).catch(() => null);
+          const updatedOccupied = Math.max(
+            1,
+            Math.min(50, Number(legacyRow.occupied_spots || refreshed?.claims.length || 1))
+          );
+          const remaining = Math.max(0, 50 - updatedOccupied);
+          const founderEntitlement = createFounderEntitlement(userId, allocatedRank);
+          if (userEmail) founderEntitlement.userEmail = userEmail;
+          serverEntitlements.set(userId, founderEntitlement);
+          serverFounderCounter = updatedOccupied;
+
+          return res.json({
+            success: true,
+            message: `VIP Access activated! You have been assigned VIP Seat #${allocatedRank} of 50 with Lifetime Pro access.`,
+            entitlement: founderEntitlement,
+            founderNumber: allocatedRank,
+            founderRank: allocatedRank,
+            occupiedSpots: updatedOccupied,
+            claimedSpots: updatedOccupied,
+            totalSpots: 50,
+            remainingSpots: remaining,
+          });
+        }
+      }
+
+      logRegistryWarningOnce(`[VIP50] User RPC claim_vip_seat_for_user unavailable: ${rpcErr?.message || "Empty response"}`);
+      return res.status(503).json({
+        success: false,
+        error: "Unable to persist VIP seat to the database right now. Please try again shortly.",
+      });
     }
 
-    // Check if user is already a founder (by userId or userEmail)
+    // Vitest / non-Supabase local mode
+    let registry: AuthoritativeFounderRegistry;
+    try {
+      registry = await getAuthoritativeFounderRegistry();
+    } catch (err: any) {
+      return res.status(503).json({
+        success: false,
+        error: "VIP seat availability is temporarily unavailable. Please try again shortly.",
+      });
+    }
+
+    const validClaims = deduplicateAndNormalizeClaims(registry.claims);
     const existingClaim = validClaims.find(
-      c => c.userId === userId || (userEmail && c.userEmail && c.userEmail.toLowerCase() === userEmail.toLowerCase())
+      c => c.userId === userId || (userEmail && c.userEmail && c.userEmail.toLowerCase() === userEmail)
     );
 
     if (existingClaim) {
       const existingEnt = serverEntitlements.get(userId) || createFounderEntitlement(userId, existingClaim.founderNumber);
+      if (userEmail) existingEnt.userEmail = userEmail;
       serverEntitlements.set(userId, existingEnt);
       return res.json({
         success: true,
-        message: `You are already verified Founder #${existingClaim.founderNumber}!`,
+        alreadyClaimed: true,
+        message: `VIP Seat #${existingClaim.founderNumber} is already active on your account.`,
         entitlement: existingEnt,
         founderNumber: existingClaim.founderNumber,
         founderRank: existingClaim.founderNumber,
+        occupiedSpots: validClaims.length,
         claimedSpots: validClaims.length,
         totalSpots: 50,
         remainingSpots: Math.max(0, 50 - validClaims.length),
       });
     }
 
-    // Check if 50 seats capacity reached
     if (validClaims.length >= 50) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        error: "All 50 Founder spots have been claimed. Founder #51 does not exist. You can upgrade to Lifetime Pro.",
+        error: "All 50 VIP seats have been occupied. You can upgrade to Lifetime Pro anytime.",
+        occupiedSpots: 50,
+        claimedSpots: 50,
+        totalSpots: 50,
+        remainingSpots: 0,
       });
     }
 
-    // Determine the lowest available rank from 1 to 50
     const takenRanks = new Set(validClaims.map(c => c.founderRank));
-    let nextRank = 1;
-    while (takenRanks.has(nextRank) && nextRank <= 50) {
-      nextRank++;
+    let allocatedRank = 1;
+    while (takenRanks.has(allocatedRank) && allocatedRank <= 50) {
+      allocatedRank++;
     }
-    if (nextRank > 50) {
-      return res.status(400).json({
+    if (allocatedRank > 50) {
+      return res.status(409).json({
         success: false,
-        error: "All 50 Founder spots have been claimed.",
+        error: "All 50 VIP seats have been occupied.",
+        occupiedSpots: 50,
+        claimedSpots: 50,
+        totalSpots: 50,
+        remainingSpots: 0,
       });
     }
 
-    // Allocate the seat atomically
     const newClaim: FounderClaimRecord = {
-      id: `fc_founder_${nextRank}`,
+      id: `fc_founder_${allocatedRank}`,
       userId,
       userEmail: userEmail || undefined,
-      userName: userName || undefined,
-      founderRank: nextRank,
-      founderNumber: nextRank,
+      founderRank: allocatedRank,
+      founderNumber: allocatedRank,
       status: "claimed",
       claimedAt: new Date().toISOString(),
       tier: "Founder",
@@ -3058,26 +3712,24 @@ app.post("/api/billing/claim-founder", billingRateLimiter, async (req, res) => {
       isPro: true,
     };
 
-    registry.claims.push(newClaim);
-    registry.claims.sort((a, b) => a.founderRank - b.founderRank);
-
-    // Save to Supabase Storage, Auth, and Local State
+    registry.claims = deduplicateAndNormalizeClaims([...validClaims, newClaim]);
+    const founderEntitlement = createFounderEntitlement(userId, allocatedRank);
+    if (userEmail) founderEntitlement.userEmail = userEmail;
+    serverEntitlements.set(userId, founderEntitlement);
     await saveAuthoritativeFounderRegistry(registry);
 
-    const founderEntitlement = createFounderEntitlement(userId, nextRank);
-    serverEntitlements.set(userId, founderEntitlement);
-
-    const updatedClaimed = registry.claims.filter(c => c.status === "claimed").length;
-    const remaining = Math.max(0, 50 - updatedClaimed);
-    console.log(`[Founder50] Successfully allocated Founder #${nextRank} to user ${userId} (${userEmail || "anonymous"}). Remaining: ${remaining}`);
+    const updatedOccupied = registry.claims.filter(c => c.status === "claimed").length;
+    const remaining = Math.max(0, 50 - updatedOccupied);
+    console.log(`[VIP50] Allocated VIP Seat #${allocatedRank} to user ${userId}. Occupied: ${updatedOccupied}/50, Remaining: ${remaining}`);
 
     return res.json({
       success: true,
-      message: `Congratulations! You have claimed Founder #${nextRank} with free Lifetime Pro access and the Founder Crown.`,
+      message: `VIP Access activated! You have been assigned VIP Seat #${allocatedRank} of 50 with Lifetime Pro access.`,
       entitlement: founderEntitlement,
-      founderNumber: nextRank,
-      founderRank: nextRank,
-      claimedSpots: updatedClaimed,
+      founderNumber: allocatedRank,
+      founderRank: allocatedRank,
+      occupiedSpots: updatedOccupied,
+      claimedSpots: updatedOccupied,
       totalSpots: 50,
       remainingSpots: remaining,
     });
@@ -3089,24 +3741,39 @@ app.post("/api/billing/claim-founder", billingRateLimiter, async (req, res) => {
 // ==============================================================================
 
 app.get("/api/admin/founders/count", async (_req, res) => {
-  const registry = await getAuthoritativeFounderRegistry();
-  const validClaims = registry.claims.filter(c => c.status === "claimed");
-  return res.json({
-    success: true,
-    count: validClaims.length,
-    max: 50,
-    remaining: Math.max(0, 50 - validClaims.length),
-  });
+  try {
+    const registry = await getAuthoritativeFounderRegistry();
+    const validClaims = registry.claims.filter(c => c.status === "claimed");
+    return res.json({
+      success: true,
+      count: validClaims.length,
+      max: 50,
+      remaining: Math.max(0, 50 - validClaims.length),
+    });
+  } catch (err: any) {
+    return res.status(503).json({
+      success: false,
+      error: err?.message || "VIP seat database temporarily unavailable.",
+    });
+  }
 });
 
 app.get("/api/admin/founders/remaining", async (_req, res) => {
-  const registry = await getAuthoritativeFounderRegistry();
-  const validClaims = registry.claims.filter(c => c.status === "claimed");
-  return res.json({
-    success: true,
-    remaining: Math.max(0, 50 - validClaims.length),
-    total: 50,
-  });
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  try {
+    const registry = await getAuthoritativeFounderRegistry();
+    const validClaims = registry.claims.filter(c => c.status === "claimed");
+    return res.json({
+      success: true,
+      remaining: Math.max(0, 50 - validClaims.length),
+      total: 50,
+    });
+  } catch (err: any) {
+    return res.status(503).json({
+      success: false,
+      error: err?.message || "VIP seat database temporarily unavailable.",
+    });
+  }
 });
 
 app.get("/api/admin/founders/list", adminRateLimiter, async (req, res) => {
@@ -3118,17 +3785,24 @@ app.get("/api/admin/founders/list", adminRateLimiter, async (req, res) => {
     });
   }
 
-  const registry = await getAuthoritativeFounderRegistry();
-  const validClaims = registry.claims.filter(c => c.status === "claimed");
-  validClaims.sort((a, b) => (a.founderRank || 0) - (b.founderRank || 0));
+  try {
+    const registry = await getAuthoritativeFounderRegistry();
+    const validClaims = registry.claims.filter(c => c.status === "claimed");
+    validClaims.sort((a, b) => (a.founderRank || 0) - (b.founderRank || 0));
 
-  return res.json({
-    success: true,
-    totalClaimed: validClaims.length,
-    maxAllowed: 50,
-    remaining: Math.max(0, 50 - validClaims.length),
-    founders: validClaims,
-  });
+    return res.json({
+      success: true,
+      totalClaimed: validClaims.length,
+      maxAllowed: 50,
+      remaining: Math.max(0, 50 - validClaims.length),
+      founders: validClaims,
+    });
+  } catch (err: any) {
+    return res.status(503).json({
+      success: false,
+      error: err?.message || "VIP seat database temporarily unavailable.",
+    });
+  }
 });
 
 app.post("/api/admin/founders/assign", adminRateLimiter, async (req, res) => {
@@ -3146,7 +3820,15 @@ app.post("/api/admin/founders/assign", adminRateLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: "Valid target userId is required." });
     }
 
-    const registry = await getAuthoritativeFounderRegistry();
+    let registry: AuthoritativeFounderRegistry;
+    try {
+      registry = await getAuthoritativeFounderRegistry();
+    } catch (err: any) {
+      return res.status(503).json({
+        success: false,
+        error: err?.message || "VIP seat database temporarily unavailable.",
+      });
+    }
     const validClaims = registry.claims.filter(c => c.status === "claimed");
 
     const existingClaim = validClaims.find(c => c.userId === userId);
@@ -3206,7 +3888,8 @@ app.post("/api/admin/founders/assign", adminRateLimiter, async (req, res) => {
 
 // Endpoint: Query Subscription Status for User
 app.get("/api/billing/subscription-status", async (req, res) => {
-  const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string) || "guest";
+  const authUser = await getAuthenticatedUser(req);
+  const userId = authUser.isAuthenticated ? authUser.id : "guest";
 
   // Find active subscription for user
   let activeSub: any = null;
@@ -3217,18 +3900,55 @@ app.get("/api/billing/subscription-status", async (req, res) => {
     }
   }
 
-  let entitlement = serverEntitlements.get(userId) || null;
+  let entitlement: any = null;
 
-  // Cross-verify against authoritative founder registry
-  if (!entitlement || !entitlement.isFounder) {
-    try {
-      const registry = await getAuthoritativeFounderRegistry();
-      const claim = registry.claims.find(c => c.status === "claimed" && c.userId === userId);
-      if (claim) {
-        entitlement = createFounderEntitlement(userId, claim.founderNumber);
-        serverEntitlements.set(userId, entitlement);
-      }
-    } catch {}
+  // Cross-verify against Supabase Postgres first when configured
+  if (supabaseServer && authUser.isAuthenticated && !userId.startsWith("local-") && !(process.env.VITEST === "true" && (testRegistryFetchOverride || testAuthUserResolverOverride))) {
+    const dbClient = hasSupabaseServiceRole
+      ? supabaseServer
+      : createSupabaseClientWithToken(authUser.token);
+    if (dbClient) {
+      try {
+        const [{ data: claimData }, { data: entData }] = await Promise.all([
+          dbClient
+            .from("founder_claims")
+            .select("user_id, founder_rank, claimed_at, status")
+            .eq("user_id", userId)
+            .eq("status", "claimed")
+            .maybeSingle(),
+          dbClient
+            .from("user_entitlements")
+            .select("*")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        ]);
+        const claimRank = Number(claimData?.founder_rank || 0);
+        const entRank = Number(entData?.founder_number || 0);
+        const resolvedRank = claimRank >= 1 && claimRank <= 50 ? claimRank : (entData?.is_founder && entRank >= 1 && entRank <= 50 ? entRank : 0);
+        if (resolvedRank >= 1 && resolvedRank <= 50) {
+          entitlement = createFounderEntitlement(userId, resolvedRank);
+          if (claimData?.claimed_at || entData?.founder_granted_at) {
+            entitlement.founderGrantedAt = claimData?.claimed_at || entData?.founder_granted_at;
+          }
+          serverEntitlements.set(userId, entitlement);
+        }
+      } catch {}
+    }
+  } else {
+    entitlement = serverEntitlements.get(userId) || null;
+    if (!entitlement || !entitlement.isFounder) {
+      try {
+        const registry = await getAuthoritativeFounderRegistry();
+        const emailNorm = authUser.email ? authUser.email.trim().toLowerCase() : "";
+        const claim = registry.claims.find(
+          c => c.status === "claimed" && (c.userId === userId || (emailNorm && c.userEmail?.toLowerCase() === emailNorm))
+        );
+        if (claim) {
+          entitlement = createFounderEntitlement(userId, claim.founderNumber);
+          serverEntitlements.set(userId, entitlement);
+        }
+      } catch {}
+    }
   }
   if (!entitlement) {
     const features = { ...PLAN_FEATURES_MAP.free };
@@ -3260,64 +3980,39 @@ app.get("/api/billing/subscription-status", async (req, res) => {
   });
 });
 
-// Endpoint: Restore Purchases
-app.post("/api/billing/restore-purchases", (req, res) => {
-  const { userId = "guest", purchases = [] } = req.body;
+// Endpoint: Restore Purchases (Verified User & Server Records Only)
+app.post("/api/billing/restore-purchases", billingRateLimiter, async (req, res) => {
+  const authUser = await getAuthenticatedUser(req);
+  if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
+    return res.status(401).json({
+      success: false,
+      restoredCount: 0,
+      error: "Authentication required to restore purchases.",
+    });
+  }
+  const userId = authUser.id;
 
-  // Search existing subscriptions for this user or matching tokens
   let activeSub: any = null;
-
   for (const [, sub] of serverSubscriptions.entries()) {
-    if (sub.userId === userId && new Date(sub.expiryTime || sub.currentPeriodEnd).getTime() > Date.now()) {
+    if (sub.userId === userId && sub.status === "active" && (!sub.currentPeriodEnd || new Date(sub.expiryTime || sub.currentPeriodEnd).getTime() > Date.now())) {
       activeSub = sub;
       break;
     }
   }
 
-  if (!activeSub && Array.isArray(purchases) && purchases.length > 0) {
-    const latest = purchases[0];
-    const matchedProduct = GOOGLE_PLAY_PRODUCTS.find((p) => p.productId === latest.productId);
-    const now = new Date();
-    const expiryDate = new Date(now);
-    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-
-    activeSub = {
-      id: `sub_restored_${Date.now()}`,
-      userId,
-      plan: "pro",
-      status: "active",
-      provider: "google_play",
-      providerCustomerId: userId,
-      providerSubscriptionId: latest.purchaseToken,
-      currentPeriodStart: now.toISOString(),
-      currentPeriodEnd: expiryDate.toISOString(),
-      cancelAtPeriodEnd: false,
-      productId: latest.productId || "snapfind_pro:pro-yearly",
-      purchaseToken: latest.purchaseToken,
-      orderId: latest.orderId || `GPA.RESTORED.${Date.now()}`,
-      platform: "android_google_play",
-      autoRenewing: true,
-      priceCurrencyCode: matchedProduct?.priceCurrencyCode || "USD",
-      priceAmountMicros: matchedProduct?.priceAmountMicros || 24990000,
-      startTime: now.toISOString(),
-      expiryTime: expiryDate.toISOString(),
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    };
-    serverSubscriptions.set(activeSub.id, activeSub);
-  }
-
   if (activeSub) {
     const existing = serverEntitlements.get(userId);
+    const subPlan = String(activeSub.plan || "lifetime").toLowerCase();
+    const resolvedFeatures = resolvePlanFeatures({ plan: subPlan, isPro: true, isFounder: existing?.isFounder });
     const entitlement = {
       userId,
-      plan: "pro",
-      tier: "Pro",
+      plan: existing?.isFounder ? "founder" : subPlan,
+      tier: existing?.isFounder ? "Founder" : "Pro",
       isPro: true,
       isFounder: existing?.isFounder || false,
       founderNumber: existing?.founderNumber || null,
-      features: { ...PLAN_FEATURES_MAP.pro },
-      maxScreenshots: PLAN_FEATURES_MAP.pro.maxIndexedScreenshots,
+      features: { ...resolvedFeatures },
+      maxScreenshots: resolvedFeatures.maxIndexedScreenshots,
       canCloudSync: true,
       canAiMultimodalSearch: true,
       priorityProcessing: true,
@@ -3346,13 +4041,21 @@ app.post("/api/billing/restore-purchases", (req, res) => {
   });
 });
 
-// Endpoint: Cancel Subscription Auto-Renewal
-app.post("/api/billing/cancel-subscription", (req, res) => {
-  const { subscriptionId, userId = "guest" } = req.body;
+// Endpoint: Cancel Subscription Auto-Renewal (Verified Ownership Only)
+app.post("/api/billing/cancel-subscription", billingRateLimiter, async (req, res) => {
+  const authUser = await getAuthenticatedUser(req);
+  if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
+    return res.status(401).json({ success: false, error: "Authentication required to manage subscriptions." });
+  }
+  const userId = authUser.id;
+  const { subscriptionId } = req.body;
 
   let matchedSub: any = null;
   if (subscriptionId && serverSubscriptions.has(subscriptionId)) {
-    matchedSub = serverSubscriptions.get(subscriptionId);
+    const candidate = serverSubscriptions.get(subscriptionId);
+    if (candidate && candidate.userId === userId) {
+      matchedSub = candidate;
+    }
   } else {
     for (const [, sub] of serverSubscriptions.entries()) {
       if (sub.userId === userId && sub.status === "active") {
@@ -3416,14 +4119,18 @@ app.get("/api/billing/payment-status", (_req, res) => {
 app.get("/api/billing/customer-portal", (_req, res) => {
   return res.json({
     success: true,
-    portalUrl: "https://play.google.com/store/account/subscriptions?sku=snapfind_pro&package=com.snapfind.app",
+    portalUrl: "https://play.google.com/store/account/subscriptions?sku=snapfind_pro&package=com.snapfind.ai",
     instructions: "Manage or cancel your Google Play subscriptions directly in the Google Play Store app.",
   });
 });
 
 // Endpoint: Web Checkout Session Creation (Prepared for Web Gateway)
-app.post("/api/billing/create-checkout-session", (req, res) => {
-  const { productId, userId = "guest", returnUrl } = req.body;
+app.post("/api/billing/create-checkout-session", async (req, res) => {
+  const authUser = await getAuthenticatedUser(req);
+  if (!authUser.isAuthenticated) {
+    return res.status(401).json({ success: false, error: "Please sign in to start checkout." });
+  }
+  const { returnUrl } = req.body;
   // In development mode, return a safe simulated checkout link or sandbox acknowledgment
   return res.json({
     success: true,
@@ -3656,15 +4363,15 @@ app.post("/api/payments/paddle/webhook", async (req, res) => {
     } else if (
       customPlan === "lifetime" ||
       priceDescription.includes("lifetime") ||
-      amountVal >= 7000 ||
-      (currency === "USD" && amountVal >= 25)
+      amountVal >= 5500 ||
+      (currency === "USD" && amountVal >= 18)
     ) {
       plan = "lifetime";
     } else if (
       customPlan === "yearly" ||
       priceDescription.includes("year") ||
-      amountVal >= 2000 ||
-      (currency === "USD" && amountVal >= 8)
+      amountVal >= 1800 ||
+      (currency === "USD" && amountVal >= 6)
     ) {
       plan = "yearly";
     } else {
@@ -3716,26 +4423,21 @@ app.post("/api/payments/paddle/webhook", async (req, res) => {
       const subId = data?.subscription_id || (plan === "lifetime" || plan === "founder" ? `sub_paddle_life_${orderId}` : `sub_paddle_${orderId}`);
       const paymentId = `pay_paddle_${orderId}`;
 
-      // Handle Atomic Founder Seat Allocation for Founder purchases
+      // NEVER blindly increment VIP seat counter on webhook delivery.
+      // Only resolve an already-verified VIP seat from the authoritative registry.
       let assignedFounderNumber: number | null = null;
       if (plan === "founder") {
-        if (supabaseServer && userId && userId !== "guest" && !userId.startsWith("local-")) {
+        await serverTransactionLock.acquire(async () => {
           try {
-            const { data: rpcData, error: rpcErr } = await supabaseServer.rpc("claim_founder_seat_atomic", {
-              p_user_id: userId,
-              p_tx_ref: orderId,
-            });
-            if (!rpcErr && rpcData?.founder_number) {
-              assignedFounderNumber = rpcData.founder_number;
+            const registry = await getAuthoritativeFounderRegistry();
+            const existingClaim = registry.claims.find(
+              (c) => c.status === "claimed" && (c.userId === userId || (customerEmail && c.userEmail?.toLowerCase() === String(customerEmail).toLowerCase()))
+            );
+            if (existingClaim) {
+              assignedFounderNumber = existingClaim.founderNumber;
             }
-          } catch (rpcEx) {
-            console.warn("[PaddleWebhook] Supabase founder claim RPC error:", rpcEx);
-          }
-        }
-        if (!assignedFounderNumber) {
-          serverFounderCounter = Math.min(50, serverFounderCounter + 1);
-          assignedFounderNumber = serverFounderCounter;
-        }
+          } catch {}
+        });
       }
 
       // A. Update Subscription Record
@@ -3820,7 +4522,7 @@ app.post("/api/payments/paddle/webhook", async (req, res) => {
         user_id: userId,
         userId,
         type: "SUBSCRIPTION",
-        title: "⚡ Pro Activated via Paddle",
+        title: "Pro Access Activated",
         message: `Your payment was verified successfully. ${plan.charAt(0).toUpperCase() + plan.slice(1)} Pro access (${updatedEntitlement.maxScreenshots.toLocaleString()} screenshots quota) is now active!`,
         priority: "high",
         read: false,
@@ -3835,7 +4537,7 @@ app.post("/api/payments/paddle/webhook", async (req, res) => {
             id: notifId,
             user_id: userId,
             type: "SUBSCRIPTION",
-            title: "⚡ Pro Activated via Paddle",
+            title: "Pro Access Activated",
             message: `Your payment was verified successfully. ${plan.charAt(0).toUpperCase() + plan.slice(1)} Pro access (${updatedEntitlement.maxScreenshots.toLocaleString()} screenshots quota) is now active!`,
             priority: "high",
             read: false,
@@ -3924,11 +4626,18 @@ app.post("/api/payments/paddle/webhook", async (req, res) => {
   }
 });
 
-// Endpoint: Audit Events Query (Development & Monitoring)
-app.get("/api/billing/audit-events", (_req, res) => {
+// Endpoint: Audit Events Query (Strictly Admin Authorized)
+app.get("/api/billing/audit-events", adminRateLimiter, async (req, res) => {
+  const auth = await checkAdminAuthorization(req);
+  if (!auth.authorized) {
+    return res.status(403).json({
+      success: false,
+      error: auth.error || "Administrator privileges required.",
+    });
+  }
   return res.json({
     success: true,
-    events: serverSubscriptionEvents.slice(-50), // last 50 events
+    events: serverSubscriptionEvents.slice(-50),
     processedPaddleEventsCount: processedPaddleEvents.size,
   });
 });
@@ -4010,8 +4719,9 @@ app.post(["/api/feedback", "/api/feedback/submit"], async (req, res) => {
       });
     }
 
-    const userId = (req.headers["x-user-id"] as string) || req.body.user_id || "guest";
-    const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "client";
+    const authUser = await getAuthenticatedUser(req);
+    const userId = authUser.isAuthenticated ? authUser.id : "guest";
+    const clientIp = req.ip || req.socket?.remoteAddress || "client";
 
     // 2. Sliding Window Rate Limiting (Maximum 5 feedback submissions per 10 minutes per IP/User)
     const rateLimitKey = `feedback_${userId}_${clientIp}`;
@@ -4096,10 +4806,17 @@ app.post(["/api/feedback", "/api/feedback/submit"], async (req, res) => {
   }
 });
 
-// Endpoint: Query Feedback (for current user or admin)
-app.get("/api/feedback", (req, res) => {
-  const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string) || "guest";
-  const userFeedback = serverFeedbackList.filter((f) => f.user_id === userId || userId === "admin");
+// Endpoint: Query Feedback (Verified User Own Items or Verified Admin)
+app.get("/api/feedback", async (req, res) => {
+  const adminCheck = await checkAdminAuthorization(req);
+  if (adminCheck.authorized) {
+    return res.json({ success: true, items: serverFeedbackList });
+  }
+  const authUser = await getAuthenticatedUser(req);
+  if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
+    return res.json({ success: true, items: [] });
+  }
+  const userFeedback = serverFeedbackList.filter((f) => f.user_id === authUser.id);
   return res.json({ success: true, items: userFeedback });
 });
 
@@ -4193,7 +4910,8 @@ function validateGameUsername(username: string): { valid: boolean; error?: strin
 
 // Endpoint: Get Game Profile for Current User
 app.get("/api/game/profile", async (req, res) => {
-  const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string) || "guest";
+  const authUser = await getAuthenticatedUser(req);
+  const userId = authUser.isAuthenticated ? authUser.id : "guest";
   const isGuest = !userId || userId === "guest" || userId.startsWith("local-guest");
 
   if (isGuest) {
@@ -4248,7 +4966,8 @@ app.get("/api/game/profile", async (req, res) => {
 
 // Endpoint: Create or Update Game Username
 app.post("/api/game/profile", async (req, res) => {
-  const userId = (req.headers["x-user-id"] as string) || req.body.userId || "guest";
+  const authUser = await getAuthenticatedUser(req);
+  const userId = authUser.isAuthenticated ? authUser.id : "guest";
   const isGuest = !userId || userId === "guest" || userId.startsWith("local-guest");
 
   if (isGuest) {
@@ -4317,7 +5036,8 @@ app.post("/api/game/profile", async (req, res) => {
 // Endpoint: Submit Game Score (Anti-Cheat Server Validated)
 app.post("/api/game/submit-score", async (req, res) => {
   try {
-    const userId = (req.headers["x-user-id"] as string) || req.body.userId || "guest";
+    const authUser = await getAuthenticatedUser(req);
+    const userId = authUser.isAuthenticated ? authUser.id : "guest";
     const isGuest = !userId || userId === "guest" || userId.startsWith("local-guest");
 
     if (isGuest) {
@@ -4432,7 +5152,8 @@ app.post("/api/game/submit-score", async (req, res) => {
 
 // Endpoint: Fetch Global Leaderboard (Top 50 unique best scores per player with tie-breaker, real users only)
 app.get("/api/game/leaderboard", async (req, res) => {
-  const currentUserId = (req.headers["x-user-id"] as string) || (req.query.userId as string) || "guest";
+  const authUser = await getAuthenticatedUser(req);
+  const currentUserId = authUser.isAuthenticated ? authUser.id : "guest";
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
 
   // Sync with Supabase game_profiles if database is connected
@@ -4525,8 +5246,9 @@ app.get("/api/game/leaderboard", async (req, res) => {
 });
 
 // Endpoint: Fetch Current User Game Stats
-app.get("/api/game/user-stats", (req, res) => {
-  const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string) || "guest";
+app.get("/api/game/user-stats", async (req, res) => {
+  const authUser = await getAuthenticatedUser(req);
+  const userId = authUser.isAuthenticated ? authUser.id : "guest";
   const isGuest = !userId || userId === "guest" || userId.startsWith("local-guest");
 
   if (isGuest) {
@@ -4565,8 +5287,8 @@ app.get("/api/game/user-stats", (req, res) => {
 // ==============================================================================
 
 // Endpoint: Query Authoritative User & Device Usage Metrics
-app.get("/api/usage", (req, res) => {
-  const { userKey, userId, deviceId } = getEffectiveUserKey(req);
+app.get("/api/usage", async (req, res) => {
+  const { userKey, userId, deviceId } = await resolveEffectiveUserContext(req);
   const usage = getOrInitServerUsage(userKey, userId, deviceId);
   const ent = serverEntitlements.get(userId) || {
     plan: "free",
@@ -4577,12 +5299,7 @@ app.get("/api/usage", (req, res) => {
 
   const isFounder = Boolean(ent.isFounder);
   const isPro = Boolean(ent.isPro || isFounder);
-
-  const limits = isFounder
-    ? PLAN_FEATURES_MAP.founder
-    : isPro
-    ? PLAN_FEATURES_MAP.pro
-    : PLAN_FEATURES_MAP.free;
+  const limits = resolvePlanFeatures(ent);
 
   const now = new Date();
   const resetDateObj = new Date(usage.monthlyResetDate);
@@ -4627,21 +5344,23 @@ app.get("/api/usage", (req, res) => {
 });
 
 // Endpoint: Record Authoritative AI Scan or Screenshot Action
-app.post("/api/usage/record", (req, res) => {
-  const { userKey, userId, deviceId } = getEffectiveUserKey(req);
+app.post("/api/usage/record", async (req, res) => {
+  const { userKey, userId, deviceId } = await resolveEffectiveUserContext(req);
   const usage = getOrInitServerUsage(userKey, userId, deviceId);
   const { action, byteSize = 0, count = 1 } = req.body;
+  const safeCount = Math.max(0, Math.min(100, Number(count) || 0));
+  const safeBytes = Math.max(0, Number(byteSize) || 0);
 
   if (action === "ai_scan") {
-    usage.aiAnalysesUsed += count;
+    usage.aiAnalysesUsed += safeCount;
   } else if (action === "index_screenshot") {
-    usage.screenshotsIndexed += count;
-    usage.storageBytesUsed = Math.max(0, usage.storageBytesUsed + byteSize);
+    usage.screenshotsIndexed += safeCount;
+    usage.storageBytesUsed = Math.max(0, usage.storageBytesUsed + safeBytes);
   } else if (action === "delete_screenshot") {
-    usage.screenshotsIndexed = Math.max(0, usage.screenshotsIndexed - count);
-    usage.storageBytesUsed = Math.max(0, usage.storageBytesUsed - byteSize);
+    usage.screenshotsIndexed = Math.max(0, usage.screenshotsIndexed - safeCount);
+    usage.storageBytesUsed = Math.max(0, usage.storageBytesUsed - safeBytes);
   } else if (action === "cloud_sync") {
-    usage.cloudSyncCount += count;
+    usage.cloudSyncCount += safeCount;
   }
 
   usage.lastUpdated = new Date().toISOString();
@@ -4660,8 +5379,8 @@ app.post("/api/usage/record", (req, res) => {
 });
 
 // Endpoint: Reconcile & Synchronize Local Client State with Authoritative Server Ledger
-app.post("/api/usage/sync", (req, res) => {
-  const { userKey, userId, deviceId } = getEffectiveUserKey(req);
+app.post("/api/usage/sync", async (req, res) => {
+  const { userKey, userId, deviceId } = await resolveEffectiveUserContext(req);
   const usage = getOrInitServerUsage(userKey, userId, deviceId);
   const { clientScreenshotsCount = 0, clientStorageBytes = 0, clientSyncedCount = 0 } = req.body;
 
@@ -4698,10 +5417,103 @@ app.post("/api/admin/test-reset", adminRateLimiter, async (req, res) => {
   return res.json({ success: true, message: "Testing state reset successfully." });
 });
 
+// Endpoint: Permanently Delete Authenticated Account & Associated Records
+app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
+  try {
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
+      return res.status(401).json({
+        success: false,
+        error: "Valid authentication session required to delete your account.",
+      });
+    }
+    const uid = authUser.id;
+
+    serverEntitlements.delete(uid);
+    serverUsageStore.delete(`usr_${uid}`);
+    serverGameProfiles.delete(uid);
+    for (const [nid, notif] of serverNotifications.entries()) {
+      if (notif.user_id === uid || notif.userId === uid) {
+        serverNotifications.delete(nid);
+      }
+    }
+    for (const [rid, reqRec] of serverPaymentRequests.entries()) {
+      if (reqRec.user_id === uid || reqRec.userId === uid) {
+        serverPaymentRequests.delete(rid);
+      }
+    }
+    saveBillingStateToDisk();
+
+    if (supabaseServer) {
+      const cleanupOps = [
+        supabaseServer.from("screenshots").delete().eq("user_id", uid),
+        supabaseServer.from("search_history").delete().eq("user_id", uid),
+        supabaseServer.from("settings").delete().eq("user_id", uid),
+        supabaseServer.from("notifications").delete().eq("user_id", uid),
+        supabaseServer.from("user_entitlements").delete().eq("user_id", uid),
+        supabaseServer.from("payment_requests").delete().eq("user_id", uid),
+        supabaseServer.from("game_scores").delete().eq("user_id", uid),
+        supabaseServer.from("game_profiles").delete().eq("user_id", uid),
+        supabaseServer.from("profiles").delete().eq("id", uid),
+      ];
+      await Promise.allSettled(cleanupOps);
+      try {
+        await supabaseServer.auth.admin.deleteUser(uid);
+      } catch (authDelErr) {
+        console.warn("[AccountDelete] Auth user removal notice:", authDelErr);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: "Account and associated cloud records deleted permanently.",
+    });
+  } catch (err: any) {
+    console.error("[AccountDelete] Error:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Unable to complete account deletion right now.",
+    });
+  }
+});
+
+// Guarantee all unmatched /api/* routes return JSON 404 instead of SPA HTML
+app.use("/api", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(404).json({
+    success: false,
+    error: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// Guarantee all /api/* middleware or JSON-parse errors return JSON instead of Express HTML error pages
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!req.originalUrl.startsWith("/api")) {
+    return next(err);
+  }
+  const status =
+    typeof err?.status === "number" && err.status >= 400 && err.status < 600
+      ? err.status
+      : typeof err?.statusCode === "number" && err.statusCode >= 400 && err.statusCode < 600
+      ? err.statusCode
+      : 500;
+  const message =
+    err?.type === "entity.parse.failed"
+      ? "Invalid JSON request body."
+      : status >= 500
+      ? "Internal server error."
+      : err?.message || "Bad request.";
+  return res.status(status).json({
+    success: false,
+    error: message,
+  });
+});
+
 async function startServer() {
   await loadAuthoritativeFounderStateFromSupabase().catch(() => {});
 
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -4720,4 +5532,49 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.VITEST !== "true" && !process.env.VERCEL) {
+  startServer();
+}
+
+const __vipTestControls =
+  process.env.VITEST === "true"
+    ? {
+        resetState: () => {
+          serverEntitlements.clear();
+          serverSubscriptions.clear();
+          serverPayments.clear();
+          serverPaymentRequests.clear();
+          serverSubscriptionEvents.length = 0;
+          processedPaddleEvents.clear();
+          serverFounderCounter = 0;
+          testRegistryFetchOverride = null;
+          testAuthUserResolverOverride = null;
+          try {
+            if (fs.existsSync(BILLING_DATA_FILE)) {
+              fs.unlinkSync(BILLING_DATA_FILE);
+            }
+          } catch {}
+        },
+        reloadFromDisk: () => {
+          loadBillingStateFromDisk();
+        },
+        setRegistryOverride: (fn: (() => Promise<AuthoritativeFounderRegistry>) | null) => {
+          testRegistryFetchOverride = fn;
+        },
+        setAuthResolverOverride: (
+          fn: ((req: express.Request) => Promise<{ id: string; email?: string; isAuthenticated: boolean }> | null) | null
+        ) => {
+          testAuthUserResolverOverride = fn;
+        },
+        seedVipSeat: (userId: string, rank: number, email?: string) => {
+          const ent = createFounderEntitlement(userId, rank);
+          if (email) ent.userEmail = email.toLowerCase();
+          serverEntitlements.set(userId, ent);
+          serverFounderCounter = collectLocalVipClaims().length;
+          return ent;
+        },
+        getFounderCounter: () => serverFounderCounter,
+      }
+    : undefined;
+
+export { app, serverEntitlements, serverPaymentRequests, serverUsageStore, PLAN_FEATURES_MAP, CANONICAL_PRODUCTS, __vipTestControls };

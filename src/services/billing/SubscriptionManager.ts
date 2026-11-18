@@ -11,7 +11,7 @@ import {
 import { PLAY_STORE_SKUS } from "./googlePlayBillingPlugin";
 import { PaymentService } from "./PaymentService";
 import { PLAN_CONFIG, PLAN_LIMITS, FOUNDER_BENEFIT_CONFIG } from "./entitlementConfig";
-import { supabase } from "../supabase";
+import { supabase, isSupabaseConfigured, getAuthBearerHeader } from "../supabase";
 import { NotificationService } from "../notificationService";
 
 export { PLAN_CONFIG, PLAN_LIMITS, FOUNDER_BENEFIT_CONFIG, PLAY_STORE_SKUS };
@@ -63,6 +63,42 @@ function createDefaultFreeEntitlement(userId: string = "guest"): UserEntitlement
     priorityProcessing: PLAN_CONFIG.free.features.priorityProcessing,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Safely parse an HTTP response as JSON.
+ * Prevents SyntaxError ("Unexpected token '<', '<!doctype...' is not valid JSON")
+ * whenever a static SPA host, proxy, or WebView serves HTML instead of JSON.
+ */
+async function readJsonResponse(res: Response): Promise<{ isJson: boolean; data: any }> {
+  const contentType = res.headers?.get?.("content-type") || "";
+  if (contentType && !/application\/json|\+json/i.test(contentType)) {
+    return { isJson: false, data: null };
+  }
+
+  if (typeof res.text === "function") {
+    try {
+      const raw = await res.text();
+      const trimmed = raw.trim();
+      if (!trimmed || trimmed.startsWith("<")) {
+        return { isJson: false, data: null };
+      }
+      return { isJson: true, data: JSON.parse(trimmed) };
+    } catch {
+      return { isJson: false, data: null };
+    }
+  }
+
+  if (typeof res.json === "function") {
+    try {
+      const data = await res.json();
+      return { isJson: true, data };
+    } catch {
+      return { isJson: false, data: null };
+    }
+  }
+
+  return { isJson: false, data: null };
 }
 
 class SubscriptionManagerService {
@@ -162,6 +198,9 @@ class SubscriptionManagerService {
   public getUserEntitlements(userId?: string): UserEntitlement {
     if (userId && this.userEntitlementsCache.has(userId)) {
       return this.userEntitlementsCache.get(userId)!;
+    }
+    if (userId && this.currentEntitlement.userId && this.currentEntitlement.userId !== userId) {
+      return createDefaultFreeEntitlement(userId);
     }
     return this.currentEntitlement;
   }
@@ -282,7 +321,7 @@ class SubscriptionManagerService {
       remaining: 0,
       reason: `Plan limit of ${quota.limit} AI-indexed screenshots reached.`,
       upgradePromptTitle: "Your indexing limit has been reached.",
-      upgradePromptMessage: `Your indexing limit has been reached (${quota.used} / ${quota.limit} AI-indexed screenshots used). Upgrade to Monthly, Annual, or claim a permanent Founder Lifetime seat.`,
+      upgradePromptMessage: `Your indexing limit has been reached (${quota.used} / ${quota.limit} AI-indexed screenshots used). Upgrade to Monthly, Annual, or claim an available free VIP Seat.`,
     };
   }
 
@@ -309,7 +348,7 @@ class SubscriptionManagerService {
       remaining: 0,
       reason: `Monthly AI scan limit of ${limit} reached.`,
       upgradePromptTitle: "Monthly AI Vision Limit Reached",
-      upgradePromptMessage: `You have completed ${currentMonthScans} / ${limit} AI scans this month. Upgrade to Pro for unlimited AI scans and multimodal reasoning.`,
+      upgradePromptMessage: `You have completed ${currentMonthScans} / ${limit} AI scans this month. Upgrade to unlock higher monthly AI scan limits.`,
     };
   }
 
@@ -325,7 +364,7 @@ class SubscriptionManagerService {
       allowed: false,
       reason: "Cloud synchronization is a SnapFind Pro feature.",
       upgradePromptTitle: "Unlock Cloud Backup & Sync",
-      upgradePromptMessage: "Cloud Sync keeps your screenshots, OCR vectors, and AI tags safely backed up and synced across all your devices. Upgrade to Pro ($1.99/month) to enable cloud synchronization.",
+      upgradePromptMessage: "Cloud Sync keeps your screenshots, smart search index, and tags backed up and synced across your devices. Upgrade to Pro (starting at PKR 249/month) to enable cloud synchronization.",
     };
   }
 
@@ -369,66 +408,169 @@ class SubscriptionManagerService {
    * Authoritative Server Sync: Fetch latest entitlement from Supabase backend / Server API
    */
   public async syncEntitlementsFromServer(userId?: string): Promise<UserEntitlement> {
-    try {
-      // 1. If Supabase is configured and user is authenticated, query public.user_entitlements
-      if (supabase && userId && userId !== "guest" && !userId.startsWith("local-")) {
-        const { data, error } = await supabase
-          .from("user_entitlements")
-          .select("*")
-          .eq("user_id", userId)
-          .single();
-
-        if (data && !error) {
-          const isFounder = Boolean(data.is_founder);
-          const isPro = Boolean(data.is_pro || isFounder);
-          const plan: PlanType = isFounder ? "founder" : isPro ? "pro" : "free";
-          const tier: SubscriptionTier = isFounder ? "Founder" : isPro ? "Pro" : "Free";
-          const features: PlanFeatureLimits = data.features || PLAN_CONFIG[plan].features;
-
-          const entitlement: UserEntitlement = {
-            userId: data.user_id,
-            plan,
-            tier,
-            isPro,
-            isFounder,
-            founderNumber: data.founder_number || null,
-            founderGrantedAt: data.founder_granted_at || null,
-            founderExpiresAt: data.founder_expires_at || null,
-            features,
-            maxScreenshots: features.maxIndexedScreenshots || (isPro ? PLAN_LIMITS.PRO_MAX_SCREENSHOTS : PLAN_LIMITS.FREE_MAX_SCREENSHOTS),
-            canCloudSync: features.cloudSync,
-            canAiMultimodalSearch: features.advancedSearch,
-            priorityProcessing: features.priorityProcessing,
-            expiresAt: data.expires_at,
-            activeSubscriptionId: data.active_subscription_id,
-            updatedAt: data.updated_at || new Date().toISOString(),
-          };
-
-          this.saveCachedEntitlement(entitlement);
-          return entitlement;
-        }
-      }
-
-      // 2. Query server-side entitlement endpoint
-      const res = await fetch("/api/billing/entitlements", {
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": userId || this.currentEntitlement.userId || "guest",
-        },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.entitlement) {
-          this.saveCachedEntitlement(data.entitlement);
-          return data.entitlement;
-        }
-      }
-    } catch (err) {
-      console.warn("[SubscriptionManager] Server sync failed, relying on offline cache:", err);
+    const targetUserId = userId || this.currentEntitlement.userId || "guest";
+    if (!targetUserId || targetUserId === "guest" || targetUserId.startsWith("local-")) {
+      const guestEnt = createDefaultFreeEntitlement("guest");
+      this.saveCachedEntitlement(guestEnt);
+      return guestEnt;
     }
 
-    return this.currentEntitlement;
+    let apiEntitlement: UserEntitlement | null = null;
+    let dbFounderRank = 0;
+    let dbFounderGrantedAt: string | null = null;
+    let dbEntRow: any = null;
+
+    try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
+      const serverFetchPromise = fetch("/api/billing/entitlements", {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": targetUserId,
+          ...authHeaders,
+        },
+      })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          const parsed = await readJsonResponse(res);
+          if (!parsed.isJson || !parsed.data) return null;
+          return parsed.data?.success && parsed.data?.entitlement
+            ? (parsed.data.entitlement as UserEntitlement)
+            : null;
+        })
+        .catch(() => null);
+
+      const dbClaimPromise =
+        isSupabaseConfigured && supabase
+          ? supabase
+              .from("founder_claims")
+              .select("user_id, founder_rank, claimed_at, status")
+              .eq("user_id", targetUserId)
+              .eq("status", "claimed")
+              .maybeSingle()
+              .then((r) => (!r.error && r.data ? r.data : null), () => null)
+          : Promise.resolve(null);
+
+      const dbEntPromise =
+        isSupabaseConfigured && supabase
+          ? supabase
+              .from("user_entitlements")
+              .select("*")
+              .eq("user_id", targetUserId)
+              .maybeSingle()
+              .then((r) => (!r.error && r.data ? r.data : null), () => null)
+          : Promise.resolve(null);
+
+      const [fetchedApi, claimRow, entRow] = await Promise.all([
+        serverFetchPromise,
+        dbClaimPromise,
+        dbEntPromise,
+      ]);
+
+      apiEntitlement = fetchedApi;
+      dbEntRow = entRow;
+
+      const claimRank = Number(claimRow?.founder_rank || 0);
+      const entRank = Number(entRow?.founder_number || 0);
+      if (claimRank >= 1 && claimRank <= 50) {
+        dbFounderRank = claimRank;
+        dbFounderGrantedAt = claimRow?.claimed_at || entRow?.founder_granted_at || null;
+      } else if (entRow?.is_founder && entRank >= 1 && entRank <= 50) {
+        dbFounderRank = entRank;
+        dbFounderGrantedAt = entRow?.founder_granted_at || null;
+      }
+
+      // 1. Verified VIP seat from any authoritative DB/server source always takes precedence
+      //    so a stale Free row in user_entitlements can never hide a claimed VIP seat.
+      const apiRank = Number(apiEntitlement?.founderNumber || 0);
+      if (dbFounderRank >= 1 && dbFounderRank <= 50) {
+        const vipEnt: UserEntitlement = {
+          userId: targetUserId,
+          plan: "founder",
+          tier: "Founder",
+          isPro: true,
+          isFounder: true,
+          founderNumber: dbFounderRank,
+          founderGrantedAt: dbFounderGrantedAt || apiEntitlement?.founderGrantedAt || new Date().toISOString(),
+          founderExpiresAt: null,
+          features: { ...PLAN_CONFIG.founder.features },
+          maxScreenshots: PLAN_CONFIG.founder.features.maxIndexedScreenshots,
+          canCloudSync: true,
+          canAiMultimodalSearch: true,
+          priorityProcessing: true,
+          status: "active",
+          updatedAt: new Date().toISOString(),
+        };
+        this.saveCachedEntitlement(vipEnt);
+        return vipEnt;
+      }
+
+      if (apiEntitlement && apiEntitlement.isFounder && apiRank >= 1 && apiRank <= 50) {
+        const verifiedApiEnt = { ...apiEntitlement, userId: targetUserId };
+        this.saveCachedEntitlement(verifiedApiEnt);
+        return verifiedApiEnt;
+      }
+
+      // 2. Otherwise use authoritative server entitlement if available
+      if (apiEntitlement && (!apiEntitlement.userId || apiEntitlement.userId === targetUserId)) {
+        const normalized = { ...apiEntitlement, userId: targetUserId };
+        this.saveCachedEntitlement(normalized);
+        return normalized;
+      }
+
+      // 3. Otherwise use user_entitlements row from Supabase
+      if (dbEntRow) {
+        const isPro = Boolean(dbEntRow.is_pro);
+        const rawPlan = String(dbEntRow.plan || "").toLowerCase();
+        const plan: PlanType =
+          rawPlan === "monthly" || rawPlan === "yearly" || rawPlan === "lifetime"
+            ? (rawPlan as PlanType)
+            : isPro
+            ? "pro"
+            : "free";
+        const tier: SubscriptionTier = isPro ? "Pro" : "Free";
+        const features: PlanFeatureLimits = dbEntRow.features || PLAN_CONFIG[plan].features;
+
+        const entitlement: UserEntitlement = {
+          userId: dbEntRow.user_id,
+          plan,
+          tier,
+          isPro,
+          isFounder: false,
+          founderNumber: null,
+          founderGrantedAt: null,
+          founderExpiresAt: null,
+          features,
+          maxScreenshots: features.maxIndexedScreenshots || (isPro ? PLAN_LIMITS.PRO_MAX_SCREENSHOTS : PLAN_LIMITS.FREE_MAX_SCREENSHOTS),
+          canCloudSync: features.cloudSync,
+          canAiMultimodalSearch: features.advancedSearch,
+          priorityProcessing: features.priorityProcessing,
+          expiresAt: dbEntRow.expires_at,
+          activeSubscriptionId: dbEntRow.active_subscription_id,
+          updatedAt: dbEntRow.updated_at || new Date().toISOString(),
+        };
+
+        this.saveCachedEntitlement(entitlement);
+        return entitlement;
+      }
+    } catch (err) {
+      console.warn("[SubscriptionManager] Server sync failed, relying on user cache:", err);
+    }
+
+    // Only reuse cached entitlement if it belongs to this exact authenticated userId
+    if (this.userEntitlementsCache.has(targetUserId)) {
+      const cached = this.userEntitlementsCache.get(targetUserId)!;
+      this.currentEntitlement = cached;
+      this.notifyListeners();
+      return cached;
+    }
+    if (this.currentEntitlement.userId === targetUserId) {
+      return this.currentEntitlement;
+    }
+
+    const fallbackFree = createDefaultFreeEntitlement(targetUserId);
+    this.saveCachedEntitlement(fallbackFree);
+    return fallbackFree;
   }
 
   /**
@@ -526,95 +668,207 @@ class SubscriptionManagerService {
   }
 
   /**
-   * Claim Founder 100 Spot (Complimentary Lifetime Pro + Crown Tag)
+   * Claim Founder 50 Spot (Complimentary Lifetime Free + Crown Tag)
    */
   public async claimFounder(
     userId?: string
   ): Promise<{ success: boolean; entitlement?: UserEntitlement; founderNumber?: number; message?: string; error?: string }> {
+    const targetUserId = userId || this.currentEntitlement.userId || "guest";
+    let networkUnreachable = false;
+
     try {
-      const targetUserId = userId || this.currentEntitlement.userId || "guest";
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
       const res = await fetch("/api/billing/claim-founder", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-user-id": targetUserId,
+          ...authHeaders,
         },
         body: JSON.stringify({ userId: targetUserId }),
       });
 
-      const data = await res.json();
-      if (res.ok && data.success && data.entitlement) {
-        this.saveCachedEntitlement(data.entitlement);
-        NotificationService.notifyProActivated("lifetime", true);
+      const parsed = await readJsonResponse(res);
+      if (!parsed.isJson || !parsed.data) {
+        networkUnreachable = true;
+      } else {
+        const data = parsed.data;
+        if (res.ok && data.success && data.entitlement) {
+          this.saveCachedEntitlement({ ...data.entitlement, userId: targetUserId });
+          if (!data.alreadyClaimed) {
+            NotificationService.notifyProActivated("lifetime", true);
+          }
+          return {
+            success: true,
+            entitlement: { ...data.entitlement, userId: targetUserId },
+            founderNumber: data.founderNumber || data.entitlement.founderNumber,
+            message: data.message || `VIP Seat #${data.founderNumber || "VIP"} activated!`,
+          };
+        }
+
         return {
-          success: true,
-          entitlement: data.entitlement,
-          founderNumber: data.founderNumber || data.entitlement.founderNumber,
-          message: data.message || `Claimed Founder #${data.founderNumber || "VIP"}!`,
+          success: false,
+          error: data.error || "Could not claim VIP seat.",
         };
       }
-
-      return {
-        success: false,
-        error: data.error || "Could not claim Founder spot.",
-      };
     } catch (err: any) {
-      console.error("[SubscriptionManager] Claim founder error:", err);
-      return {
-        success: false,
-        error: err.message || "Failed to contact founder allocation server.",
-      };
+      networkUnreachable = true;
+      console.warn("[SubscriptionManager] Claim VIP API unreachable, checking direct DB RPC:", err?.message || err);
     }
-  }
 
-  /**
-   * Get Real Founder Availability from Supabase / Backend (Never hard-coded)
-   */
-  public async getFounderAvailability(): Promise<{ claimed: number; totalSpots: number; remaining: number }> {
-    // 1. Direct Supabase Query if configured
-    if (supabase) {
+    // Native / static WebView fallback: direct authenticated Supabase RPC (strictly uses auth.uid())
+    if (networkUnreachable && isSupabaseConfigured && supabase) {
       try {
-        const { count, error } = await supabase
-          .from("user_entitlements")
-          .select("*", { count: "exact", head: true })
-          .eq("is_founder", true);
-        if (!error && typeof count === "number") {
-          const totalSpots = 50;
-          return {
-            claimed: count,
-            totalSpots,
-            remaining: Math.max(0, totalSpots - count),
-          };
-        }
-      } catch (err) {
-        console.warn("[SubscriptionManager] Supabase direct count query warning:", err);
-      }
-    }
+        let { data: rpcRes, error: rpcErr } = await supabase.rpc("claim_vip_seat_for_user", {
+          p_payment_id: "vip_50_free_claim",
+        });
 
-    // 2. Query Server API endpoint
-    try {
-      const res = await fetch("/api/billing/founder-stats");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          const total = data.totalSpots || 50;
-          const claimed = data.claimed ?? 0;
+        const errText = `${String(rpcErr?.code || "")} ${String(rpcErr?.message || "")}`;
+        if (rpcErr && /42883|PGRST202|could not find the function/i.test(errText)) {
+          const legacy = await supabase.rpc("claim_founder_seat_atomic", {
+            p_user_id: targetUserId,
+            p_payment_id: "vip_50_free_claim",
+          });
+          rpcRes = legacy.data;
+          rpcErr = legacy.error;
+        }
+
+        const row = Array.isArray(rpcRes) ? rpcRes[0] : rpcRes;
+        if (!rpcErr && row && row.success && typeof row.founder_rank === "number") {
+          const vipEnt: UserEntitlement = {
+            userId: targetUserId,
+            plan: "founder",
+            tier: "Founder",
+            isPro: true,
+            isFounder: true,
+            founderNumber: row.founder_rank,
+            founderGrantedAt: new Date().toISOString(),
+            founderExpiresAt: null,
+            features: { ...PLAN_CONFIG.founder.features },
+            maxScreenshots: PLAN_CONFIG.founder.features.maxIndexedScreenshots,
+            canCloudSync: true,
+            canAiMultimodalSearch: true,
+            priorityProcessing: true,
+            status: "active",
+            updatedAt: new Date().toISOString(),
+          };
+          this.saveCachedEntitlement(vipEnt);
+          if (!row.already_claimed) {
+            NotificationService.notifyProActivated("lifetime", true);
+          }
           return {
-            claimed,
-            totalSpots: total,
-            remaining: data.remaining ?? Math.max(0, total - claimed),
+            success: true,
+            entitlement: vipEnt,
+            founderNumber: row.founder_rank,
+            message: row.message || `VIP Seat #${row.founder_rank} activated!`,
           };
         }
+        return {
+          success: false,
+          error: row?.message || "Unable to persist VIP seat right now. Please try again shortly.",
+        };
+      } catch {
+        return {
+          success: false,
+          error: "Unable to persist VIP seat right now. Please try again shortly.",
+        };
       }
-    } catch (err) {
-      console.warn("[SubscriptionManager] Failed to fetch server founder stats:", err);
     }
 
     return {
-      claimed: 0,
-      totalSpots: 50,
-      remaining: 50,
+      success: false,
+      error: "VIP seat allocation service is temporarily unavailable. Please try again shortly.",
     };
+  }
+
+  /**
+   * Get Real Authoritative 50-Seat VIP Availability.
+   * Uses the server registry endpoint (which bypasses per-user RLS) or the public
+   * SECURITY DEFINER RPC get_vip_seat_stats(). Never uses RLS-filtered direct table reads
+   * and never fabricates a fake 0 occupied fallback on error.
+   */
+  public async getFounderAvailability(): Promise<{ claimed: number; totalSpots: number; remaining: number }> {
+    let apiError: Error | null = null;
+    let apiUnreachable = false;
+
+    // 1. Authoritative backend API endpoint (returns global verified VIP seat count)
+    try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
+      const res = await fetch("/api/billing/founder-stats", {
+        cache: "no-store",
+        headers: { ...authHeaders },
+      });
+      const parsed = await readJsonResponse(res);
+      if (!parsed.isJson || !parsed.data) {
+        apiUnreachable = true;
+        apiError = new Error("VIP seat availability is temporarily unavailable. Please try again shortly.");
+      } else if (res.ok) {
+        const data = parsed.data;
+        const occupied =
+          typeof data.occupiedSpots === "number"
+            ? data.occupiedSpots
+            : typeof data.claimedSpots === "number"
+            ? data.claimedSpots
+            : typeof data.claimed === "number"
+            ? data.claimed
+            : null;
+        if (data.success && occupied !== null) {
+          const total = data.totalSpots || 50;
+          const boundedOccupied = Math.max(0, Math.min(total, occupied));
+          return {
+            claimed: boundedOccupied,
+            totalSpots: total,
+            remaining: Math.max(0, total - boundedOccupied),
+          };
+        }
+        apiError = new Error(data.error || "VIP seat availability response was invalid.");
+      } else {
+        const serverMsg = parsed.data?.error || `VIP seat registry returned HTTP ${res.status}.`;
+        apiError = new Error(serverMsg);
+      }
+    } catch {
+      apiUnreachable = true;
+      apiError = new Error("VIP seat availability is temporarily unavailable. Please try again shortly.");
+    }
+
+    // 2. Native/static WebView fallback only when backend API is unreachable
+    if (apiUnreachable && isSupabaseConfigured && supabase && typeof (supabase as any).rpc === "function") {
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc("get_vip_seat_stats");
+        const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+        if (!rpcErr && row && typeof row.occupied_spots === "number") {
+          const total = row.total_spots || 50;
+          const occupied = Math.max(0, Math.min(total, row.occupied_spots));
+          return {
+            claimed: occupied,
+            totalSpots: total,
+            remaining: Math.max(0, total - occupied),
+          };
+        }
+        const errText = `${String(rpcErr?.code || "")} ${String(rpcErr?.message || "")}`;
+        if (rpcErr && /42883|PGRST202|could not find the function/i.test(errText)) {
+          const { data: claimRows, error: claimErr } = await supabase
+            .from("founder_claims")
+            .select("user_id, founder_rank")
+            .eq("status", "claimed");
+          if (!claimErr && Array.isArray(claimRows)) {
+            const uniqueUsers = new Set(
+              claimRows
+                .filter((r: any) => r?.user_id && Number(r?.founder_rank) >= 1 && Number(r?.founder_rank) <= 50)
+                .map((r: any) => String(r.user_id))
+            );
+            const occupied = Math.min(50, uniqueUsers.size);
+            return {
+              claimed: occupied,
+              totalSpots: 50,
+              remaining: Math.max(0, 50 - occupied),
+            };
+          }
+        }
+      } catch {}
+    }
+
+    throw apiError || new Error("VIP seat availability is temporarily unavailable.");
   }
 
   /**
@@ -636,8 +890,10 @@ class SubscriptionManagerService {
             "postgres_changes",
             { event: "*", schema: "public", table: "user_entitlements" },
             async () => {
-              const fresh = await this.getFounderAvailability();
-              callback(fresh);
+              try {
+                const fresh = await this.getFounderAvailability();
+                callback(fresh);
+              } catch {}
             }
           )
           .subscribe();
@@ -668,8 +924,15 @@ class SubscriptionManagerService {
    * Reset to Free tier on logout / account purge
    */
   public resetToFree(): void {
+    this.userEntitlementsCache.clear();
+    try {
+      localStorage.removeItem(STORAGE_KEYS.USER_ENTITLEMENT);
+      localStorage.removeItem(STORAGE_KEYS.OFFLINE_GRACE_TIMESTAMP);
+      localStorage.removeItem(STORAGE_KEYS.FOUNDER_STATUS);
+    } catch {}
     const freeEntitlement = createDefaultFreeEntitlement("guest");
-    this.saveCachedEntitlement(freeEntitlement);
+    this.currentEntitlement = freeEntitlement;
+    this.notifyListeners();
   }
 }
 

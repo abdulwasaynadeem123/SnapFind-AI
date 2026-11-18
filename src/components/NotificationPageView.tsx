@@ -221,7 +221,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
             <button
               onClick={onMarkAllAsRead}
               disabled={unreadCount === 0}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-bold text-xs transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#B7F36B] font-bold text-xs transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
             >
               <CheckCheck className="w-4 h-4" />
               <span>Mark All Read ({unreadCount})</span>
@@ -355,7 +355,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3.5 py-2 rounded-2xl border text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
                   isActive
-                    ? "bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/25"
+                    ? "bg-[#B7F36B] text-[#080908] border-[#B7F36B]"
                     : isDark
                     ? "bg-[#18181B] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-[#202026]"
                     : "bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -387,7 +387,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className={`p-5 rounded-3xl border animate-pulse ${
+                className={`p-5 rounded-3xl border ${
                   isDark ? "bg-[#121216] border-white/5" : "bg-slate-100 border-slate-200"
                 }`}
               >
@@ -417,7 +417,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
             {onRetry && (
               <button
                 onClick={onRetry}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-all shadow-md cursor-pointer"
               >
                 Retry Stream
               </button>
@@ -445,7 +445,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
                   isDark
                     ? isRead
                       ? "bg-[#111115]/70 border-white/5 hover:border-white/15 hover:bg-[#16161c]"
-                      : "bg-[#141522] border-blue-500/30 hover:border-blue-500/60 shadow-xl shadow-blue-950/20"
+                      : "bg-[#141522] border-[#30362E] hover:border-[#B7F36B] shadow-xl shadow-blue-950/20"
                     : isRead
                     ? "bg-white border-slate-200 hover:bg-slate-50"
                     : "bg-blue-50/70 border-blue-200 hover:bg-blue-50 shadow-sm"
@@ -455,8 +455,8 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
                 {!isRead && (
                   <div className="absolute top-5 right-5 flex items-center gap-1.5">
                     <span className="relative flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-[#B7F36B] opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#B7F36B]" />
                     </span>
                   </div>
                 )}
@@ -524,7 +524,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
                           </span>
                         )}
                         {n.metadata.wordsCount !== undefined && (
-                          <span className="text-[11px] px-2.5 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-mono">
+                          <span className="text-[11px] px-2.5 py-0.5 rounded-lg bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E] font-mono">
                             {n.metadata.wordsCount} words
                           </span>
                         )}
@@ -549,7 +549,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
                     {/* Card Footer Actions */}
                     <div className="flex items-center justify-between pt-3 mt-1 border-t border-white/5">
                       {associatedScreenshot ? (
-                        <span className="text-xs font-bold text-blue-400 group-hover:text-blue-300 flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-[#B7F36B] group-hover:text-[#A5E65A] flex items-center gap-1.5">
                           <span>Inspect Screenshot</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                         </span>
@@ -608,7 +608,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
                           className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
                           title={isRead ? "Mark as unread" : "Mark as read"}
                         >
-                          <Check className={`w-4 h-4 ${isRead ? "opacity-30" : "text-blue-400"}`} />
+                          <Check className={`w-4 h-4 ${isRead ? "opacity-30" : "text-[#B7F36B]"}`} />
                         </button>
                         <button
                           type="button"
@@ -661,7 +661,7 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
             {activeTab !== "ALL" && (
               <button
                 onClick={() => setActiveTab("ALL")}
-                className="px-5 py-2 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-all shadow-md cursor-pointer"
               >
                 View All Notifications
               </button>

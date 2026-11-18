@@ -143,7 +143,13 @@ export const ScreenshotCard: React.FC<ScreenshotCardProps> = ({
     const url = item.website_url || (item.detected_urls && item.detected_urls[0]) || (item.urls && item.urls[0]);
     if (url) {
       const validUrl = url.startsWith("http") ? url : `https://${url}`;
-      window.open(validUrl, "_blank", "noopener,noreferrer");
+      const a = document.createElement("a");
+      a.href = validUrl;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     }
   };
 

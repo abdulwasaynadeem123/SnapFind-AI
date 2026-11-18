@@ -182,7 +182,7 @@ BEGIN
     VALUES (NEW.id);
 
     INSERT INTO public.user_entitlements (user_id, plan, tier, is_pro, is_founder, max_screenshots)
-    VALUES (NEW.id, 'free', 'Free', FALSE, FALSE, 100)
+    VALUES (NEW.id, 'free', 'Free', FALSE, FALSE, 250)
     ON CONFLICT (user_id) DO NOTHING;
 
     RETURN NEW;
@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS public.payment_requests (
     user_email TEXT NOT NULL,
     user_name TEXT,
     plan TEXT NOT NULL DEFAULT 'lifetime',
-    amount NUMERIC NOT NULL DEFAULT 7999,
+    amount NUMERIC NOT NULL DEFAULT 5999,
     currency TEXT NOT NULL DEFAULT 'PKR',
     payment_method TEXT NOT NULL, -- 'Easypaisa' | 'Bank Transfer' | etc.
     transaction_id TEXT NOT NULL UNIQUE,
@@ -265,7 +265,10 @@ CREATE TABLE IF NOT EXISTS public.user_entitlements (
     founder_number INTEGER,
     founder_granted_at TIMESTAMPTZ,
     founder_expires_at TIMESTAMPTZ,
-    max_screenshots INTEGER NOT NULL DEFAULT 100, -- Free: 100, Pro/Lifetime/Founder: unlimited
+    max_screenshots INTEGER NOT NULL DEFAULT 250,
+    can_cloud_sync BOOLEAN NOT NULL DEFAULT FALSE,
+    can_ai_multimodal_search BOOLEAN NOT NULL DEFAULT TRUE,
+    priority_processing BOOLEAN NOT NULL DEFAULT FALSE,
     features JSONB NOT NULL DEFAULT '{}'::jsonb,
     expires_at TIMESTAMPTZ, -- null for Lifetime Pro / Founder
     active_subscription_id TEXT,
@@ -383,8 +386,151 @@ CREATE POLICY "Only admins or service role can modify founder claims"
     );
 
 -- ==============================================================================
--- 11. ATOMIC FOUNDER SEAT ALLOCATION STORED PROCEDURE
+-- 11. PUBLIC NON-PII VIP SEAT STATS & ATOMIC 50-SEAT ALLOCATION RPC
 -- ==============================================================================
+CREATE OR REPLACE FUNCTION public.get_vip_seat_stats()
+RETURNS TABLE (
+    total_spots INTEGER,
+    occupied_spots INTEGER,
+    remaining_spots INTEGER
+) AS $$
+DECLARE
+    v_occupied INTEGER := 0;
+BEGIN
+    SELECT COUNT(*)::INTEGER INTO v_occupied
+    FROM (
+        SELECT fc.user_id::text AS uid
+        FROM public.founder_claims fc
+        WHERE fc.status = 'claimed'
+          AND fc.founder_rank BETWEEN 1 AND 50
+          AND EXISTS (SELECT 1 FROM auth.users au WHERE au.id::text = fc.user_id::text)
+        UNION
+        SELECT ue.user_id::text AS uid
+        FROM public.user_entitlements ue
+        WHERE ue.is_founder = TRUE
+          AND ue.founder_number BETWEEN 1 AND 50
+          AND EXISTS (SELECT 1 FROM auth.users au WHERE au.id::text = ue.user_id::text)
+    ) verified_vips;
+
+    v_occupied := LEAST(50, GREATEST(0, COALESCE(v_occupied, 0)));
+    RETURN QUERY SELECT 50, v_occupied, GREATEST(0, 50 - v_occupied);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public, auth;
+
+REVOKE ALL ON FUNCTION public.get_vip_seat_stats() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_vip_seat_stats() TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.claim_vip_seat_for_user(
+    p_payment_id TEXT DEFAULT 'vip_50_free_claim'
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    already_claimed BOOLEAN,
+    founder_rank INTEGER,
+    message TEXT,
+    occupied_spots INTEGER,
+    remaining_spots INTEGER
+) AS $$
+DECLARE
+    v_uid TEXT;
+    v_existing_rank INTEGER;
+    v_next_rank INTEGER := 1;
+    v_occupied INTEGER := 0;
+BEGIN
+    v_uid := auth.uid()::text;
+    IF v_uid IS NULL OR LENGTH(TRIM(v_uid)) = 0 THEN
+        RETURN QUERY SELECT FALSE, FALSE, NULL::INTEGER, 'Authentication required to claim a VIP seat.', 0, 50;
+        RETURN;
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(7982043);
+
+    SELECT fc.founder_rank INTO v_existing_rank
+    FROM public.founder_claims fc
+    WHERE fc.user_id::text = v_uid AND fc.status = 'claimed' AND fc.founder_rank BETWEEN 1 AND 50
+    LIMIT 1;
+
+    IF v_existing_rank IS NULL THEN
+        SELECT ue.founder_number INTO v_existing_rank
+        FROM public.user_entitlements ue
+        WHERE ue.user_id::text = v_uid AND ue.is_founder = TRUE AND ue.founder_number BETWEEN 1 AND 50
+        LIMIT 1;
+    END IF;
+
+    IF v_existing_rank IS NOT NULL THEN
+        INSERT INTO public.founder_claims (id, user_id, founder_rank, payment_id, status, claimed_at)
+        VALUES (gen_random_uuid()::text, v_uid, v_existing_rank, p_payment_id, 'claimed', NOW())
+        ON CONFLICT (user_id) DO NOTHING;
+
+        INSERT INTO public.user_entitlements (
+            user_id, plan, tier, is_pro, is_founder, founder_number, founder_granted_at,
+            max_screenshots, can_cloud_sync, can_ai_multimodal_search, priority_processing,
+            features, status, updated_at
+        ) VALUES (
+            v_uid, 'founder', 'Founder', TRUE, TRUE, v_existing_rank, NOW(),
+            150000, TRUE, TRUE, TRUE,
+            '{"maxIndexedScreenshots":150000,"maxAIScansPerMonth":150000,"maxStorageMB":100000,"cloudSync":true,"advancedSearch":true,"aiCollections":true,"priorityProcessing":true}'::jsonb,
+            'active', NOW()
+        )
+        ON CONFLICT (user_id) DO UPDATE SET
+            plan = 'founder', tier = 'Founder', is_pro = TRUE, is_founder = TRUE,
+            founder_number = COALESCE(public.user_entitlements.founder_number, v_existing_rank),
+            founder_granted_at = COALESCE(public.user_entitlements.founder_granted_at, NOW()),
+            max_screenshots = 150000, can_cloud_sync = TRUE, can_ai_multimodal_search = TRUE, priority_processing = TRUE,
+            features = EXCLUDED.features, status = 'active', updated_at = NOW();
+
+        SELECT g.occupied_spots INTO v_occupied FROM public.get_vip_seat_stats() g;
+        RETURN QUERY SELECT TRUE, TRUE, v_existing_rank, 'VIP Seat #' || v_existing_rank::TEXT || ' is already active on your account.', v_occupied, GREATEST(0, 50 - v_occupied);
+        RETURN;
+    END IF;
+
+    SELECT g.occupied_spots INTO v_occupied FROM public.get_vip_seat_stats() g;
+    IF v_occupied >= 50 THEN
+        RETURN QUERY SELECT FALSE, FALSE, NULL::INTEGER, 'All 50 VIP seats have been occupied.', v_occupied, 0;
+        RETURN;
+    END IF;
+
+    SELECT s.n INTO v_next_rank
+    FROM generate_series(1, 50) AS s(n)
+    WHERE NOT EXISTS (SELECT 1 FROM public.founder_claims fc WHERE fc.founder_rank = s.n AND fc.status = 'claimed')
+      AND NOT EXISTS (SELECT 1 FROM public.user_entitlements ue WHERE ue.founder_number = s.n AND ue.is_founder = TRUE)
+    ORDER BY s.n ASC
+    LIMIT 1;
+
+    IF v_next_rank IS NULL OR v_next_rank > 50 THEN
+        RETURN QUERY SELECT FALSE, FALSE, NULL::INTEGER, 'All 50 VIP seats have been occupied.', v_occupied, 0;
+        RETURN;
+    END IF;
+
+    INSERT INTO public.founder_claims (id, user_id, founder_rank, payment_id, status, claimed_at)
+    VALUES (gen_random_uuid()::text, v_uid, v_next_rank, p_payment_id, 'claimed', NOW())
+    ON CONFLICT (user_id) DO NOTHING;
+
+    INSERT INTO public.user_entitlements (
+        user_id, plan, tier, is_pro, is_founder, founder_number, founder_granted_at,
+        max_screenshots, can_cloud_sync, can_ai_multimodal_search, priority_processing,
+        features, status, updated_at
+    ) VALUES (
+        v_uid, 'founder', 'Founder', TRUE, TRUE, v_next_rank, NOW(),
+        150000, TRUE, TRUE, TRUE,
+        '{"maxIndexedScreenshots":150000,"maxAIScansPerMonth":150000,"maxStorageMB":100000,"cloudSync":true,"advancedSearch":true,"aiCollections":true,"priorityProcessing":true}'::jsonb,
+        'active', NOW()
+    )
+    ON CONFLICT (user_id) DO UPDATE SET
+        plan = 'founder', tier = 'Founder', is_pro = TRUE, is_founder = TRUE,
+        founder_number = COALESCE(public.user_entitlements.founder_number, EXCLUDED.founder_number),
+        founder_granted_at = COALESCE(public.user_entitlements.founder_granted_at, NOW()),
+        max_screenshots = 150000, can_cloud_sync = TRUE, can_ai_multimodal_search = TRUE, priority_processing = TRUE,
+        features = EXCLUDED.features, status = 'active', updated_at = NOW();
+
+    SELECT g.occupied_spots INTO v_occupied FROM public.get_vip_seat_stats() g;
+    RETURN QUERY SELECT TRUE, FALSE, v_next_rank, 'VIP Seat #' || v_next_rank::TEXT || ' successfully allocated.', v_occupied, GREATEST(0, 50 - v_occupied);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+REVOKE ALL ON FUNCTION public.claim_vip_seat_for_user(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.claim_vip_seat_for_user(TEXT) TO authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION public.claim_founder_seat_atomic(
     p_user_id TEXT,
     p_payment_id TEXT DEFAULT NULL
@@ -392,58 +538,77 @@ CREATE OR REPLACE FUNCTION public.claim_founder_seat_atomic(
 RETURNS TABLE (
     success BOOLEAN,
     founder_rank INTEGER,
-    message TEXT
+    message TEXT,
+    occupied_spots INTEGER,
+    remaining_spots INTEGER
 ) AS $$
 DECLARE
     v_existing_rank INTEGER;
     v_next_rank INTEGER;
+    v_occupied INTEGER := 0;
 BEGIN
-    -- 1. Check if user already claimed a founder seat
+    IF p_user_id IS NULL OR LENGTH(TRIM(p_user_id)) = 0 OR p_user_id = 'guest' THEN
+        RETURN QUERY SELECT FALSE, NULL::INTEGER, 'Sign in required to claim a VIP seat.', 0, 50;
+        RETURN;
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(7982043);
+
     SELECT fc.founder_rank INTO v_existing_rank
     FROM public.founder_claims fc
-    WHERE fc.user_id = p_user_id
+    WHERE fc.user_id = p_user_id AND fc.status = 'claimed' AND fc.founder_rank BETWEEN 1 AND 50
     LIMIT 1;
 
+    IF v_existing_rank IS NULL THEN
+        SELECT ue.founder_number INTO v_existing_rank
+        FROM public.user_entitlements ue
+        WHERE ue.user_id = p_user_id AND ue.is_founder = TRUE AND ue.founder_number BETWEEN 1 AND 50
+        LIMIT 1;
+    END IF;
+
     IF v_existing_rank IS NOT NULL THEN
-        RETURN QUERY SELECT TRUE, v_existing_rank, 'User is already verified Founder #' || v_existing_rank::TEXT;
+        SELECT g.occupied_spots INTO v_occupied FROM public.get_vip_seat_stats() g;
+        RETURN QUERY SELECT TRUE, v_existing_rank, 'VIP Seat #' || v_existing_rank::TEXT || ' is already active on your account.', v_occupied, GREATEST(0, 50 - v_occupied);
         RETURN;
     END IF;
 
-    -- 2. Lock table to prevent race conditions during concurrent claiming
-    LOCK TABLE public.founder_claims IN EXCLUSIVE MODE;
-
-    -- 3. Find the lowest unused rank between 1 and 50 (ranks are permanent and never reused)
-    SELECT COALESCE(MAX(fc.founder_rank), 0) + 1 INTO v_next_rank
-    FROM public.founder_claims fc;
-
-    -- 4. Enforce strict hard ceiling of 50 seats
-    IF v_next_rank > 50 THEN
-        RETURN QUERY SELECT FALSE, NULL::INTEGER, 'All 50 Founder seats have been claimed.';
+    SELECT g.occupied_spots INTO v_occupied FROM public.get_vip_seat_stats() g;
+    IF v_occupied >= 50 THEN
+        RETURN QUERY SELECT FALSE, NULL::INTEGER, 'All 50 VIP seats have been occupied.', v_occupied, 0;
         RETURN;
     END IF;
 
-    -- 5. Insert atomic claim
+    SELECT s.n INTO v_next_rank
+    FROM generate_series(1, 50) AS s(n)
+    WHERE NOT EXISTS (SELECT 1 FROM public.founder_claims fc WHERE fc.founder_rank = s.n AND fc.status = 'claimed')
+      AND NOT EXISTS (SELECT 1 FROM public.user_entitlements ue WHERE ue.founder_number = s.n AND ue.is_founder = TRUE)
+    ORDER BY s.n ASC
+    LIMIT 1;
+
+    IF v_next_rank IS NULL OR v_next_rank > 50 THEN
+        RETURN QUERY SELECT FALSE, NULL::INTEGER, 'All 50 VIP seats have been occupied.', v_occupied, 0;
+        RETURN;
+    END IF;
+
     INSERT INTO public.founder_claims (id, user_id, founder_rank, payment_id, status, claimed_at)
-    VALUES (gen_random_uuid()::text, p_user_id, v_next_rank, p_payment_id, 'claimed', NOW());
+    VALUES (gen_random_uuid()::text, p_user_id, v_next_rank, p_payment_id, 'claimed', NOW())
+    ON CONFLICT (user_id) DO NOTHING;
 
-    -- 6. Update user_entitlements
     INSERT INTO public.user_entitlements (
         user_id, plan, tier, is_pro, is_founder, founder_number, founder_granted_at, max_screenshots, status, updated_at
     ) VALUES (
-        p_user_id, 'founder', 'Founder', TRUE, TRUE, v_next_rank, NOW(), 999999, 'active', NOW()
+        p_user_id, 'founder', 'Founder', TRUE, TRUE, v_next_rank, NOW(), 150000, 'active', NOW()
     )
     ON CONFLICT (user_id) DO UPDATE SET
-        plan = 'founder',
-        tier = 'Founder',
-        is_pro = TRUE,
-        is_founder = TRUE,
-        founder_number = v_next_rank,
-        founder_granted_at = NOW(),
-        max_screenshots = 999999,
-        status = 'active',
-        updated_at = NOW();
+        plan = 'founder', tier = 'Founder', is_pro = TRUE, is_founder = TRUE,
+        founder_number = COALESCE(public.user_entitlements.founder_number, EXCLUDED.founder_number),
+        founder_granted_at = COALESCE(public.user_entitlements.founder_granted_at, NOW()),
+        max_screenshots = 150000, status = 'active', updated_at = NOW();
 
-    RETURN QUERY SELECT TRUE, v_next_rank, 'Founder #' || v_next_rank::TEXT || ' successfully claimed!';
+    SELECT g.occupied_spots INTO v_occupied FROM public.get_vip_seat_stats() g;
+    RETURN QUERY SELECT TRUE, v_next_rank, 'VIP Seat #' || v_next_rank::TEXT || ' successfully allocated.', v_occupied, GREATEST(0, 50 - v_occupied);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
+REVOKE ALL ON FUNCTION public.claim_founder_seat_atomic(TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.claim_founder_seat_atomic(TEXT, TEXT) TO service_role;

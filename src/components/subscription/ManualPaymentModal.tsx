@@ -50,7 +50,7 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
   const currentPlan: ManualPaymentPlanInfo = plan || {
     id: "lifetime_pro_pkr",
     name: "Pro Lifetime",
-    price: "PKR 7,999",
+    price: "PKR 5,999",
     interval: "one-time payment",
     billingType: "lifetime",
     description: "One-time payment • Lifetime Pro access",
@@ -192,7 +192,7 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
               <div>
                 <h4 className="text-lg font-bold text-white">Ready for Secure Checkout</h4>
                 <p className="text-xs text-[#94A3B8] mt-1">
-                  Complete your one-time purchase of PKR 7,999 with encrypted card or mobile checkout.
+                  Complete your one-time purchase of PKR 5,999 with encrypted card or mobile checkout.
                 </p>
               </div>
               <button
@@ -212,7 +212,7 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
                 <div>
                   <h4 className="text-sm font-bold text-white">Payments are currently being prepared</h4>
                   <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
-                    Automated payment processing (Credit/Debit Card, Google Pay, Apple Pay) is being finalized for SnapFind AI. Lifetime Pro will be unlocked for PKR 7,999 once the gateway goes live.
+                    Automated payment processing (Credit/Debit Card, Google Pay, Apple Pay) is being finalized for SnapFind AI. Lifetime Pro will be unlocked for PKR 5,999 once the gateway goes live.
                   </p>
                 </div>
               </div>
@@ -220,12 +220,12 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
               {/* What Lifetime Pro Includes */}
               <div className="space-y-2.5">
                 <p className="text-xs font-bold text-[#F8FAFC] uppercase tracking-wider">
-                  Lifetime Pro Package (PKR 7,999)
+                  Lifetime Pro Package (PKR 5,999)
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#94A3B8]">
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-[#07090D] border border-white/[0.04]">
                     <Check className="w-3.5 h-3.5 text-[#CCFF00] shrink-0" />
-                    <span>Unlimited screenshots</span>
+                    <span>100,000 AI-indexed screenshots</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-[#07090D] border border-white/[0.04]">
                     <Check className="w-3.5 h-3.5 text-[#CCFF00] shrink-0" />

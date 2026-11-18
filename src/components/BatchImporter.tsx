@@ -231,7 +231,7 @@ export const BatchImporter: React.FC<BatchImporterProps> = ({
         const optimizedBase64 = optResult.optimizedBase64 || base64;
         const thumbnailUri = optResult.thumbnailBase64 || base64;
 
-        // Consolidated Gemini Vision Analysis with fallback to OCR
+        // Consolidated AI Vision Analysis with fallback to local OCR
         let analysis: any = null;
         let ocrText = "";
 

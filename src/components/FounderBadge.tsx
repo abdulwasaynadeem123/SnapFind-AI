@@ -1,5 +1,5 @@
 import React from "react";
-import { Crown, Sparkles, Award } from "lucide-react";
+import { Crown } from "lucide-react";
 
 export interface FounderBadgeProps {
   founderNumber?: number | null;
@@ -17,20 +17,11 @@ export const FounderBadge: React.FC<FounderBadgeProps> = ({
   size = "sm",
   mode = "badge",
   showNumber = true,
-  variant,
+  variant = "pill",
   onClick,
   className = "",
 }) => {
   const num = typeof founderNumber === "number" && founderNumber > 0 ? founderNumber : null;
-
-  // Auto-detect medal variant if not explicitly given
-  let resolvedVariant = variant;
-  if (!resolvedVariant) {
-    if (num === 1) resolvedVariant = "gold";
-    else if (num === 2) resolvedVariant = "silver";
-    else if (num === 3) resolvedVariant = "bronze";
-    else resolvedVariant = "pill";
-  }
 
   const sizeClasses = {
     xs: "text-[10px] px-1.5 py-0.5 gap-1 font-bold",
@@ -44,39 +35,33 @@ export const FounderBadge: React.FC<FounderBadgeProps> = ({
     xs: "w-2.5 h-2.5",
     sm: "w-3.5 h-3.5",
     md: "w-4 h-4",
-    lg: "w-4.5 h-4.5",
+    lg: "w-4 h-4",
     xl: "w-5 h-5",
   };
 
   const variantClasses = {
-    solid:
-      "bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white shadow-sm shadow-blue-500/25 border border-white/20",
-    pill:
-      "bg-gradient-to-r from-[#3B82F6]/20 via-[#8B5CF6]/20 to-[#3B82F6]/20 text-blue-300 border border-blue-400/35 backdrop-blur-sm shadow-sm shadow-blue-500/10",
-    outline:
-      "bg-transparent text-blue-400 border border-blue-400/50",
-    gold:
-      "bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#8B5CF6] text-white shadow-md shadow-blue-500/30 border border-white/30",
-    silver:
-      "bg-gradient-to-r from-slate-200 via-slate-300 to-slate-400 text-slate-950 shadow-md shadow-slate-300/30 border border-white/40",
-    bronze:
-      "bg-gradient-to-r from-amber-700 via-orange-600 to-amber-800 text-amber-100 shadow-md shadow-amber-800/30 border border-amber-500/40",
+    solid: "bg-[#B7F36B] text-[#10130D] border border-[#B7F36B]",
+    pill: "bg-[#1B1F1A] text-[#B7F36B] border border-[#B7F36B]/40",
+    outline: "bg-transparent text-[#B7F36B] border border-[#B7F36B]/60",
+    gold: "bg-[#B7F36B] text-[#10130D] border border-[#B7F36B]",
+    silver: "bg-[#1B1F1A] text-[#F7F8F5] border border-[#30362E]",
+    bronze: "bg-[#141714] text-[#B7F36B] border border-[#30362E]",
   };
 
   const isClickable = Boolean(onClick);
-
   const formattedNumber = num !== null ? `#${num}` : null;
 
   if (mode === "compact") {
     return (
       <span
         onClick={onClick}
-        title={formattedNumber ? `Founder ${formattedNumber}` : "SnapFind Founder"}
-        className={`inline-flex items-center justify-center rounded-full font-mono text-[10px] font-black px-1.5 py-0.5 bg-gradient-to-r from-[#3B82F6]/20 to-[#8B5CF6]/20 text-blue-300 border border-blue-400/30 ${
+        title={formattedNumber ? `VIP Seat ${formattedNumber}` : "VIP User"}
+        className={`inline-flex items-center justify-center rounded-full font-mono text-[10px] font-bold px-2 py-0.5 bg-[#1B1F1A] text-[#B7F36B] border border-[#B7F36B]/40 ${
           isClickable ? "cursor-pointer hover:opacity-90" : ""
         } ${className}`}
       >
-        👑 {formattedNumber || "VIP"}
+        <Crown className="w-2.5 h-2.5 mr-1 text-[#B7F36B]" />
+        {formattedNumber ? `VIP ${formattedNumber}` : "VIP"}
       </span>
     );
   }
@@ -85,13 +70,13 @@ export const FounderBadge: React.FC<FounderBadgeProps> = ({
     return (
       <div
         onClick={onClick}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-[#3B82F6]/15 to-[#8B5CF6]/15 border border-blue-400/30 text-blue-200 text-xs font-bold ${
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#1B1F1A] border border-[#B7F36B]/35 text-[#F7F8F5] text-xs font-bold ${
           isClickable ? "cursor-pointer active:scale-95" : ""
         } ${className}`}
       >
-        <span className="text-sm">👑</span>
-        <span>Founder</span>
-        {formattedNumber && <span className="font-mono text-blue-300">{formattedNumber}</span>}
+        <Crown className="w-3.5 h-3.5 text-[#B7F36B]" />
+        <span>VIP User</span>
+        {formattedNumber && <span className="font-mono text-[#B7F36B]">{formattedNumber}</span>}
       </div>
     );
   }
@@ -101,15 +86,15 @@ export const FounderBadge: React.FC<FounderBadgeProps> = ({
       onClick={onClick}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      title="SnapFind Founder 100 - Lifetime Pro Access"
+      title="SnapFind VIP User — Lifetime Pro Access"
       className={`inline-flex items-center justify-center rounded-full tracking-wide transition-all select-none ${
         sizeClasses[size]
-      } ${variantClasses[resolvedVariant]} ${
+      } ${variantClasses[variant]} ${
         isClickable ? "cursor-pointer hover:opacity-90 active:scale-95" : ""
       } ${className}`}
     >
-      <Crown className={`${iconSizes[size]} shrink-0 text-blue-300`} />
-      <span>Founder</span>
+      <Crown className={`${iconSizes[size]} shrink-0`} />
+      <span>VIP User</span>
       {showNumber && formattedNumber && (
         <span className="font-mono opacity-90">{formattedNumber}</span>
       )}

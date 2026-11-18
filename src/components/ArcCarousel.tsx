@@ -87,7 +87,7 @@ export const ArcCarousel: React.FC<ArcCarouselProps> = ({
   }, [isHovered, total, handleNext]);
 
   const renderCover = (col: any) => {
-    if (col.coverImageUrl && !col.coverImageUrl.includes("unsplash.com")) {
+    if (col.coverImageUrl) {
       return (
         <img
           src={col.coverImageUrl}
@@ -133,7 +133,7 @@ export const ArcCarousel: React.FC<ArcCarouselProps> = ({
       {/* Header and Controls */}
       <div className="flex items-center justify-between mb-4 px-2">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#116466] animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#116466]" />
           <span className="text-[11px] font-mono uppercase tracking-wider text-[#D1E8E2] font-semibold">
             Featured Collections · Arc View
           </span>
