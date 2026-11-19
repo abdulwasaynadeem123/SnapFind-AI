@@ -110,7 +110,7 @@ export function checkExactDuplicateByHash(
   const found = storedScreenshots.find((s) => {
     if (s.isDeleted || s.is_deleted) return false;
     const itemUserId = s.user_id || s.userId || "guest";
-    if (targetUser !== "guest" && itemUserId !== "guest" && itemUserId !== targetUser) {
+    if (itemUserId !== targetUser) {
       return false;
     }
     const itemHash = (
@@ -162,7 +162,7 @@ export function checkDuplicateScreenshot(
 
     // Enforce user privacy & scoping: User A should not match or block User B
     const existingUserId = existing.user_id || existing.userId || "guest";
-    if (candidateUserId !== "guest" && existingUserId !== "guest" && existingUserId !== candidateUserId) {
+    if (existingUserId !== candidateUserId) {
       continue;
     }
 
