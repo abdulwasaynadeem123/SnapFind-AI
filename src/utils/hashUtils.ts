@@ -63,7 +63,7 @@ export async function computePerceptualHash(
   input: string | File | Blob
 ): Promise<string> {
   if (typeof window === "undefined") {
-    return "0000000000000000";
+    return "";
   }
 
   return new Promise((resolve) => {

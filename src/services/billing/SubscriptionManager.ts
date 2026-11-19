@@ -716,65 +716,6 @@ class SubscriptionManagerService {
       console.warn("[SubscriptionManager] Claim VIP API unreachable, checking direct DB RPC:", err?.message || err);
     }
 
-    // Native / static WebView fallback: direct authenticated Supabase RPC (strictly uses auth.uid())
-    if (networkUnreachable && isSupabaseConfigured && supabase) {
-      try {
-        let { data: rpcRes, error: rpcErr } = await supabase.rpc("claim_vip_seat_for_user", {
-          p_payment_id: "vip_50_free_claim",
-        });
-
-        const errText = `${String(rpcErr?.code || "")} ${String(rpcErr?.message || "")}`;
-        if (rpcErr && /42883|PGRST202|could not find the function/i.test(errText)) {
-          const legacy = await supabase.rpc("claim_founder_seat_atomic", {
-            p_user_id: targetUserId,
-            p_payment_id: "vip_50_free_claim",
-          });
-          rpcRes = legacy.data;
-          rpcErr = legacy.error;
-        }
-
-        const row = Array.isArray(rpcRes) ? rpcRes[0] : rpcRes;
-        if (!rpcErr && row && row.success && typeof row.founder_rank === "number") {
-          const vipEnt: UserEntitlement = {
-            userId: targetUserId,
-            plan: "founder",
-            tier: "Founder",
-            isPro: true,
-            isFounder: true,
-            founderNumber: row.founder_rank,
-            founderGrantedAt: new Date().toISOString(),
-            founderExpiresAt: null,
-            features: { ...PLAN_CONFIG.founder.features },
-            maxScreenshots: PLAN_CONFIG.founder.features.maxIndexedScreenshots,
-            canCloudSync: true,
-            canAiMultimodalSearch: true,
-            priorityProcessing: true,
-            status: "active",
-            updatedAt: new Date().toISOString(),
-          };
-          this.saveCachedEntitlement(vipEnt);
-          if (!row.already_claimed) {
-            NotificationService.notifyProActivated("lifetime", true);
-          }
-          return {
-            success: true,
-            entitlement: vipEnt,
-            founderNumber: row.founder_rank,
-            message: row.message || `VIP Seat #${row.founder_rank} activated!`,
-          };
-        }
-        return {
-          success: false,
-          error: row?.message || "Unable to persist VIP seat right now. Please try again shortly.",
-        };
-      } catch {
-        return {
-          success: false,
-          error: "Unable to persist VIP seat right now. Please try again shortly.",
-        };
-      }
-    }
-
     return {
       success: false,
       error: "VIP seat allocation service is temporarily unavailable. Please try again shortly.",
@@ -783,9 +724,8 @@ class SubscriptionManagerService {
 
   /**
    * Get Real Authoritative 50-Seat VIP Availability.
-   * Uses the server registry endpoint (which bypasses per-user RLS) or the public
-   * SECURITY DEFINER RPC get_vip_seat_stats(). Never uses RLS-filtered direct table reads
-   * and never fabricates a fake 0 occupied fallback on error.
+   * Uses only the authenticated server registry endpoint. Never exposes a SECURITY DEFINER
+   * stats RPC to browser roles or fabricates a zero-count fallback on error.
    */
   public async getFounderAvailability(): Promise<{ claimed: number; totalSpots: number; remaining: number }> {
     let apiError: Error | null = null;
@@ -831,42 +771,6 @@ class SubscriptionManagerService {
       apiError = new Error("VIP seat availability is temporarily unavailable. Please try again shortly.");
     }
 
-    // 2. Native/static WebView fallback only when backend API is unreachable
-    if (apiUnreachable && isSupabaseConfigured && supabase && typeof (supabase as any).rpc === "function") {
-      try {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc("get_vip_seat_stats");
-        const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-        if (!rpcErr && row && typeof row.occupied_spots === "number") {
-          const total = row.total_spots || 50;
-          const occupied = Math.max(0, Math.min(total, row.occupied_spots));
-          return {
-            claimed: occupied,
-            totalSpots: total,
-            remaining: Math.max(0, total - occupied),
-          };
-        }
-        const errText = `${String(rpcErr?.code || "")} ${String(rpcErr?.message || "")}`;
-        if (rpcErr && /42883|PGRST202|could not find the function/i.test(errText)) {
-          const { data: claimRows, error: claimErr } = await supabase
-            .from("founder_claims")
-            .select("user_id, founder_rank")
-            .eq("status", "claimed");
-          if (!claimErr && Array.isArray(claimRows)) {
-            const uniqueUsers = new Set(
-              claimRows
-                .filter((r: any) => r?.user_id && Number(r?.founder_rank) >= 1 && Number(r?.founder_rank) <= 50)
-                .map((r: any) => String(r.user_id))
-            );
-            const occupied = Math.min(50, uniqueUsers.size);
-            return {
-              claimed: occupied,
-              totalSpots: 50,
-              remaining: Math.max(0, 50 - occupied),
-            };
-          }
-        }
-      } catch {}
-    }
 
     throw apiError || new Error("VIP seat availability is temporarily unavailable.");
   }
