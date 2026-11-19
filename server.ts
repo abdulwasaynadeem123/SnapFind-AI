@@ -1576,19 +1576,8 @@ async function getAuthoritativeFounderRegistry(callerToken?: string): Promise<Au
 
   // 1. Service-role mode: read strictly from authoritative Postgres tables (founder_claims + user_entitlements)
   if (hasSupabaseServiceRole) {
-    let validUsersMap: Map<string, { email?: string; name?: string }> | null = null;
-    try {
-      const { data: usersData, error: usersErr } = await supabaseServer.auth.admin.listUsers({ perPage: 1000 });
-      if (!usersErr && usersData?.users) {
-        validUsersMap = new Map();
-        for (const u of usersData.users) {
-          validUsersMap.set(u.id, {
-            email: u.email ? String(u.email).trim().toLowerCase() : undefined,
-            name: u.user_metadata?.full_name || u.user_metadata?.name,
-          });
-        }
-      }
-    } catch {}
+    // founder_claims.user_id has an auth.users foreign key; do not filter against a
+    // single auth.admin.listUsers page, which silently omits users after page 1.
 
     const deduped = await queryPostgresFounderTables(supabaseServer, validUsersMap, false);
     return {
@@ -3394,46 +3383,11 @@ app.post("/api/billing/claim-founder", billingRateLimiter, async (req, res) => {
           allocatedRank = Number(row.founder_rank || 0);
           dbOccupied = typeof row.occupied_spots === "number" ? row.occupied_spots : null;
         } else {
-          // Only fall back to direct service_role table writes if RPC is missing in schema cache
-          const isMissingRpc = Boolean(rpcErr && /42883|PGRST202|could not find the function/i.test(String(rpcErr.code || "") + " " + String(rpcErr.message || "")));
-          if (!isMissingRpc) {
-            console.error("[VIP50] Postgres claim_founder_seat_atomic error:", rpcErr?.message);
-            return res.status(503).json({
-              success: false,
-              error: "Unable to persist VIP seat to the database right now. Please try again.",
-            });
-          }
-
-          const takenRanks = new Set(validClaims.map(c => c.founderRank));
-          let nextRank = 1;
-          while (takenRanks.has(nextRank) && nextRank <= 50) nextRank++;
-          if (nextRank > 50) {
-            return res.status(409).json({
-              success: false,
-              error: "All 50 VIP seats have been occupied.",
-              occupiedSpots: 50,
-              claimedSpots: 50,
-              totalSpots: 50,
-              remainingSpots: 0,
-            });
-          }
-
-          const { error: claimInsertErr } = await supabaseServer.from("founder_claims").insert({
-            id: `fc_${userId}`,
-            user_id: userId,
-            founder_rank: nextRank,
-            payment_id: "vip_50_free_claim",
-            status: "claimed",
-            claimed_at: new Date().toISOString(),
+          console.error("[VIP50] Atomic claim RPC failed:", rpcErr?.message || "Empty response");
+          return res.status(503).json({
+            success: false,
+            error: "Unable to persist VIP seat safely. Please try again shortly.",
           });
-          if (claimInsertErr && !/duplicate|23505/i.test(claimInsertErr.message || "")) {
-            console.error("[VIP50] Postgres founder_claims insert error:", claimInsertErr.message);
-            return res.status(503).json({
-              success: false,
-              error: "Unable to persist VIP seat to the database right now. Please try again.",
-            });
-          }
-          allocatedRank = nextRank;
         }
 
         if (!allocatedRank || allocatedRank < 1 || allocatedRank > 50) {
@@ -3582,52 +3536,6 @@ app.post("/api/billing/claim-founder", billingRateLimiter, async (req, res) => {
           totalSpots: 50,
           remainingSpots: remaining,
         });
-      }
-
-      // If the new claim_vip_seat_for_user RPC isn't installed yet, try legacy claim_founder_seat_atomic RPC
-      if (rpcErr && isMissingRpcError(rpcErr)) {
-        const { data: legacyRes, error: legacyErr } = await userClient.rpc("claim_founder_seat_atomic", {
-          p_user_id: userId,
-          p_payment_id: "vip_50_free_claim",
-        });
-        const legacyRow = Array.isArray(legacyRes) ? legacyRes[0] : legacyRes;
-
-        if (!legacyErr && legacyRow) {
-          if (!legacyRow.success) {
-            return res.status(409).json({
-              success: false,
-              error: legacyRow.message || "All 50 VIP seats have been occupied.",
-              occupiedSpots: legacyRow.occupied_spots ?? 50,
-              claimedSpots: legacyRow.occupied_spots ?? 50,
-              totalSpots: 50,
-              remainingSpots: legacyRow.remaining_spots ?? 0,
-            });
-          }
-
-          const allocatedRank = Number(legacyRow.founder_rank || 0);
-          const refreshed = await getAuthoritativeFounderRegistry(authUser.token).catch(() => null);
-          const updatedOccupied = Math.max(
-            1,
-            Math.min(50, Number(legacyRow.occupied_spots || refreshed?.claims.length || 1))
-          );
-          const remaining = Math.max(0, 50 - updatedOccupied);
-          const founderEntitlement = createFounderEntitlement(userId, allocatedRank);
-          if (userEmail) founderEntitlement.userEmail = userEmail;
-          serverEntitlements.set(userId, founderEntitlement);
-          serverFounderCounter = updatedOccupied;
-
-          return res.json({
-            success: true,
-            message: `VIP Access activated! You have been assigned VIP Seat #${allocatedRank} of 50 with Lifetime Pro access.`,
-            entitlement: founderEntitlement,
-            founderNumber: allocatedRank,
-            founderRank: allocatedRank,
-            occupiedSpots: updatedOccupied,
-            claimedSpots: updatedOccupied,
-            totalSpots: 50,
-            remainingSpots: remaining,
-          });
-        }
       }
 
       logRegistryWarningOnce(`[VIP50] User RPC claim_vip_seat_for_user unavailable: ${rpcErr?.message || "Empty response"}`);
