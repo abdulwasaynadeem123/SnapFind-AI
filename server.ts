@@ -3285,7 +3285,9 @@ app.get("/api/billing/entitlements", async (req, res) => {
 });
 
 // Endpoint: Claim VIP 50 Seat (Strictly 1 to 50, Atomic Lock, Verified Auth, DB-Persisted)
-app.post("/api/billing/claim-founder", billingRateLimiter, async (req, res) => {
+app.post("/api/billing/claim-founder", billingRateLimiter, async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(410).json({ success: false, disabled: true, error: "VIP seats have been temporarily discontinued." });
   return await serverTransactionLock.acquire(async () => {
     const authUser = await getAuthenticatedUser(req);
     const userId = authUser.id;
