@@ -467,3 +467,12 @@ body { background: #080908 !important; color: #F7F8F5; }
   box-shadow: 5px 5px 10px rgba(0,0,0,.55), -3px -3px 8px rgba(255,255,255,.03);
 }
 .search-glow-focused { border-color: #B7F36B !important; box-shadow: inset 4px 4px 9px rgba(0,0,0,.55), 0 0 0 1px rgba(183,243,107,.25) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

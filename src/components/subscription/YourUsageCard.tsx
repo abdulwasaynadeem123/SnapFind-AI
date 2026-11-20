@@ -29,8 +29,10 @@ interface YourUsageCardProps {
   showDetailedBreakdown?: boolean;
 }
 
+const EMPTY_SCREENSHOTS: ScreenshotItem[] = [];
+
 export const YourUsageCard: React.FC<YourUsageCardProps> = ({
-  screenshots = [],
+  screenshots = EMPTY_SCREENSHOTS,
   user,
   isDark = true,
   onOpenUpgrade,

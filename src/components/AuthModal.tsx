@@ -1,27 +1,33 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SnapFindLogo } from "./SnapFindLogo";
 import {
   X,
   Mail,
   Lock,
-  User,
+  User as UserIcon,
+  LogOut,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
   Eye,
   EyeOff,
-  LogOut,
-  AlertCircle,
-  CheckCircle2,
   ArrowLeft,
-  RotateCw,
+  KeyRound,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { SnapFindLogo } from "./SnapFindLogo";
+
+export type AuthModalMode = "login" | "register" | "forgot_password" | "reset_password";
 
 interface AuthModalProps {
   onClose: () => void;
-  isDark: boolean;
-  initialMode?: "login" | "register";
-  addToast?: (msg: { title: string; description?: string; type: "success" | "error" | "info" }) => void;
+  isDark?: boolean;
+  initialMode?: AuthModalMode;
+  addToast?: (msg: { title: string; description?: string; type: "success" | "error" | "info" | "warning" }) => void;
   onSignupSuccess?: () => void;
 }
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
@@ -31,6 +37,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const {
     user,
+    isRecoveryMode,
+    setIsRecoveryMode,
     signInWithEmail,
     signUpWithEmail,
     resendVerificationEmail,
@@ -38,517 +46,684 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     signOut,
     resetPassword,
     changePassword,
-    isRecoveryMode,
     oauthErrorMessage,
     clearOauthError,
   } = useAuth();
 
-  const isSubmittingRef = useRef(false);
-
-  const [authMode, setAuthMode] = useState<"login" | "register" | "forgot_password" | "reset_password">(
-    isRecoveryMode ? "reset_password" : initialMode
-  );
+  const [mode, setMode] = useState<AuthModalMode>(isRecoveryMode ? "reset_password" : initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isUnconfirmedUser, setIsUnconfirmedUser] = useState(false);
-  const [resendingVerification, setResendingVerification] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [showResendOption, setShowResendOption] = useState(false);
+
+  const isSubmittingRef = useRef(false);
+  const primaryInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (isRecoveryMode) {
-      setAuthMode("reset_password");
+      setMode("reset_password");
     } else {
-      setAuthMode(initialMode);
+      setMode(initialMode);
     }
-  }, [isRecoveryMode, initialMode]);
+  }, [initialMode, isRecoveryMode]);
 
   useEffect(() => {
     if (oauthErrorMessage) {
-      setErrorMessage(oauthErrorMessage);
+      setErrorMsg(oauthErrorMessage);
     }
   }, [oauthErrorMessage]);
 
-  const validateEmailFormat = (emailStr: string): boolean => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim());
-  };
-
-  const handleModeChange = (newMode: "login" | "register" | "forgot_password" | "reset_password") => {
-    setAuthMode(newMode);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setIsUnconfirmedUser(false);
-    if (clearOauthError) clearOauthError();
-  };
-
-  const handleResendVerification = async () => {
-    if (!email.trim()) {
-      setErrorMessage("Please enter your email address to resend verification.");
-      return;
-    }
-    setResendingVerification(true);
-    setErrorMessage(null);
-    try {
-      const res = await resendVerificationEmail(email);
-      if (res.error) {
-        setErrorMessage(res.error);
-      } else {
-        setSuccessMessage(`A verification link has been sent to ${email.trim()}.`);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isLoading) {
+        onClose();
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to resend verification email.");
-    } finally {
-      setResendingVerification(false);
-    }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, isLoading]);
+
+  useEffect(() => {
+    primaryInputRef.current?.focus();
+  }, [mode]);
+
+  const switchMode = (nextMode: AuthModalMode) => {
+    if (isLoading) return;
+    setMode(nextMode);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setShowResendOption(false);
+    setPassword("");
+    setConfirmPassword("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    if (oauthErrorMessage) clearOauthError();
+  };
+
+  const handleClose = () => {
+    if (isLoading) return;
+    if (oauthErrorMessage) clearOauthError();
+    onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmittingRef.current || isSubmitting) return;
-    isSubmittingRef.current = true;
+    if (isSubmittingRef.current || isLoading) return;
 
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setIsUnconfirmedUser(false);
-    if (clearOauthError) clearOauthError();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setShowResendOption(false);
 
-    // Validation
-    if (authMode !== "reset_password" && !validateEmailFormat(email)) {
-      setErrorMessage("Please enter a valid email address.");
-      isSubmittingRef.current = false;
+    if (mode === "forgot_password") {
+      const cleanEmail = email.trim();
+      if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
+        setErrorMsg("Please enter a valid registered email address.");
+        return;
+      }
+
+      isSubmittingRef.current = true;
+      setIsLoading(true);
+      try {
+        const res = await resetPassword(cleanEmail);
+        if (res.error) {
+          setErrorMsg(res.error);
+        } else {
+          setSuccessMsg(
+            `Password reset instructions have been sent to ${cleanEmail}. Open the link in your email to set a new password.`
+          );
+          addToast?.({
+            title: "Password Reset Email Sent",
+            description: `Check ${cleanEmail} for your secure reset link.`,
+            type: "success",
+          });
+        }
+      } finally {
+        isSubmittingRef.current = false;
+        setIsLoading(false);
+      }
       return;
     }
 
-    if (authMode === "register" || authMode === "login" || authMode === "reset_password") {
-      if (!password) {
-        setErrorMessage("Please enter your password.");
-        isSubmittingRef.current = false;
-        return;
-      }
-      if (password.length < 6) {
-        setErrorMessage("Password must be at least 6 characters.");
-        isSubmittingRef.current = false;
-        return;
-      }
-    }
-
-    if (authMode === "register") {
-      if (!name.trim()) {
-        setErrorMessage("Please enter your name.");
-        isSubmittingRef.current = false;
+    if (mode === "reset_password") {
+      if (!password || password.length < 8) {
+        setErrorMsg("New password must be at least 8 characters long.");
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMessage("Passwords do not match.");
-        isSubmittingRef.current = false;
+        setErrorMsg("Passwords do not match. Please re-enter both fields.");
         return;
       }
-    }
 
-    if (authMode === "reset_password") {
-      if (password !== confirmPassword) {
-        setErrorMessage("Passwords do not match.");
-        isSubmittingRef.current = false;
-        return;
-      }
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      if (authMode === "login") {
-        const res = await signInWithEmail(email, password);
+      isSubmittingRef.current = true;
+      setIsLoading(true);
+      try {
+        const res = await changePassword(password);
         if (res.error) {
-          const lower = res.error.toLowerCase();
-          if (lower.includes("email not confirmed") || lower.includes("unconfirmed") || res.isUnconfirmedEmail) {
-            setIsUnconfirmedUser(true);
+          setErrorMsg(res.error);
+        } else {
+          setIsRecoveryMode(false);
+          setSuccessMsg("Your password has been updated. You can now sign in with your new password.");
+          addToast?.({
+            title: "Password Updated",
+            description: "Your account password was changed successfully.",
+            type: "success",
+          });
+          setPassword("");
+          setConfirmPassword("");
+          setMode("login");
+        }
+      } finally {
+        isSubmittingRef.current = false;
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
+      setErrorMsg("Please enter a valid email address.");
+      return;
+    }
+
+    if (mode === "register") {
+      const cleanName = name.trim();
+      if (cleanName.length < 2) {
+        setErrorMsg("Please enter your full name (at least 2 characters).");
+        return;
+      }
+      if (!password || password.length < 8) {
+        setErrorMsg("Password must be at least 8 characters long.");
+        return;
+      }
+      if (confirmPassword && password !== confirmPassword) {
+        setErrorMsg("Passwords do not match.");
+        return;
+      }
+    } else if (!password) {
+      setErrorMsg("Please enter your password.");
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    setIsLoading(true);
+    try {
+      if (mode === "login") {
+        const res = await signInWithEmail(cleanEmail, password);
+        if (res.error) {
+          setErrorMsg(res.error);
+          if (res.isUnconfirmedEmail) {
+            setShowResendOption(true);
           }
-          setErrorMessage(res.error);
         } else {
           addToast?.({
             title: "Signed In",
-            description: "Welcome back!",
+            description: "Welcome back to SnapFind AI.",
             type: "success",
           });
           onClose();
         }
-      } else if (authMode === "register") {
-        const res = await signUpWithEmail(email, password, name.trim());
+      } else {
+        const res = await signUpWithEmail(cleanEmail, password, name.trim());
         if (res.error) {
-          setErrorMessage(res.error);
+          setErrorMsg(res.error);
+        } else if (res.requiresVerification) {
+          setSuccessMsg(
+            res.message ||
+              "Account created! Please check your inbox and click the verification link before signing in."
+          );
+          setShowResendOption(true);
+          setPassword("");
+          setConfirmPassword("");
         } else {
-          onSignupSuccess?.();
-          if (res.requiresVerification) {
-            setSuccessMessage(
-              `Confirmation email sent to ${email.trim()}. Please verify your email to log in.`
-            );
+          if (onSignupSuccess) {
+            onSignupSuccess();
           } else {
             addToast?.({
               title: "Account Created",
-              description: "Welcome to SnapFind!",
+              description: "Welcome to SnapFind AI.",
               type: "success",
             });
-            onClose();
           }
-        }
-      } else if (authMode === "forgot_password") {
-        const res = await resetPassword(email);
-        if (res.error) {
-          setErrorMessage(res.error);
-        } else {
-          setSuccessMessage(`Password recovery link sent to ${email.trim()}. Check your inbox.`);
-        }
-      } else if (authMode === "reset_password") {
-        const res = await changePassword(password);
-        if (res.error) {
-          setErrorMessage(res.error);
-        } else {
-          setSuccessMessage("Password updated successfully. You can now sign in.");
-          setTimeout(() => {
-            handleModeChange("login");
-          }, 1500);
+          onClose();
         }
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
+      setErrorMsg(err?.message || "An unexpected authentication error occurred.");
     } finally {
-      setIsSubmitting(false);
       isSubmittingRef.current = false;
+      setIsLoading(false);
     }
   };
 
-  const handleGoogleAuth = async () => {
-    if (isSubmittingRef.current || isSubmitting) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
+  const handleResendVerification = async () => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
+      setErrorMsg("Please enter your email address first.");
+      return;
+    }
+    if (isResending) return;
+    setIsResending(true);
+    setErrorMsg(null);
+    try {
+      const res = await resendVerificationEmail(cleanEmail);
+      if (res.error) {
+        setErrorMsg(res.error);
+      } else {
+        setSuccessMsg(`Verification link resent to ${cleanEmail}. Check your inbox and spam folder.`);
+      }
+    } finally {
+      setIsResending(false);
+    }
+  };
 
+  const handleGoogleSignIn = async () => {
+    if (isSubmittingRef.current || isLoading) return;
+    isSubmittingRef.current = true;
+    setIsLoading(true);
+    setErrorMsg(null);
     try {
       const res = await signInWithGoogle();
-      if (res && res.error) {
-        setErrorMessage(res.error);
+      if (res.error) {
+        setErrorMsg(res.error);
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to initiate Google Sign-In.");
     } finally {
-      setIsSubmitting(false);
       isSubmittingRef.current = false;
+      setIsLoading(false);
     }
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    addToast?.({
-      title: "Signed Out",
-      description: "You have signed out.",
-      type: "info",
-    });
-    onClose();
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      await signOut();
+      addToast?.({
+        title: "Signed Out",
+        description: "You have been signed out of SnapFind AI.",
+        type: "info",
+      });
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-2xl border border-[#30362E] bg-[#141714] p-6 sm:p-7 shadow-[8px_8px_24px_rgba(0,0,0,0.85)] text-[#F7F8F5]">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          type="button"
-          title="Close dialog"
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
+  const isAuthenticatedUser = Boolean(user && user.isLoggedIn && user.id !== "guest");
 
-        {/* Header with Logo */}
-        <div className="flex items-center gap-3 pb-5 border-b border-[#30362E]">
-          <SnapFindLogo className="w-9 h-9 rounded-xl object-contain border border-[#30362E] bg-[#0D0F0D] shrink-0" />
-          <div>
-            <h2 className="font-extrabold text-lg tracking-tight text-[#F7F8F5]">
-              {user?.isLoggedIn
-                ? "Account"
-                : authMode === "forgot_password"
-                ? "Reset password"
-                : authMode === "reset_password"
-                ? "Set new password"
-                : authMode === "register"
-                ? "Create account"
-                : "Welcome back"}
-            </h2>
+  // Signed-in quick summary dialog (unless completing a password reset)
+  if (isAuthenticatedUser && mode !== "reset_password") {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080908]/85"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-account-modal-title"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleClose();
+        }}
+      >
+        <div className="relative w-full max-w-md rounded-2xl bg-[#141714] border border-[#30362E] p-6 sm:p-7 text-[#F7F8F5]">
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close dialog"
+            className="absolute top-4 right-4 p-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center text-[#B7F36B] font-bold text-2xl overflow-hidden">
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                (user?.name || "U").charAt(0).toUpperCase()
+              )}
+            </div>
+
+            <div>
+              <h2 id="auth-account-modal-title" className="text-xl font-bold text-[#F7F8F5]">
+                {user?.name}
+              </h2>
+              <p className="text-sm text-[#A5AAA1] mt-0.5">{user?.email}</p>
+            </div>
+
+            <div className="w-full p-3.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] flex items-center justify-between text-xs">
+              <span className="text-[#A5AAA1]">Current Plan</span>
+              <span className="font-semibold text-[#B7F36B]">{user?.plan || "Free"}</span>
+            </div>
+
+            <div className="w-full flex flex-col gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-rose-950 hover:bg-rose-900 border border-rose-700 text-rose-100 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                Sign Out
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-sm font-semibold transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {user?.isLoggedIn && authMode !== "reset_password" ? (
-          /* Logged In View */
-          <div className="space-y-4 pt-5">
-            <div className="p-4 rounded-xl border border-[#30362E] bg-[#0D0F0D] flex items-center gap-3 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
-              <div className="w-10 h-10 rounded-full bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] font-semibold text-sm flex items-center justify-center shrink-0">
-                {user.name.charAt(0).toUpperCase()}
+  const modalTitle =
+    mode === "login"
+      ? "Sign in to SnapFind AI"
+      : mode === "register"
+      ? "Create your SnapFind AI account"
+      : mode === "forgot_password"
+      ? "Reset your password"
+      : "Set a new password";
+
+  const modalSubtitle =
+    mode === "login"
+      ? "Access your searchable screenshot library across sessions."
+      : mode === "register"
+      ? "Start indexing and finding any screenshot in seconds."
+      : mode === "forgot_password"
+      ? "Enter your registered email and we will send you a secure reset link."
+      : "Choose a strong new password for your account.";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080908]/85 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-heading"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div className="relative w-full max-w-md my-auto rounded-2xl bg-[#141714] border border-[#30362E] p-6 sm:p-7 text-[#F7F8F5]">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={isLoading}
+          aria-label="Close authentication dialog"
+          className="absolute top-4 right-4 p-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        {/* Brand & Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <SnapFindLogo size={32} />
+            <span className="text-sm font-bold tracking-tight text-[#F7F8F5]">SnapFind AI</span>
+          </div>
+
+          <h2 id="auth-modal-heading" className="text-2xl font-bold tracking-tight text-[#F7F8F5]">
+            {modalTitle}
+          </h2>
+          <p className="text-sm text-[#A5AAA1] mt-1 leading-relaxed">{modalSubtitle}</p>
+        </div>
+
+        {/* Status Messages */}
+        {errorMsg && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mb-4 p-3.5 rounded-xl bg-rose-950 border border-rose-700 text-rose-100 text-xs leading-relaxed flex flex-col gap-2"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-300 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+            {showResendOption && (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={isResending}
+                className="self-start text-xs font-semibold text-[#B7F36B] hover:underline cursor-pointer disabled:opacity-50"
+              >
+                {isResending ? "Sending verification email..." : "Resend verification email"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {successMsg && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 p-3.5 rounded-xl bg-[#1B1F1A] border border-[#B7F36B] text-[#F7F8F5] text-xs leading-relaxed flex flex-col gap-2"
+          >
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
+              <span>{successMsg}</span>
+            </div>
+            {showResendOption && (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={isResending}
+                className="self-start text-xs font-semibold text-[#B7F36B] hover:underline cursor-pointer disabled:opacity-50"
+              >
+                {isResending ? "Resending..." : "Didn't receive the email? Resend"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Auth Form */}
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          {mode === "register" && (
+            <div className="space-y-1.5">
+              <label htmlFor="auth-fullname" className="block text-xs font-semibold text-[#F7F8F5]">
+                Full Name
+              </label>
+              <div className="relative">
+                <UserIcon
+                  className="w-4 h-4 text-[#777E74] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <input
+                  ref={mode === "register" ? primaryInputRef : undefined}
+                  id="auth-fullname"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="Enter your name"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
+                />
               </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-sm text-[#F7F8F5] truncate">{user.name}</h3>
-                <p className="text-xs text-[#A5AAA1] truncate">{user.email}</p>
+            </div>
+          )}
+
+          {(mode === "login" || mode === "register" || mode === "forgot_password") && (
+            <div className="space-y-1.5">
+              <label htmlFor="auth-email" className="block text-xs font-semibold text-[#F7F8F5]">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail
+                  className="w-4 h-4 text-[#777E74] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <input
+                  ref={mode === "login" || mode === "forgot_password" ? primaryInputRef : undefined}
+                  id="auth-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="you@example.com"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
+                />
               </div>
+            </div>
+          )}
+
+          {(mode === "login" || mode === "register" || mode === "reset_password") && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="auth-password" className="block text-xs font-semibold text-[#F7F8F5]">
+                  {mode === "reset_password" ? "New Password" : "Password"}
+                </label>
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode("forgot_password")}
+                    disabled={isLoading}
+                    className="text-xs font-semibold text-[#B7F36B] hover:underline cursor-pointer disabled:opacity-50"
+                  >
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Lock
+                  className="w-4 h-4 text-[#777E74] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <input
+                  ref={mode === "reset_password" ? primaryInputRef : undefined}
+                  id="auth-password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  required
+                  minLength={mode === "login" ? 1 : 8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  placeholder={mode === "login" ? "Enter your password" : "Minimum 8 characters"}
+                  className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {(mode === "register" || mode === "reset_password") && (
+                <p className="text-[11px] text-[#777E74]">Use at least 8 characters for strong account security.</p>
+              )}
+            </div>
+          )}
+
+          {(mode === "register" || mode === "reset_password") && (
+            <div className="space-y-1.5">
+              <label htmlFor="auth-confirm-password" className="block text-xs font-semibold text-[#F7F8F5]">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <ShieldCheck
+                  className="w-4 h-4 text-[#777E74] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <input
+                  id="auth-confirm-password"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  required={mode === "reset_password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="Re-enter your password"
+                  className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Primary Submit CTA */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {mode === "login" && (isLoading ? "Signing in..." : "Sign In")}
+            {mode === "register" && (isLoading ? "Creating account..." : "Create Account")}
+            {mode === "forgot_password" && (
+              <>
+                {!isLoading && <KeyRound className="w-4 h-4" />}
+                <span>{isLoading ? "Sending reset link..." : "Send Reset Link"}</span>
+              </>
+            )}
+            {mode === "reset_password" && (isLoading ? "Updating password..." : "Save New Password")}
+          </button>
+        </form>
+
+        {/* Google Sign-In option for Login / Signup */}
+        {(mode === "login" || mode === "register") && (
+          <>
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-[#30362E]" />
+              <span className="text-[11px] font-medium uppercase tracking-wider text-[#777E74]">or</span>
+              <div className="h-px flex-1 bg-[#30362E]" />
             </div>
 
             <button
-              onClick={handleSignOut}
               type="button"
-              className="w-full py-2.5 rounded-xl border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-sm font-semibold flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-60"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Sign out</span>
+              <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="#F7F8F5"
+                  d="M21.35 11.1h-9.18v2.92h5.27c-.23 1.24-.92 2.29-1.97 3l3.18 2.47c1.86-1.71 2.93-4.23 2.93-7.24 0-.7-.06-1.38-.23-2.15z"
+                />
+                <path
+                  fill="#A5AAA1"
+                  d="M12.17 22c2.65 0 4.88-.88 6.5-2.38l-3.18-2.47c-.88.59-2 .94-3.32.94-2.55 0-4.71-1.72-5.48-4.04H3.38v2.54C5 19.81 8.33 22 12.17 22z"
+                />
+                <path
+                  fill="#B7F36B"
+                  d="M6.69 14.05A5.86 5.86 0 0 1 6.38 12c0-.71.12-1.4.31-2.05V7.41H3.38A9.96 9.96 0 0 0 2.17 12c0 1.61.39 3.13 1.21 4.59l3.31-2.54z"
+                />
+                <path
+                  fill="#F7F8F5"
+                  d="M12.17 5.91c1.44 0 2.74.5 3.76 1.47l2.82-2.82C17.04 2.96 14.81 2 12.17 2 8.33 2 5 4.19 3.38 7.41l3.31 2.54c.77-2.32 2.93-4.04 5.48-4.04z"
+                />
+              </svg>
+              <span>Continue with Google</span>
             </button>
-          </div>
-        ) : (
-          /* Auth Form */
-          <div className="space-y-4 pt-5">
-            {/* Error Banner */}
-            {errorMessage && (
-              <div className="p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <div className="flex-1 space-y-1">
-                  <p>{errorMessage}</p>
-                  {isUnconfirmedUser && (
-                    <button
-                      type="button"
-                      onClick={handleResendVerification}
-                      disabled={resendingVerification}
-                      className="inline-flex items-center gap-1 text-xs text-[#B7F36B] hover:underline font-medium cursor-pointer"
-                    >
-                      <RotateCw className={`w-3 h-3 ${resendingVerification ? "animate-spin" : ""}`} />
-                      <span>{resendingVerification ? "Sending..." : "Resend confirmation email"}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Success Banner */}
-            {successMessage && (
-              <div className="p-3 rounded-xl border border-[#B7F36B]/40 bg-[#B7F36B]/10 text-[#B7F36B] text-xs flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p>{successMessage}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Google OAuth (Login & Register) */}
-            {(authMode === "login" || authMode === "register") && (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleGoogleAuth}
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 px-4 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] font-medium text-xs flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
-                >
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-
-                <div className="relative flex items-center justify-center my-1">
-                  <div className="border-t border-[#30362E] w-full" />
-                  <span className="bg-[#141714] px-2 text-[11px] text-[#777E74]">or</span>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              {/* Name field (register only) */}
-              {authMode === "register" && (
-                <div className="space-y-1 text-xs">
-                  <label className="font-medium text-[#A5AAA1]">Name</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Your name"
-                      disabled={isSubmitting}
-                      required
-                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Email field */}
-              {authMode !== "reset_password" && (
-                <div className="space-y-1 text-xs">
-                  <label className="font-medium text-[#A5AAA1]">Email</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      disabled={isSubmitting}
-                      required
-                      className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Password field */}
-              {(authMode === "login" || authMode === "register" || authMode === "reset_password") && (
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <label className="font-medium text-[#A5AAA1]">
-                      {authMode === "reset_password" ? "New password" : "Password"}
-                    </label>
-                    {authMode === "login" && (
-                      <button
-                        type="button"
-                        onClick={() => handleModeChange("forgot_password")}
-                        className="text-[11px] text-[#A5AAA1] hover:text-[#B7F36B] transition-colors cursor-pointer"
-                      >
-                        Forgot password?
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      disabled={isSubmitting}
-                      required
-                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777E74] hover:text-[#F7F8F5] cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Confirm password field (register and reset_password) */}
-              {(authMode === "register" || authMode === "reset_password") && (
-                <div className="space-y-1 text-xs">
-                  <label className="font-medium text-[#A5AAA1]">Confirm password</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777E74]" />
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      disabled={isSubmitting}
-                      required
-                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] placeholder-[#777E74] focus:border-[#B7F36B] focus:outline-none transition-colors shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777E74] hover:text-[#F7F8F5] cursor-pointer"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Submit button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 border-2 border-[#10130D]/30 border-t-[#10130D] rounded-full animate-spin" />
-                    <span>Please wait...</span>
-                  </span>
-                ) : (
-                  <span>
-                    {authMode === "login"
-                      ? "Sign in"
-                      : authMode === "register"
-                      ? "Create account"
-                      : authMode === "forgot_password"
-                      ? "Send reset link"
-                      : "Save new password"}
-                  </span>
-                )}
-              </button>
-
-              {/* Mode switch links */}
-              {authMode === "login" && (
-                <div className="text-center pt-2 text-xs text-[#A5AAA1]">
-                  Don't have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange("register")}
-                    className="text-[#B7F36B] hover:underline font-semibold cursor-pointer"
-                  >
-                    Sign up
-                  </button>
-                </div>
-              )}
-
-              {authMode === "register" && (
-                <div className="text-center pt-2 text-xs text-[#A5AAA1]">
-                  Already have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange("login")}
-                    className="text-[#B7F36B] hover:underline font-semibold cursor-pointer"
-                  >
-                    Sign in
-                  </button>
-                </div>
-              )}
-
-              {authMode === "forgot_password" && (
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange("login")}
-                    className="inline-flex items-center gap-1.5 text-xs text-[#A5AAA1] hover:text-[#F7F8F5] transition-colors cursor-pointer"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to Sign in</span>
-                  </button>
-                </div>
-              )}
-            </form>
-          </div>
+          </>
         )}
+
+        {/* Mode Switcher Footer (No full page reload) */}
+        <div className="mt-6 pt-4 border-t border-[#30362E] text-center text-sm text-[#A5AAA1]">
+          {mode === "login" && (
+            <p>
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("register")}
+                disabled={isLoading}
+                className="font-semibold text-[#B7F36B] hover:underline cursor-pointer disabled:opacity-50"
+              >
+                Sign up
+              </button>
+            </p>
+          )}
+
+          {mode === "register" && (
+            <p>
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                disabled={isLoading}
+                className="font-semibold text-[#B7F36B] hover:underline cursor-pointer disabled:opacity-50"
+              >
+                Sign in
+              </button>
+            </p>
+          )}
+
+          {(mode === "forgot_password" || mode === "reset_password") && (
+            <button
+              type="button"
+              onClick={() => switchMode("login")}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 font-semibold text-[#B7F36B] hover:underline cursor-pointer disabled:opacity-50"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Sign in
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 };
-
-export default AuthModal;

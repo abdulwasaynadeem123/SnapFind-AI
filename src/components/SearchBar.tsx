@@ -1,92 +1,70 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   Search,
   X,
-  Loader2,
   Mic,
-  Volume2,
+  MicOff,
+  Loader2,
   Clock,
-  ArrowRight,
-  History,
+  Tag,
+  TrendingUp,
+  ChevronRight,
+  Trash2,
+  Sparkles,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 import { CategoryType, ScreenshotItem, SearchHistoryItem } from "../types";
 
 interface SearchBarProps {
   query: string;
   setQuery: (q: string) => void;
   onExecuteSearch: (q: string) => void;
-  selectedCategory?: CategoryType;
-  setSelectedCategory?: (cat: CategoryType) => void;
-  isDark: boolean;
-  isSearching: boolean;
+  selectedCategory: CategoryType;
+  setSelectedCategory: (cat: CategoryType) => void;
+  isDark?: boolean;
+  isSearching?: boolean;
   screenshots?: ScreenshotItem[];
   searchHistory?: SearchHistoryItem[];
   onDeleteHistoryItem?: (id: string) => void;
-  placeholder?: string;
-  showSuggestionsDropdown?: boolean;
 }
 
-const ROTATING_PLACEHOLDERS = [
-  "Search anything across your screenshots...",
-  'Try "Show passport photo"',
-  'Try "Electricity bill due amount"',
-  'Try "Flight ticket confirmation"',
-  'Try "Wi-Fi password screenshot"',
-  'Try "Pasta recipe ingredients"',
+const POPULAR_QUERIES = [
+  "receipt",
+  "invoice",
+  "flight ticket",
+  "password",
+  "code",
+  "bank transfer",
 ];
+
+interface SuggestionItem {
+  text: string;
+  type: "recent" | "keyword" | "popular";
+  id?: string;
+  subtitle?: string;
+}
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   query,
   setQuery,
   onExecuteSearch,
-  isDark,
-  isSearching,
+  isSearching = false,
   screenshots = [],
   searchHistory = [],
   onDeleteHistoryItem,
-  placeholder,
-  showSuggestionsDropdown = true,
 }) => {
-  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [isListening, setIsListening] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [isVoiceListening, setIsVoiceListening] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Rotate placeholders when input is empty & not focused
-  useEffect(() => {
-    if (query || isFocused) return;
-    const timer = setInterval(() => {
-      setPlaceholderIdx((prev) => (prev + 1) % ROTATING_PLACEHOLDERS.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [query, isFocused]);
-
-  // Global Keyboard Shortcut: ⌘K or Ctrl+K to focus search bar
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setIsFocused(true);
-      } else if (e.key === "Escape" && isFocused) {
-        setIsFocused(false);
-        inputRef.current?.blur();
-      }
-    };
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [isFocused]);
-
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
         setIsFocused(false);
       }
     };
@@ -94,284 +72,311 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Compute Instant Suggestions
-  const suggestions = useMemo(() => {
-    const qLower = query.toLowerCase().trim();
+  const dynamicKeywords = useMemo(() => {
+    const kwSet = new Set<string>();
+    for (const s of screenshots) {
+      if (s.tags) s.tags.forEach((t) => kwSet.add(t.toLowerCase()));
+      if (s.keywords) s.keywords.forEach((k) => kwSet.add(k.toLowerCase()));
+      if (s.keyEntities) s.keyEntities.forEach((e) => kwSet.add(e.toLowerCase()));
+      if (s.category && s.category !== "Other") kwSet.add(s.category.toLowerCase());
+    }
+    return Array.from(kwSet);
+  }, [screenshots]);
 
-    // Matching Recent History
-    const historyMatches = searchHistory
-      .filter((h) => !qLower || h.query.toLowerCase().includes(qLower))
-      .slice(0, 4)
-      .map((h) => ({
-        id: h.id,
-        text: h.query,
-        type: "history" as const,
-      }));
+  const suggestions = useMemo<SuggestionItem[]>(() => {
+    const q = query.trim().toLowerCase();
+    const list: SuggestionItem[] = [];
+    const seen = new Set<string>();
 
-    // Matching Screenshot Titles
-    const titleMatches: { id: string; text: string; type: "screenshot" }[] = [];
-    if (qLower && screenshots.length > 0) {
-      const seen = new Set<string>();
-      screenshots.forEach((s) => {
-        if (titleMatches.length >= 4) return;
-        if (s.title.toLowerCase().includes(qLower) && !seen.has(s.title.toLowerCase())) {
-          seen.add(s.title.toLowerCase());
-          titleMatches.push({
-            id: s.id,
-            text: s.title,
-            type: "screenshot",
+    if (!q) {
+      for (const h of searchHistory.slice(0, 4)) {
+        if (!seen.has(h.query.toLowerCase())) {
+          seen.add(h.query.toLowerCase());
+          list.push({
+            text: h.query,
+            type: "recent",
+            id: h.id,
+            subtitle: `${h.resultCount ?? 0} results`,
           });
         }
-      });
-    }
-
-    const flatList = [...historyMatches, ...titleMatches];
-
-    return {
-      history: historyMatches,
-      screenshots: titleMatches,
-      flatList,
-    };
-  }, [query, screenshots, searchHistory]);
-
-  // Voice Search Handler
-  const startVoiceSearch = () => {
-    setVoiceTranscript("");
-    setIsVoiceListening(true);
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setIsVoiceListening(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setQuery(transcript);
-          onExecuteSearch(transcript);
-        }
-        setIsVoiceListening(false);
-      };
-
-      recognition.onerror = () => {
-        setIsVoiceListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsVoiceListening(false);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch {
-      setIsVoiceListening(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const flat = suggestions.flatList;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHighlightedIndex((prev) => (prev < flat.length - 1 ? prev + 1 : 0));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : flat.length - 1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (highlightedIndex >= 0 && highlightedIndex < flat.length) {
-        const selected = flat[highlightedIndex].text;
-        setQuery(selected);
-        onExecuteSearch(selected);
-        setIsFocused(false);
-      } else if (query.trim()) {
-        onExecuteSearch(query.trim());
-        setIsFocused(false);
       }
-    } else if (e.key === "Escape") {
-      setIsFocused(false);
+      for (const kw of dynamicKeywords.slice(0, 4)) {
+        if (!seen.has(kw)) {
+          seen.add(kw);
+          list.push({ text: kw, type: "keyword", subtitle: "From your library" });
+        }
+      }
+      for (const p of POPULAR_QUERIES) {
+        if (list.length >= 8) break;
+        if (!seen.has(p)) {
+          seen.add(p);
+          list.push({ text: p, type: "popular", subtitle: "Suggested search" });
+        }
+      }
+      return list;
     }
+
+    for (const h of searchHistory) {
+      if (h.query.toLowerCase().includes(q) && !seen.has(h.query.toLowerCase())) {
+        seen.add(h.query.toLowerCase());
+        list.push({
+          text: h.query,
+          type: "recent",
+          id: h.id,
+          subtitle: "Recent search",
+        });
+      }
+    }
+
+    for (const kw of dynamicKeywords) {
+      if (list.length >= 8) break;
+      if (kw.includes(q) && !seen.has(kw)) {
+        seen.add(kw);
+        list.push({ text: kw, type: "keyword", subtitle: "Tag / Keyword" });
+      }
+    }
+
+    for (const p of POPULAR_QUERIES) {
+      if (list.length >= 8) break;
+      if (p.includes(q) && !seen.has(p)) {
+        seen.add(p);
+        list.push({ text: p, type: "popular", subtitle: "Suggested" });
+      }
+    }
+
+    return list;
+  }, [query, searchHistory, dynamicKeywords]);
+
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [suggestions.length, query]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setShowSuggestions(false);
+    onExecuteSearch(query.trim());
   };
 
   const handleSelectSuggestion = (text: string) => {
     setQuery(text);
+    setShowSuggestions(false);
+    setHighlightedIndex(-1);
     onExecuteSearch(text);
-    setIsFocused(false);
   };
 
-  const hasSuggestionsToShow =
-    showSuggestionsDropdown &&
-    isFocused &&
-    (suggestions.history.length > 0 || suggestions.screenshots.length > 0);
+  const handleClear = () => {
+    setQuery("");
+    onExecuteSearch("");
+    setHighlightedIndex(-1);
+    inputRef.current?.focus();
+  };
+
+  const toggleVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript || "";
+      if (transcript) {
+        setQuery(transcript);
+        onExecuteSearch(transcript);
+      }
+      setIsListening(false);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+    } else if (e.key === "Enter" && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+      e.preventDefault();
+      handleSelectSuggestion(suggestions[highlightedIndex].text);
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setHighlightedIndex(-1);
+    }
+  };
+
+  const hasSpeechSupport =
+    typeof window !== "undefined" &&
+    Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   return (
-    <div ref={containerRef} className="w-full relative z-30">
-      {/* Search Input Box */}
-      <div
-        className={`relative flex items-center w-full rounded-2xl border transition-all duration-300 ${
-          isFocused
-            ? "bg-[#0D0F0D] border-[#B7F36B] shadow-[inset_3px_3px_8px_rgba(0,0,0,0.7),inset_-2px_-2px_5px_rgba(255,255,255,0.02)]"
-            : "bg-[#0D0F0D] border-[#30362E] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65),inset_-2px_-2px_5px_rgba(255,255,255,0.02)] hover:border-[#B7F36B]/60"
+    <div ref={containerRef} className="relative w-full">
+      <form
+        onSubmit={handleSubmit}
+        role="search"
+        className={`relative flex items-center gap-2 p-2 rounded-2xl border bg-[#0D0F0D] transition-colors ${
+          isFocused ? "border-[#B7F36B]" : "border-[#30362E] hover:border-[#777E74]"
         }`}
       >
-        {/* Subtle searching indicator bar */}
-        {isSearching && (
-          <div className="absolute inset-x-4 -bottom-px h-[2px] bg-[#B7F36B] rounded-full" />
-        )}
+        <label htmlFor="snapfind-main-search-input" className="sr-only">
+          Search screenshots by text, description, tags, or keywords
+        </label>
 
-        {/* Left Search Icon */}
-        <div className="pl-4 pr-3 text-[#777E74] flex items-center shrink-0">
-          {isSearching ? (
-            <div className="text-[#B7F36B]">
-              <Loader2 className="w-5 h-5 animate-spin" />
-            </div>
-          ) : (
-            <Search className={`w-5 h-5 transition-colors ${isFocused ? "text-[#B7F36B]" : "text-[#777E74]"}`} />
-          )}
+        <div className="pl-2.5 flex items-center justify-center text-[#B7F36B]" aria-hidden="true">
+          {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
         </div>
 
-        {/* Input Field */}
         <input
-          ref={inputRef}
           id="snapfind-main-search-input"
+          ref={inputRef}
           type="text"
+          role="combobox"
+          aria-expanded={showSuggestions && suggestions.length > 0}
+          aria-controls="snapfind-search-suggestions"
+          aria-activedescendant={
+            highlightedIndex >= 0 ? `search-suggestion-${highlightedIndex}` : undefined
+          }
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setHighlightedIndex(-1);
+            setShowSuggestions(true);
           }}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => {
+            setIsFocused(true);
+            setShowSuggestions(true);
+          }}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder || ROTATING_PLACEHOLDERS[placeholderIdx]}
-          className="w-full bg-transparent border-none outline-none text-sm sm:text-base font-normal placeholder:text-[#777E74] text-[#F7F8F5] py-3.5 sm:py-4 pr-2"
+          placeholder="Search OCR text, receipts, tags, dates, or descriptions..."
+          className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm sm:text-base text-[#F7F8F5] placeholder-[#777E74] py-2"
         />
 
-        {/* Voice Listening indicator */}
-        {isVoiceListening && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#141714] border border-[#B7F36B] text-[#B7F36B] text-xs mr-2 font-mono font-semibold">
-            <Volume2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">LISTENING...</span>
-          </div>
-        )}
-
-        {/* Clear (X) button ONLY when text exists */}
         {query && (
           <button
-            id="snapfind-clear-search-btn"
             type="button"
-            onClick={() => {
-              setQuery("");
-              onExecuteSearch("");
-              inputRef.current?.focus();
-            }}
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#A5AAA1] hover:text-[#F7F8F5] mr-1 transition-colors cursor-pointer"
-            title="Clear search"
+            onClick={handleClear}
+            aria-label="Clear search input"
+            className="p-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#A5AAA1] hover:text-[#F7F8F5] border border-[#30362E] transition-colors cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         )}
 
-        {/* Voice search button */}
-        <button
-          id="snapfind-voice-search-btn"
-          type="button"
-          onClick={startVoiceSearch}
-          className={`p-2 rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] transition-colors cursor-pointer mr-1.5 ${
-            isVoiceListening ? "text-[#B7F36B] bg-[#1B1F1A]" : ""
-          }`}
-          title="Voice Search"
-        >
-          <Mic className="w-4 h-4" />
-        </button>
-
-        {/* Primary Search button */}
-        <button
-          id="snapfind-execute-search-btn"
-          type="button"
-          onClick={() => {
-            onExecuteSearch(query);
-            setIsFocused(false);
-          }}
-          disabled={isSearching}
-          className="mr-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] active:scale-98 text-[#10130D] border border-[#B7F36B] font-bold text-xs sm:text-sm shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all shrink-0 cursor-pointer disabled:opacity-50"
-        >
-          <span>Search</span>
-        </button>
-      </div>
-
-      {/* Autocomplete Suggestions Popover */}
-      <AnimatePresence>
-        {hasSuggestionsToShow && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 p-2 rounded-2xl border border-[#30362E] bg-[#141714] text-[#F7F8F5] shadow-[8px_8px_24px_rgba(0,0,0,0.85),-2px_-2px_8px_rgba(255,255,255,0.02)] z-50 max-h-[320px] overflow-y-auto"
+        {hasSpeechSupport && (
+          <button
+            type="button"
+            onClick={toggleVoiceSearch}
+            aria-label={isListening ? "Stop voice search" : "Start voice search"}
+            className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${
+              isListening
+                ? "bg-rose-950 border-rose-700 text-rose-200"
+                : "bg-[#1B1F1A] hover:bg-[#222720] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5]"
+            }`}
           >
-            {suggestions.history.length > 0 && (
-              <div className="space-y-0.5">
-                <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#777E74]">
-                  Recent Searches
-                </div>
-                {suggestions.history.map((h) => (
-                  <div
-                    key={h.id}
-                    onClick={() => handleSelectSuggestion(h.text)}
-                    className="px-3 py-2 rounded-xl text-xs flex items-center justify-between cursor-pointer hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] border border-transparent hover:border-[#30362E] transition-colors"
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
+        )}
+
+        <button
+          type="submit"
+          disabled={isSearching}
+          className="px-4 sm:px-5 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-60"
+        >
+          <span>{isSearching ? "Searching..." : "Search"}</span>
+        </button>
+      </form>
+
+      {/* Suggestions Dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div
+          id="snapfind-search-suggestions"
+          role="listbox"
+          aria-label="Search suggestions"
+          className="absolute left-0 right-0 top-full mt-2 z-40 rounded-2xl border bg-[#141714] border-[#30362E] overflow-hidden"
+        >
+          <div className="px-4 py-2 border-b border-[#30362E] flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[#777E74]">
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-[#B7F36B]" />
+              {query.trim() ? "Matching Suggestions" : "Recent & Suggested Searches"}
+            </span>
+            <span className="font-mono text-[10px]">↑ ↓ to navigate</span>
+          </div>
+
+          <ul className="divide-y divide-[#222720] max-h-72 overflow-y-auto">
+            {suggestions.map((sug, idx) => {
+              const isHighlighted = idx === highlightedIndex;
+              return (
+                <li
+                  key={`${sug.type}-${sug.text}-${idx}`}
+                  id={`search-suggestion-${idx}`}
+                  role="option"
+                  aria-selected={isHighlighted}
+                  className={`flex items-center justify-between gap-2 px-4 py-2.5 transition-colors ${
+                    isHighlighted ? "bg-[#222720]" : "hover:bg-[#1B1F1A]"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSelectSuggestion(sug.text);
+                    }}
+                    className="flex-1 flex items-center gap-3 text-left min-w-0 cursor-pointer"
                   >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <Clock className="w-3.5 h-3.5 text-[#777E74] shrink-0" />
-                      <span className="truncate">{h.text}</span>
-                    </div>
-                    {onDeleteHistoryItem && (
+                    <span className="text-[#B7F36B] shrink-0">
+                      {sug.type === "recent" ? (
+                        <Clock className="w-4 h-4 text-[#A5AAA1]" />
+                      ) : sug.type === "keyword" ? (
+                        <Tag className="w-4 h-4 text-[#B7F36B]" />
+                      ) : (
+                        <TrendingUp className="w-4 h-4 text-[#777E74]" />
+                      )}
+                    </span>
+                    <span className="text-sm text-[#F7F8F5] font-medium truncate">{sug.text}</span>
+                    {sug.subtitle && (
+                      <span className="text-[11px] text-[#777E74] hidden sm:inline shrink-0">
+                        {sug.subtitle}
+                      </span>
+                    )}
+                  </button>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {sug.type === "recent" && sug.id && onDeleteHistoryItem && (
                       <button
                         type="button"
-                        onClick={(e) => {
+                        aria-label={`Remove "${sug.text}" from recent searches`}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
-                          onDeleteHistoryItem(h.id);
+                          onDeleteHistoryItem(sug.id!);
                         }}
-                        className="p-1 rounded hover:bg-[#1B1F1A] text-[#777E74] hover:text-[#F7F8F5]"
-                        title="Remove"
+                        className="p-1.5 rounded-lg text-[#777E74] hover:text-rose-400 hover:bg-[#0D0F0D] cursor-pointer"
                       >
-                        <X className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
+                    <ChevronRight className="w-3.5 h-3.5 text-[#777E74]" aria-hidden="true" />
                   </div>
-                ))}
-              </div>
-            )}
-
-            {suggestions.screenshots.length > 0 && (
-              <div className="space-y-0.5 mt-1">
-                <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#777E74]">
-                  Matching Screenshots
-                </div>
-                {suggestions.screenshots.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => handleSelectSuggestion(s.text)}
-                    className="px-3 py-2 rounded-xl text-xs flex items-center gap-2.5 cursor-pointer hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#B7F36B] border border-transparent hover:border-[#30362E] transition-colors"
-                  >
-                    <Search className="w-3.5 h-3.5 text-[#B7F36B] shrink-0" />
-                    <span className="truncate">{s.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
-
-export default SearchBar;

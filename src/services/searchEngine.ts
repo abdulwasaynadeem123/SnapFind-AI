@@ -868,8 +868,8 @@ export class SnapFindSearchEngine {
       {
         name: "ocr",
         weight: SEARCH_FIELD_WEIGHTS.ocr,
-        text: item.fullText || item.ocr_text || "",
-        tokens: tokenize(item.fullText || item.ocr_text || ""),
+        text: item.fullText || item.ocr_text || (item as any).ocrText || (item as any).extracted_text || "",
+        tokens: tokenize(item.fullText || item.ocr_text || (item as any).ocrText || (item as any).extracted_text || ""),
       },
       {
         name: "filename",

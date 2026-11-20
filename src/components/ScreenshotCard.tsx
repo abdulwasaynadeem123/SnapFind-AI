@@ -317,9 +317,33 @@ export const ScreenshotCard: React.FC<ScreenshotCardProps> = ({
             </div>
           ) : (
             <p className="text-xs text-[#A5AAA1] line-clamp-2 leading-relaxed">
-              {item.summary || item.fullText?.slice(0, 90) || "Screenshot capture"}
+              {item.summary || item.description || item.fullText?.slice(0, 90) || "Screenshot capture"}
             </p>
           )}
+
+          {/* Relevant Tags & Keywords Metadata */}
+          {(() => {
+            const metadataChips = Array.from(
+              new Set([
+                ...(item.tags || []),
+                ...(item.keywords || []),
+                ...(item.keyEntities || []),
+              ].filter((t) => typeof t === "string" && t.trim().length > 0))
+            ).slice(0, 3);
+            if (metadataChips.length === 0) return null;
+            return (
+              <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                {metadataChips.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-1.5 py-0.5 rounded bg-[#0D0F0D] border border-[#30362E] text-[10px] font-mono text-[#A5AAA1] truncate max-w-[110px]"
+                  >
+                    #{tag.replace(/^#/, "")}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Quick Result Action Bar (Copy Text, Open Link, Move, Archive) */}
           <div className="flex items-center gap-1 pt-1 border-t border-[#30362E] text-[11px]">

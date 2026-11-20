@@ -39,6 +39,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { UserProfile, AppSettings, PaymentRequest } from "../types";
 import { useAuth } from "../context/AuthContext";
+import { useFounder } from "../context/FounderContext";
 import { SyncEngine, SyncState } from "../services/syncEngine";
 import { SubscriptionManager, PLAN_LIMITS } from "../services/billing/SubscriptionManager";
 import { ManualPaymentService } from "../services/billing/ManualPaymentService";
@@ -83,6 +84,52 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     deleteAccount,
   } = useAuth();
 
+  const {
+    remaining: vipRemaining,
+    totalSpots: vipTotalSpots,
+    isLive: isVipStatsLive,
+    isLoading: isVipStatsLoading,
+    claimFounderSpot,
+    refreshFounderStats,
+  } = useFounder();
+
+  const [isClaimingVip, setIsClaimingVip] = useState(false);
+  const [vipClaimError, setVipClaimError] = useState<string | null>(null);
+  const [vipClaimedSuccessNum, setVipClaimedSuccessNum] = useState<number | null>(null);
+  const isClaimingVipRef = useRef(false);
+
+  const handleAccountClaimVip = async () => {
+    if (isClaimingVipRef.current || isClaimingVip) return;
+    const currentUserId = user?.id || supabaseUser?.id;
+    if (!currentUserId || currentUserId === "guest" || currentUserId.startsWith("local-guest")) {
+      onOpenAuth?.();
+      return;
+    }
+    isClaimingVipRef.current = true;
+    setIsClaimingVip(true);
+    setVipClaimError(null);
+    try {
+      const res = await claimFounderSpot(currentUserId);
+      if (res.success && typeof res.founderNumber === "number" && res.founderNumber >= 1) {
+        setVipClaimedSuccessNum(res.founderNumber);
+        await refreshEntitlement();
+        await refreshFounderStats();
+        addToast?.({
+          title: `VIP Member #${res.founderNumber}`,
+          description: `Permanent VIP Seat #${res.founderNumber} of ${vipTotalSpots || 50} is now linked to your account.`,
+          type: "success",
+        });
+      } else {
+        setVipClaimError(res.error || "Unable to claim a VIP seat right now. Please try again.");
+      }
+    } catch (err: any) {
+      setVipClaimError(err?.message || "Unable to claim a VIP seat right now. Please try again.");
+    } finally {
+      isClaimingVipRef.current = false;
+      setIsClaimingVip(false);
+    }
+  };
+
   // Full Name Editing State
   const [name, setName] = useState(user.name || "");
   const [isEditingName, setIsEditingName] = useState(false);
@@ -104,10 +151,12 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
 
   // Change Email State
   const [newEmail, setNewEmail] = useState("");
   const [currentPasswordForEmail, setCurrentPasswordForEmail] = useState("");
+  const [showEmailCurrentPass, setShowEmailCurrentPass] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -173,8 +222,12 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
       user.entitlement?.tier === "Founder" ||
       entitlement?.tier === "Founder"
   );
-  const founderNum = user.entitlement?.founderNumber || entitlement?.founderNumber || (user as any).founderNumber;
-  const founderNumStr = founderNum ? `#${String(founderNum).padStart(2, "0")}` : "Verified";
+  const founderNum =
+    vipClaimedSuccessNum ||
+    user.entitlement?.founderNumber ||
+    entitlement?.founderNumber ||
+    (user as any).founderNumber;
+  const founderNumStr = founderNum ? `#${founderNum}` : "Verified";
 
   const isLifetimePro = !isFounder && Boolean(
     user.entitlement?.isPro ||
@@ -199,9 +252,14 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
   // Handle Name Update
   const handleSaveName = async () => {
+    if (nameLoading) return;
     const trimmed = name.trim();
-    if (!trimmed) {
-      setNameMsg({ type: "error", text: "Name cannot be blank." });
+    if (trimmed.length < 2) {
+      setNameMsg({ type: "error", text: "Display name must be at least 2 characters." });
+      return;
+    }
+    if (trimmed.length > 80) {
+      setNameMsg({ type: "error", text: "Display name cannot exceed 80 characters." });
       return;
     }
     setNameLoading(true);
@@ -211,7 +269,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     if (res.error) {
       setNameMsg({ type: "error", text: res.error });
     } else {
-      setNameMsg({ type: "success", text: "Full name updated successfully!" });
+      setNameMsg({ type: "success", text: "Display name updated successfully." });
       setIsEditingName(false);
       if (addToast) {
         addToast({
@@ -289,8 +347,13 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   // Handle Password Change
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setPassMsg({ type: "error", text: "New password must be at least 6 characters long." });
+    if (passLoading) return;
+    if (!currentPasswordForPass && (user.provider || supabaseUser?.app_metadata?.provider || "email") === "email") {
+      setPassMsg({ type: "error", text: "Please enter your current password." });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPassMsg({ type: "error", text: "New password must be at least 8 characters long." });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -304,18 +367,18 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     if (res.error) {
       setPassMsg({ type: "error", text: res.error });
     } else {
-      setPassMsg({ type: "success", text: "Password changed successfully!" });
+      setPassMsg({ type: "success", text: "Password changed successfully." });
+      setCurrentPasswordForPass("");
+      setNewPassword("");
+      setConfirmPassword("");
       setTimeout(() => {
         setShowPassModal(false);
-        setCurrentPasswordForPass("");
-        setNewPassword("");
-        setConfirmPassword("");
         setPassMsg(null);
       }, 1500);
       if (addToast) {
         addToast({
           title: "Password Updated",
-          description: "Your account credentials have been securely updated.",
+          description: "Your account password has been securely updated.",
           type: "success",
         });
       }
@@ -325,9 +388,18 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   // Handle Email Change
   const handleChangeEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = newEmail.trim();
-    if (!clean || !clean.includes("@")) {
+    if (emailLoading) return;
+    const clean = newEmail.trim().toLowerCase();
+    if (!clean || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
       setEmailMsg({ type: "error", text: "Please enter a valid email address." });
+      return;
+    }
+    if (clean === (user.email || supabaseUser?.email || "").trim().toLowerCase()) {
+      setEmailMsg({ type: "error", text: "Please enter a different email address from your current one." });
+      return;
+    }
+    if (!currentPasswordForEmail && (user.provider || supabaseUser?.app_metadata?.provider || "email") === "email") {
+      setEmailMsg({ type: "error", text: "Please enter your current password to verify this change." });
       return;
     }
     setEmailLoading(true);
@@ -337,16 +409,17 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     if (res.error) {
       setEmailMsg({ type: "error", text: res.error });
     } else {
+      setCurrentPasswordForEmail("");
       setEmailMsg({
         type: "success",
         text: res.requiresVerification
-          ? `Confirmation links sent to both your current email and ${clean}. Please verify to complete change.`
-          : "Email updated successfully!",
+          ? `Confirmation links have been sent to verify ${clean}. Follow the verification email to complete the change.`
+          : "Email updated successfully.",
       });
       if (addToast) {
         addToast({
-          title: "Email Change Requested",
-          description: `Verification link dispatched to ${clean}.`,
+          title: "Email Verification Sent",
+          description: `Check your inbox to verify ${clean}.`,
           type: "info",
         });
       }
@@ -396,20 +469,18 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     }
   };
 
-  // Calculate Computed Metadata
+  // Calculate Computed Metadata — never fabricate a fake creation date
   const accountCreatedDate = useMemo(() => {
     const raw = user.createdAt || supabaseUser?.created_at;
-    if (!raw) return "August 2026";
-    try {
-      return new Date(raw).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return "Recently";
-    }
-  }, [user.createdAt, supabaseUser]);
+    if (!raw) return null;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }, [user.createdAt, supabaseUser?.created_at]);
 
   const storageUsedMB = (indexedCount * 0.42).toFixed(1);
   const storageLimitMB = user.storageLimitMB || 5000;
@@ -495,39 +566,57 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 {isEditingName ? (
-                  <div className="flex items-center gap-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSaveName();
+                    }}
+                    className="flex items-center gap-2 flex-wrap justify-center md:justify-start"
+                  >
+                    <label htmlFor="account-display-name-input" className="sr-only">
+                      Display Name
+                    </label>
                     <input
+                      id="account-display-name-input"
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter full name"
-                      className="px-3.5 py-1.5 rounded-xl text-base font-bold border outline-none bg-[#0D0F0D] border-[#30362E] focus:border-[#B7F36B] text-[#F7F8F5] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.65)]"
+                      placeholder="Enter display name"
+                      maxLength={80}
+                      className="px-3.5 py-1.5 rounded-xl text-base font-bold border outline-none bg-[#0D0F0D] border-[#30362E] focus:border-[#B7F36B] text-[#F7F8F5]"
                       autoFocus
                     />
                     <button
-                      onClick={handleSaveName}
+                      type="submit"
                       disabled={nameLoading}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                      className="px-3.5 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
                     >
                       {nameLoading ? "Saving..." : "Save"}
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         setName(user.name || "");
+                        setNameMsg(null);
                         setIsEditingName(false);
                       }}
                       className="px-3 py-1.5 rounded-xl border border-[#30362E] bg-[#1B1F1A] text-xs font-medium hover:bg-[#222720] cursor-pointer text-[#A5AAA1]"
                     >
                       Cancel
                     </button>
-                  </div>
+                  </form>
                 ) : (
                   <div className="flex items-center justify-center md:justify-start gap-2.5">
                     <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#F7F8F5]">
                       {user.name || "SnapFind User"}
                     </h2>
                     <button
-                      onClick={() => setIsEditingName(true)}
+                      type="button"
+                      onClick={() => {
+                        setName(user.name || "");
+                        setNameMsg(null);
+                        setIsEditingName(true);
+                      }}
                       className="text-xs text-[#B7F36B] hover:underline font-semibold cursor-pointer"
                     >
                       Edit Name
@@ -537,39 +626,39 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
                 <div className="flex items-center justify-center md:justify-start gap-2 text-xs text-[#A5AAA1]">
                   <Mail className="w-3.5 h-3.5 text-[#B7F36B]" />
-                  <span className="font-mono text-[#F7F8F5]">{user.email || "guest@snapfind.ai"}</span>
+                  <span className="font-mono text-[#F7F8F5]">{user.email || "No email linked"}</span>
                   {user.emailConfirmedAt && (
-                    <span className="flex items-center gap-1 text-[#B7F36B] text-[10px] bg-[#B7F36B]/15 px-2 py-0.5 rounded-full border border-[#B7F36B]/30 font-semibold">
+                    <span className="flex items-center gap-1 text-[#B7F36B] text-[10px] bg-[#1B1F1A] px-2 py-0.5 rounded-md border border-[#30362E] font-semibold">
                       <CheckCircle2 className="w-3 h-3 text-[#B7F36B]" /> Verified
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Plan Tier Pill & Action */}
+              {/* Plan Tier Badge & Action */}
               <div className="flex items-center justify-center gap-2">
                 {isFounder ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 shadow-sm bg-[#B7F36B]/15 border-[#B7F36B]/35 text-[#B7F36B]">
+                  <div className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 bg-[#1B1F1A] border-[#B7F36B] text-[#B7F36B]">
                     <Crown className="w-3.5 h-3.5 text-[#B7F36B]" />
                     <span>VIP User • Seat {founderNumStr}</span>
                   </div>
                 ) : isLifetimePro ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#B7F36B]/15 border-[#B7F36B]/35 text-[#B7F36B]">
+                  <div className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 bg-[#1B1F1A] border-[#B7F36B] text-[#B7F36B]">
                     <Gem className="w-3.5 h-3.5 text-[#B7F36B]" />
-                    <span>💎 Lifetime Pro</span>
+                    <span>Lifetime Pro</span>
                   </div>
                 ) : isPaymentPending ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-amber-500/20 border-amber-500/40 text-amber-300">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 bg-amber-950 border-amber-700 text-amber-200">
+                    <Clock className="w-3.5 h-3.5 text-amber-300" />
                     <span>Payment Pending</span>
                   </div>
                 ) : isPaymentRejected ? (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-rose-500/20 border-rose-400/30 text-rose-300">
-                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                  <div className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 bg-rose-950 border-rose-700 text-rose-200">
+                    <XCircle className="w-3.5 h-3.5 text-rose-300" />
                     <span>Payment Rejected</span>
                   </div>
                 ) : (
-                  <div className="px-4 py-1.5 rounded-2xl border text-xs font-extrabold flex items-center gap-1.5 shadow-sm bg-[#1B1F1A] border-[#30362E] text-[#A5AAA1]">
+                  <div className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 bg-[#1B1F1A] border-[#30362E] text-[#A5AAA1]">
                     <Sparkles className="w-3.5 h-3.5 text-[#777E74]" />
                     <span>Free Plan</span>
                   </div>
@@ -577,23 +666,26 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
                 {isFree ? (
                   <button
+                    type="button"
                     onClick={() => setShowProModal(true)}
-                    className="px-3.5 py-1.5 rounded-2xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center gap-1 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] transition-all cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Upgrade to Lifetime Pro</span>
+                    <span>Upgrade to Pro</span>
                   </button>
                 ) : isPaymentPending || isPaymentRejected ? (
                   <button
+                    type="button"
                     onClick={() => setShowManualPaymentModal(true)}
-                    className="px-3 py-1.5 rounded-2xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-xs font-semibold transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                    className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     {isPaymentPending ? "View Payment" : "Re-submit Payment"}
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => setShowProModal(true)}
-                    className="px-3 py-1.5 rounded-2xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-medium transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
+                    className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-medium transition-colors cursor-pointer"
                   >
                     Manage Plan
                   </button>
@@ -603,8 +695,10 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
             {nameMsg && (
               <p
+                role="status"
+                aria-live="polite"
                 className={`text-xs font-medium ${
-                  nameMsg.type === "success" ? "text-emerald-400" : "text-rose-400"
+                  nameMsg.type === "success" ? "text-[#B7F36B]" : "text-rose-400"
                 }`}
               >
                 {nameMsg.text}
@@ -612,18 +706,18 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             )}
 
             {/* Quick Overview Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/10">
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-[#B7F36B]" /> Joined
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#30362E]">
+              <div className="p-3 rounded-xl bg-[#0D0F0D] border border-[#30362E]">
+                <span className="text-[11px] text-[#A5AAA1] flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-[#B7F36B]" /> Account Created
                 </span>
-                <span className="text-xs font-bold text-slate-200 mt-1 block truncate">
-                  {accountCreatedDate}
+                <span className="text-xs font-bold text-[#F7F8F5] mt-1 block truncate">
+                  {accountCreatedDate || "Unavailable"}
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                <span className="text-[11px] text-slate-400 flex items-center gap-1">
+              <div className="p-3 rounded-xl bg-[#0D0F0D] border border-[#30362E]">
+                <span className="text-[11px] text-[#A5AAA1] flex items-center gap-1">
                   <Layers className="w-3 h-3 text-[#B7F36B]" /> Screenshots
                 </span>
                 <span className="text-xs font-bold text-[#F7F8F5] mt-1 block font-mono">
@@ -631,17 +725,17 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <HardDrive className="w-3 h-3 text-emerald-400" /> Cloud Usage
+              <div className="p-3 rounded-xl bg-[#0D0F0D] border border-[#30362E]">
+                <span className="text-[11px] text-[#A5AAA1] flex items-center gap-1">
+                  <HardDrive className="w-3 h-3 text-[#B7F36B]" /> Cloud Usage
                 </span>
-                <span className="text-xs font-bold text-emerald-300 mt-1 block font-mono">
+                <span className="text-xs font-bold text-[#B7F36B] mt-1 block font-mono">
                   {storageUsedMB} MB / {(storageLimitMB / 1024).toFixed(0)} GB
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                <span className="text-[11px] text-slate-400 flex items-center gap-1">
+              <div className="p-3 rounded-xl bg-[#0D0F0D] border border-[#30362E]">
+                <span className="text-[11px] text-[#A5AAA1] flex items-center gap-1">
                   <RefreshCw className="w-3 h-3 text-[#B7F36B]" /> Last Sync
                 </span>
                 <span className="text-xs font-bold text-[#F7F8F5] mt-1 block font-mono">
@@ -650,7 +744,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                         hour: "2-digit",
                         minute: "2-digit",
                       })
-                    : "Just now"}
+                    : "Not synced yet"}
                 </span>
               </div>
             </div>
@@ -659,13 +753,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
       </div>
 
       {/* Authoritative Entitlement Card */}
-      <div
-        className={`p-6 rounded-3xl border relative overflow-hidden transition-all ${
-          isDark
-            ? "bg-gradient-to-b from-[#18181F]/90 to-[#121216]/90 border-white/10 shadow-xl"
-            : "bg-white border-slate-200 shadow-md"
-        }`}
-      >
+      <div className="p-6 rounded-2xl border relative overflow-hidden transition-colors bg-[#141714] border-[#30362E]">
         {isFounder ? (
           /* ================= VIP USER STATE ================= */
           <div className="space-y-4">
@@ -676,7 +764,9 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 </div>
                 <div>
                   <span className="text-[11px] font-semibold text-[#B7F36B] uppercase tracking-wider">VIP Program Status</span>
-                  <h3 className="text-xl sm:text-2xl font-bold text-[#F7F8F5] tracking-tight">VIP User • Seat {founderNumStr}</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#F7F8F5] tracking-tight">
+                    {founderNum ? `VIP Member #${founderNum}` : "VIP Member"}
+                  </h3>
                 </div>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#B7F36B]/15 text-[#B7F36B] border border-[#B7F36B]/35 self-start sm:self-auto">
@@ -880,6 +970,43 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
               </p>
             </div>
 
+            {/* Server-Authoritative Claim Free VIP Seat Callout (shown only while seats remain) */}
+            {isVipStatsLive && !isVipStatsLoading && vipRemaining !== null && vipRemaining > 0 && (
+              <div className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#B7F36B]/50 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B]">
+                      <Crown className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#F7F8F5]">Claim Your Free VIP Seat</h4>
+                      <p className="text-xs text-[#A5AAA1]">
+                        {vipRemaining} of {vipTotalSpots || 50} seats remaining. Unlock 150,000 screenshots &amp; Lifetime Pro free forever.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAccountClaimVip}
+                    disabled={isClaimingVip}
+                    className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    <Crown className="w-3.5 h-3.5" />
+                    <span>{isClaimingVip ? "Claiming VIP Seat..." : vipClaimError ? "Retry Claim VIP Seat" : "Claim VIP Seat"}</span>
+                  </button>
+                </div>
+                {vipClaimError && (
+                  <div
+                    role="alert"
+                    className="p-3 rounded-xl bg-rose-950 border border-rose-700 text-rose-100 text-xs flex items-start gap-2"
+                  >
+                    <AlertCircle className="w-4 h-4 text-rose-300 shrink-0 mt-0.5" />
+                    <span>{vipClaimError}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
               <button
                 onClick={() => setShowProModal(true)}
@@ -891,7 +1018,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
               <button
                 onClick={fetchAuthoritativeStatus}
                 disabled={isRefreshingEntitlement}
-                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                className="px-4 py-3 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingEntitlement ? "animate-spin" : ""}`} />
                 <span>Refresh Status</span>
@@ -958,7 +1085,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                   window.location.hash = "#admin/payments";
                 }
               }}
-              className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-black/40 transition cursor-pointer shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
             >
               <ShieldCheck className="w-4 h-4" />
               Open Payments Hub
@@ -969,27 +1096,24 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
 
       {/* Cloud Storage & Synchronization Progress Banner */}
-      <div
-        className={`p-6 rounded-3xl border space-y-4 ${
-          isDark ? "bg-[#121216]/90 border-white/10" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="flex items-center justify-between">
+      <div className="p-6 rounded-2xl border space-y-4 bg-[#141714] border-[#30362E]">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-2.5 rounded-xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
               <Cloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">Encrypted Cloud Storage & Sync</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="font-bold text-sm text-[#F7F8F5]">Encrypted Cloud Storage & Sync</h3>
+              <p className="text-xs text-[#A5AAA1]">
                 Encrypted backup allocation for OCR vectors, embeddings, and media binaries.
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={() => SyncEngine.scheduleSync(0)}
             disabled={syncState.isSyncing}
-            className="px-3.5 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-blue-600/30 text-[#B7F36B] border border-[#30362E] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#B7F36B] border border-[#30362E] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncState.isSyncing ? "animate-spin" : ""}`} />
             <span>Force Sync</span>
@@ -998,111 +1122,118 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Used: {storageUsedMB} MB</span>
-            <span className="text-slate-200 font-mono font-bold">
+            <span className="text-[#A5AAA1]">Used: {storageUsedMB} MB</span>
+            <span className="text-[#F7F8F5] font-mono font-bold">
               {storageUsagePercent.toFixed(1)}% of {(storageLimitMB / 1024).toFixed(0)} GB Quota
             </span>
           </div>
-          <div className="w-full h-2.5 rounded-full bg-slate-800/80 overflow-hidden p-0.5 border border-white/5">
+          <div className="w-full h-2.5 rounded-full bg-[#0D0F0D] overflow-hidden p-0.5 border border-[#30362E]">
             <div
-              className="h-full bg-[#B7F36B] rounded-full transition-all duration-500"
+              className="h-full bg-[#B7F36B] rounded-full transition-all duration-300"
               style={{ width: `${storageUsagePercent}%` }}
             />
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-            <span>Local SQLite Vector DB: Active</span>
-            <span className="text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> End-to-End Encryption
+          <div className="flex items-center justify-between text-[11px] text-[#A5AAA1] pt-1">
+            <span>Local Index Storage: Active</span>
+            <span className="text-[#B7F36B] flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Encrypted Sync
             </span>
           </div>
         </div>
       </div>
 
-      {/* Account Security Controls (Apple / ChatGPT Settings Card) */}
-      <div
-        className={`p-6 rounded-3xl border space-y-5 ${
-          isDark ? "bg-[#121216]/90 border-white/10" : "bg-white border-slate-200"
-        }`}
-      >
-        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-          <div className="p-2.5 rounded-2xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
+      {/* Account Security Controls */}
+      <div className="p-6 rounded-2xl border space-y-5 bg-[#141714] border-[#30362E]">
+        <div className="flex items-center gap-3 border-b border-[#30362E] pb-4">
+          <div className="p-2.5 rounded-xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-white">Security & Authenticated Credentials</h3>
-            <p className="text-xs text-slate-400">
-              Manage your password, login email address, and global session states.
+            <h3 className="font-bold text-sm text-[#F7F8F5]">Account Security & Credentials</h3>
+            <p className="text-xs text-[#A5AAA1]">
+              Update your password, change your login email with verification, or manage active sessions.
             </p>
           </div>
         </div>
 
         <div className="space-y-3">
           {/* Change Password Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-[#0D0F0D] border border-[#30362E] gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-[#1B1F1A] text-[#B7F36B]">
+              <div className="p-2 rounded-xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
                 <Lock className="w-4 h-4" />
               </div>
               <div>
-                <div className="font-bold text-xs text-white">Account Password</div>
-                <div className="text-[11px] text-slate-400">
-                  Update your authentication password (requires current password verification)
+                <div className="font-bold text-xs text-[#F7F8F5]">Account Password</div>
+                <div className="text-[11px] text-[#A5AAA1]">
+                  Update your password securely (requires current password verification)
                 </div>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setShowPassModal(true);
                 setPassMsg(null);
+                setCurrentPasswordForPass("");
+                setNewPassword("");
+                setConfirmPassword("");
+                setShowCurrentPass(false);
+                setShowNewPass(false);
+                setShowConfirmPass(false);
               }}
-              className="px-4 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] text-xs font-bold transition-all cursor-pointer self-start sm:self-auto"
+              className="px-4 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] border border-[#30362E] hover:border-[#B7F36B] text-xs font-bold transition-colors cursor-pointer self-start sm:self-auto"
             >
               Change Password
             </button>
           </div>
 
           {/* Change Email Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-[#0D0F0D] border border-[#30362E] gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-[#1B1F1A] text-[#B7F36B]">
+              <div className="p-2 rounded-xl bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]">
                 <Mail className="w-4 h-4" />
               </div>
               <div>
-                <div className="font-bold text-xs text-white">Primary Login Email</div>
-                <div className="text-[11px] text-slate-400">
-                  Current: <span className="font-mono text-slate-300 font-semibold">{user.email}</span>
+                <div className="font-bold text-xs text-[#F7F8F5]">Primary Login Email</div>
+                <div className="text-[11px] text-[#A5AAA1]">
+                  Current: <span className="font-mono text-[#F7F8F5] font-semibold">{user.email}</span>
                 </div>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setShowEmailModal(true);
                 setEmailMsg(null);
-                setNewEmail(user.email || "");
+                setNewEmail("");
+                setCurrentPasswordForEmail("");
+                setShowEmailCurrentPass(false);
               }}
-              className="px-4 py-2 rounded-xl bg-[#1B1F1A] hover:bg-blue-600/30 text-[#B7F36B] border border-[#30362E] text-xs font-bold transition-all cursor-pointer self-start sm:self-auto"
+              className="px-4 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#B7F36B] border border-[#30362E] hover:border-[#B7F36B] text-xs font-bold transition-colors cursor-pointer self-start sm:self-auto"
             >
               Change Email
             </button>
           </div>
 
           {/* Sign Out from All Devices */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-[#0D0F0D] border border-[#30362E] gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+              <div className="p-2 rounded-xl bg-[#1B1F1A] text-amber-300 border border-[#30362E]">
                 <Smartphone className="w-4 h-4" />
               </div>
               <div>
-                <div className="font-bold text-xs text-white">Global Session Management</div>
-                <div className="text-[11px] text-slate-400">
-                  Revoke all active tokens and sign out from all browser tabs, mobile, and desktop instances
+                <div className="font-bold text-xs text-[#F7F8F5]">Global Session Management</div>
+                <div className="text-[11px] text-[#A5AAA1]">
+                  Revoke active sessions and sign out from all browsers and devices
                 </div>
               </div>
             </div>
             <button
+              type="button"
               onClick={handleSignOutAll}
               disabled={signOutAllLoading}
-              className="px-4 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer self-start sm:self-auto disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-amber-300 border border-[#30362E] text-xs font-bold transition-colors cursor-pointer self-start sm:self-auto disabled:opacity-50"
             >
               {signOutAllLoading ? "Signing out..." : "Sign Out All Devices"}
             </button>
@@ -1111,38 +1242,35 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
       </div>
 
       {/* Danger Zone: Permanent Account Deletion */}
-      <div
-        className={`p-6 rounded-3xl border space-y-4 ${
-          isDark ? "bg-rose-950/20 border-rose-500/30" : "bg-rose-50 border-rose-200"
-        }`}
-      >
+      <div className="p-6 rounded-2xl border space-y-4 bg-[#141714] border-rose-800">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+          <div className="p-2.5 rounded-xl bg-rose-950 text-rose-300 border border-rose-800">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-rose-300">Danger Zone</h3>
-            <p className="text-xs text-slate-400">
-              Irreversible account erasure and cloud database purging.
+            <h3 className="font-bold text-sm text-rose-200">Danger Zone</h3>
+            <p className="text-xs text-[#A5AAA1]">
+              Irreversible account deletion and cloud data removal.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-[#09090B]/60 border border-rose-500/20 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-[#0D0F0D] border border-rose-900 gap-3">
           <div>
-            <div className="font-bold text-xs text-white">Delete SnapFind Account Permanently</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              Permanently purges your user profile, credentials, indexed screenshots, and local cache.
+            <div className="font-bold text-xs text-[#F7F8F5]">Delete SnapFind Account Permanently</div>
+            <div className="text-[11px] text-[#A5AAA1] mt-0.5">
+              Permanently purges your profile, credentials, indexed screenshots, and local cache.
             </div>
           </div>
           <button
+            type="button"
             onClick={() => {
               setShowDeleteModal(true);
               setDeleteConfirmText("");
               setDeletePassword("");
               setDeleteError(null);
             }}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer self-start sm:self-auto shadow-lg shadow-rose-600/30"
+            className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-[#F7F8F5] text-xs font-bold transition-colors cursor-pointer self-start sm:self-auto"
           >
             Delete Account
           </button>
@@ -1151,16 +1279,26 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
       {/* ================= MODAL: CHANGE PROFILE PICTURE ================= */}
       {showAvatarModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="max-w-md w-full p-6 rounded-3xl bg-[#18181F] border border-white/10 text-white space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080908]/85"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="avatar-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAvatarModal(false);
+          }}
+        >
+          <div className="max-w-md w-full p-6 rounded-2xl bg-[#141714] border border-[#30362E] text-[#F7F8F5] space-y-5">
+            <div className="flex items-center justify-between border-b border-[#30362E] pb-4">
               <div className="flex items-center gap-2.5">
                 <Camera className="w-5 h-5 text-[#B7F36B]" />
-                <h3 className="text-base font-bold">Update Profile Picture</h3>
+                <h3 id="avatar-modal-title" className="text-base font-bold">Update Profile Picture</h3>
               </div>
               <button
+                type="button"
+                aria-label="Close avatar dialog"
                 onClick={() => setShowAvatarModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                className="p-1.5 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
               >
                 ✕
               </button>
@@ -1168,8 +1306,11 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
             {/* Custom Upload Button */}
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">Upload from Device</label>
+              <label htmlFor="account-avatar-file" className="block text-xs font-semibold text-[#F7F8F5]">
+                Upload from Device
+              </label>
               <input
+                id="account-avatar-file"
                 type="file"
                 ref={fileInputRef}
                 accept="image/*"
@@ -1177,9 +1318,10 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 className="hidden"
               />
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={avatarLoading}
-                className="w-full py-3 px-4 rounded-2xl bg-[#1B1F1A] hover:bg-blue-600/30 border border-[#30362E] text-[#B7F36B] text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] hover:border-[#B7F36B] text-[#B7F36B] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
               >
                 <UploadCloud className="w-4 h-4" />
                 <span>{avatarLoading ? "Uploading..." : "Choose Image from Device"}</span>
@@ -1188,14 +1330,16 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
             {/* Avatar Presets Grid */}
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">Or Select a Persona Preset</label>
+              <span className="block text-xs font-semibold text-[#F7F8F5]">Or Select a Preset</span>
               <div className="grid grid-cols-6 gap-2">
                 {avatarPresets.map((preset, idx) => (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => handlePresetAvatar(preset)}
                     disabled={avatarLoading}
-                    className="w-12 h-12 rounded-2xl overflow-hidden border border-white/10 hover:border-[#B7F36B] hover:scale-105 transition-all cursor-pointer"
+                    aria-label={`Select avatar preset ${idx + 1}`}
+                    className="w-12 h-12 rounded-xl overflow-hidden border border-[#30362E] hover:border-[#B7F36B] transition-colors cursor-pointer"
                   >
                     <img src={preset} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
                   </button>
@@ -1205,8 +1349,9 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
             <div className="flex justify-end pt-2">
               <button
+                type="button"
                 onClick={() => setShowAvatarModal(false)}
-                className="px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-medium cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs font-medium cursor-pointer"
               >
                 Cancel
               </button>
@@ -1217,38 +1362,54 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
       {/* ================= MODAL: CHANGE PASSWORD ================= */}
       {showPassModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="max-w-md w-full p-6 rounded-3xl bg-[#18181F] border border-white/10 text-white space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080908]/85"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="change-password-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !passLoading) setShowPassModal(false);
+          }}
+        >
+          <div className="max-w-md w-full p-6 rounded-2xl bg-[#141714] border border-[#30362E] text-[#F7F8F5] space-y-5">
+            <div className="flex items-center justify-between border-b border-[#30362E] pb-4">
               <div className="flex items-center gap-2.5">
                 <Lock className="w-5 h-5 text-[#B7F36B]" />
-                <h3 className="text-base font-bold">Change Password</h3>
+                <h3 id="change-password-modal-title" className="text-base font-bold">Change Password</h3>
               </div>
               <button
-                onClick={() => setShowPassModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                type="button"
+                aria-label="Close change password dialog"
+                onClick={() => !passLoading && setShowPassModal(false)}
+                className="p-1.5 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleChangePasswordSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleChangePasswordSubmit} noValidate className="space-y-4 text-xs">
               {/* Current Password Re-Auth */}
               <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-300">Current Password (Re-authentication)</label>
+                <label htmlFor="account-current-password" className="block font-semibold text-[#F7F8F5]">
+                  Current Password
+                </label>
                 <div className="relative">
                   <input
+                    id="account-current-password"
                     type={showCurrentPass ? "text" : "password"}
+                    autoComplete="current-password"
                     value={currentPasswordForPass}
                     onChange={(e) => setCurrentPasswordForPass(e.target.value)}
                     placeholder="Enter your current password"
                     required
-                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
+                    disabled={passLoading}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-[#B7F36B]"
                   />
                   <button
                     type="button"
+                    aria-label={showCurrentPass ? "Hide current password" : "Show current password"}
                     onClick={() => setShowCurrentPass(!showCurrentPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                   >
                     {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -1257,21 +1418,27 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
               {/* New Password */}
               <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-300">New Password</label>
+                <label htmlFor="account-new-password" className="block font-semibold text-[#F7F8F5]">
+                  New Password
+                </label>
                 <div className="relative">
                   <input
+                    id="account-new-password"
                     type={showNewPass ? "text" : "password"}
+                    autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimum 6 characters"
+                    placeholder="Minimum 8 characters"
                     required
-                    minLength={6}
-                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
+                    minLength={8}
+                    disabled={passLoading}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-[#B7F36B]"
                   />
                   <button
                     type="button"
+                    aria-label={showNewPass ? "Hide new password" : "Show new password"}
                     onClick={() => setShowNewPass(!showNewPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
                   >
                     {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -1280,21 +1447,38 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
               {/* Confirm Password */}
               <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-300">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
-                />
+                <label htmlFor="account-confirm-password" className="block font-semibold text-[#F7F8F5]">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="account-confirm-password"
+                    type={showConfirmPass ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    required
+                    disabled={passLoading}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-[#B7F36B]"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showConfirmPass ? "Hide confirm password" : "Show confirm password"}
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
+                  >
+                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {passMsg && (
                 <p
+                  role="alert"
+                  aria-live="polite"
                   className={`text-xs font-medium ${
-                    passMsg.type === "success" ? "text-emerald-400" : "text-rose-400"
+                    passMsg.type === "success" ? "text-[#B7F36B]" : "text-rose-400"
                   }`}
                 >
                   {passMsg.text}
@@ -1305,14 +1489,15 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowPassModal(false)}
-                  className="px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-medium cursor-pointer"
+                  disabled={passLoading}
+                  className="px-4 py-2 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={passLoading}
-                  className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {passLoading ? "Updating..." : "Update Password"}
                 </button>
@@ -1324,56 +1509,88 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
       {/* ================= MODAL: CHANGE EMAIL ================= */}
       {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="max-w-md w-full p-6 rounded-3xl bg-[#18181F] border border-white/10 text-white space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080908]/85"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="change-email-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !emailLoading) setShowEmailModal(false);
+          }}
+        >
+          <div className="max-w-md w-full p-6 rounded-2xl bg-[#141714] border border-[#30362E] text-[#F7F8F5] space-y-5">
+            <div className="flex items-center justify-between border-b border-[#30362E] pb-4">
               <div className="flex items-center gap-2.5">
                 <Mail className="w-5 h-5 text-[#B7F36B]" />
-                <h3 className="text-base font-bold">Change Email Address</h3>
+                <h3 id="change-email-modal-title" className="text-base font-bold">Change Email Address</h3>
               </div>
               <button
-                onClick={() => setShowEmailModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                type="button"
+                aria-label="Close change email dialog"
+                onClick={() => !emailLoading && setShowEmailModal(false)}
+                className="p-1.5 rounded-lg text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleChangeEmailSubmit} className="space-y-4 text-xs">
-              <div className="p-3 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-slate-300 text-[11px] leading-relaxed">
-                A confirmation email will be dispatched to both your old address and your new address for security verification.
+            <form onSubmit={handleChangeEmailSubmit} noValidate className="space-y-4 text-xs">
+              <div className="p-3 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#A5AAA1] text-[11px] leading-relaxed">
+                For security, a confirmation email will be sent to verify your new address before the change takes effect.
               </div>
 
               {/* New Email */}
               <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-300">New Email Address</label>
+                <label htmlFor="account-new-email" className="block font-semibold text-[#F7F8F5]">
+                  New Email Address
+                </label>
                 <input
+                  id="account-new-email"
                   type="email"
+                  autoComplete="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder="new-email@example.com"
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
+                  disabled={emailLoading}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-[#B7F36B]"
                 />
               </div>
 
               {/* Re-authenticate with Password */}
               <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-300">Current Password (For Verification)</label>
-                <input
-                  type="password"
-                  value={currentPasswordForEmail}
-                  onChange={(e) => setCurrentPasswordForEmail(e.target.value)}
-                  placeholder="Enter current password"
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-[#B7F36B]"
-                />
+                <label htmlFor="account-email-current-password" className="block font-semibold text-[#F7F8F5]">
+                  Current Password (Verification)
+                </label>
+                <div className="relative">
+                  <input
+                    id="account-email-current-password"
+                    type={showEmailCurrentPass ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={currentPasswordForEmail}
+                    onChange={(e) => setCurrentPasswordForEmail(e.target.value)}
+                    placeholder="Enter current password"
+                    required
+                    disabled={emailLoading}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-[#B7F36B]"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showEmailCurrentPass ? "Hide current password" : "Show current password"}
+                    onClick={() => setShowEmailCurrentPass(!showEmailCurrentPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
+                  >
+                    {showEmailCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {emailMsg && (
                 <p
+                  role="alert"
+                  aria-live="polite"
                   className={`text-xs font-medium ${
-                    emailMsg.type === "success" ? "text-emerald-400" : "text-rose-400"
+                    emailMsg.type === "success" ? "text-[#B7F36B]" : "text-rose-400"
                   }`}
                 >
                   {emailMsg.text}
@@ -1384,14 +1601,15 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowEmailModal(false)}
-                  className="px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-medium cursor-pointer"
+                  disabled={emailLoading}
+                  className="px-4 py-2 rounded-xl border border-[#30362E] bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={emailLoading}
-                  className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {emailLoading ? "Sending Verification..." : "Send Verification"}
                 </button>
@@ -1403,51 +1621,66 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
       {/* ================= MODAL: DELETE ACCOUNT ================= */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="max-w-md w-full p-6 rounded-3xl bg-[#18181F] border border-rose-500/40 text-white space-y-5 shadow-2xl">
-            <div className="flex items-center gap-3 text-rose-400">
-              <div className="p-3 rounded-2xl bg-rose-500/20">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080908]/85"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deleteLoading) setShowDeleteModal(false);
+          }}
+        >
+          <div className="max-w-md w-full p-6 rounded-2xl bg-[#141714] border border-rose-700 text-[#F7F8F5] space-y-5">
+            <div className="flex items-center gap-3 text-rose-300">
+              <div className="p-3 rounded-xl bg-rose-950 border border-rose-800">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold">Delete Account Permanently</h3>
-                <p className="text-xs text-slate-400">This action is irreversible.</p>
+                <h3 id="delete-account-modal-title" className="text-lg font-bold text-[#F7F8F5]">
+                  Delete Account Permanently
+                </h3>
+                <p className="text-xs text-[#A5AAA1]">This action is irreversible.</p>
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-[#A5AAA1] leading-relaxed">
               This will permanently delete your user profile, purge all indexed screenshot metadata, delete cloud storage images, and reset your local database.
             </p>
 
             <div className="space-y-3 text-xs">
               {/* Current Password Re-Auth */}
               <div className="space-y-1">
-                <label className="block font-semibold text-slate-300">Confirm Current Password</label>
+                <label htmlFor="account-delete-password" className="block font-semibold text-[#F7F8F5]">
+                  Confirm Current Password
+                </label>
                 <input
+                  id="account-delete-password"
                   type="password"
+                  autoComplete="current-password"
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   placeholder="Enter current password"
                   required
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-rose-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-rose-500"
                 />
               </div>
 
               {/* Type DELETE */}
               <div className="space-y-1">
-                <label className="block font-semibold text-slate-300">
+                <label htmlFor="account-delete-confirm" className="block font-semibold text-[#F7F8F5]">
                   Type <span className="text-rose-400 font-mono font-bold">DELETE</span> to confirm
                 </label>
                 <input
+                  id="account-delete-confirm"
                   type="text"
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   placeholder="Type DELETE"
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#121216] border border-white/10 text-white outline-none focus:border-rose-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-rose-500"
                 />
               </div>
 
-              {deleteError && <p className="text-xs text-rose-400 font-medium">{deleteError}</p>}
+              {deleteError && <p role="alert" className="text-xs text-rose-400 font-medium">{deleteError}</p>}
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured, getAuthBearerHeader } from "../services/supabase";
 import { UserProfile, UserEntitlement } from "../types";
-import { loadUserProfile, saveUserProfile, clearUserCache } from "../services/storage.ts";
+import { saveUserProfile, clearUserCache } from "../services/storage.ts";
 import { StorageManager } from "../services/storage/StorageManager";
 import { SyncEngine } from "../services/syncEngine";
 import { SubscriptionManager } from "../services/billing/SubscriptionManager";
@@ -38,13 +38,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const GUEST_USER: UserProfile = {
+  id: "guest",
+  name: "Sign In",
+  email: "",
+  avatarUrl: "",
+  isLoggedIn: false,
+  plan: "Free",
+  storageLimitMB: 1000,
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AUTH_UNCONFIGURED_ERROR =
+  "Authentication service is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable sign-in and account management.";
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<UserProfile | null>(() => loadUserProfile());
+  // Security: Never trust localStorage as the source of authentication or paid entitlements.
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [entitlement, setEntitlement] = useState<UserEntitlement>(() => SubscriptionManager.getEntitlement());
   const [loading, setLoading] = useState(true);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    return (
+      hash.includes("type=recovery") ||
+      search.includes("type=recovery")
+    );
+  });
   const [oauthErrorMessage, setOauthErrorMessage] = useState<string | null>(null);
 
   const clearOauthError = () => setOauthErrorMessage(null);
@@ -76,55 +99,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      // Fallback local mode session management
+      SubscriptionManager.resetToFree();
+      SyncEngine.setCurrentUserId("guest");
+      setUser(null);
       setLoading(false);
       return;
     }
 
-    // 1. Callback Handler: Exchange OAuth code for session when returning from provider
+    // 1. Callback Handler: Exchange OAuth / Recovery code or hash token for session
     const processAuthCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const oauthError = urlParams.get("error");
       const oauthErrorDescription = urlParams.get("error_description");
       const code = urlParams.get("code");
+      const queryType = urlParams.get("type");
       const hash = window.location.hash;
 
-      // Also inspect hash fragment for errors (e.g. #error=access_denied&error_description=...)
-      let hashError: string | null = null;
-      let hashErrorDescription: string | null = null;
-      if (hash && hash.includes("error=")) {
-        const hashParams = new URLSearchParams(hash.replace(/^#\/?/, ""));
-        hashError = hashParams.get("error");
-        hashErrorDescription = hashParams.get("error_description");
+      const hashParams =
+        hash && (hash.includes("=") || hash.includes("access_token") || hash.includes("error"))
+          ? new URLSearchParams(hash.replace(/^#\/?/, ""))
+          : null;
+      const hashError = hashParams?.get("error") || null;
+      const hashErrorDescription = hashParams?.get("error_description") || null;
+      const hashType = hashParams?.get("type") || null;
+
+      const isRecoveryCallback =
+        queryType === "recovery" ||
+        hashType === "recovery" ||
+        window.location.pathname === "/reset-password";
+
+      if (queryType === "recovery" || hashType === "recovery") {
+        setIsRecoveryMode(true);
       }
 
       if (oauthError || hashError) {
-        const reportedErr = oauthErrorDescription || hashErrorDescription || oauthError || hashError || "OAuth rejected";
-        console.error(`[AuthContext] OAuth provider returned error: ${reportedErr}`);
-        setOauthErrorMessage(
-          "Google sign-in could not be completed. Google security restricts automated or embedded browsers. Please sign in using your email and password."
-        );
+        const reportedErr = oauthErrorDescription || hashErrorDescription || oauthError || hashError || "Authentication error";
+        console.error(`[AuthContext] Auth callback returned error: ${reportedErr}`);
+        if (isRecoveryCallback) {
+          setOauthErrorMessage("Your password reset link is invalid or has expired. Please request a new reset email.");
+        } else {
+          setOauthErrorMessage(
+            "Google sign-in could not be completed. Please sign in using your email and password."
+          );
+        }
+        // Strip error parameters from URL
+        const cleanPath = window.location.pathname === "/auth/callback" ? "/" : window.location.pathname;
+        window.history.replaceState({}, document.title, cleanPath);
+        return;
       }
 
       if (code) {
-        console.log("[AuthContext] Exchanging OAuth code for session via exchangeCodeForSession...");
         try {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
-            console.error("[AuthContext] Code exchange error:", error.message);
-            setOauthErrorMessage("OAuth code exchange failed: " + error.message);
+            console.error("[AuthContext] Code exchange failed:", error.message);
+            setOauthErrorMessage(
+              isRecoveryCallback
+                ? "Your password reset link is invalid or has expired. Please request a new link."
+                : "Sign-in verification failed: " + error.message
+            );
           } else if (data?.session) {
-            console.log("[AuthContext] Session created for user:", data.session.user.email);
             setSession(data.session);
             setSupabaseUser(data.session.user);
-            syncProfile(data.session.user);
+            await syncProfile(data.session.user);
             SyncEngine.setCurrentUserId(data.session.user.id);
             setOauthErrorMessage(null);
+            if (isRecoveryCallback) {
+              setIsRecoveryMode(true);
+            }
 
-            // If running inside a popup window, notify parent opener and close self
             if (window.opener && window.opener !== window) {
               try {
-                // Security Hardening: Never send tokens to wildcard '*'. Target strictly current origin.
                 window.opener.postMessage(
                   { type: "OAUTH_AUTH_SUCCESS", session: data.session },
                   window.location.origin
@@ -137,26 +182,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } catch (err) {
-          console.error("[AuthContext] Exception during code exchange:", err);
-          setOauthErrorMessage("OAuth code exchange failed. Please sign in with email.");
+          console.error("[AuthContext] Exception during code exchange");
+          setOauthErrorMessage(
+            isRecoveryCallback
+              ? "Your password reset link could not be verified. Please request a new one."
+              : "Sign-in verification failed. Please sign in with email."
+          );
         } finally {
-          // Clean up URL query param so code is not reused
-          const cleanPath = window.location.pathname === "/auth/callback" ? "/" : window.location.pathname;
+          // Security: Strip code and sensitive tokens from URL immediately
+          const cleanPath =
+            isRecoveryCallback
+              ? "/reset-password"
+              : window.location.pathname === "/auth/callback"
+              ? "/"
+              : window.location.pathname;
           window.history.replaceState({}, document.title, cleanPath);
         }
       } else if (hash && hash.includes("access_token")) {
-        // Handle hash fragment authentication
+        // Handle hash fragment authentication / recovery
         const { data } = await supabase.auth.getSession();
         if (data?.session) {
           setSession(data.session);
           setSupabaseUser(data.session.user);
-          syncProfile(data.session.user);
+          await syncProfile(data.session.user);
           SyncEngine.setCurrentUserId(data.session.user.id);
           setOauthErrorMessage(null);
+          if (isRecoveryCallback) {
+            setIsRecoveryMode(true);
+          }
 
           if (window.opener && window.opener !== window) {
             try {
-              // Security Hardening: Never send tokens to wildcard '*'. Target strictly current origin.
               window.opener.postMessage(
                 { type: "OAUTH_AUTH_SUCCESS", session: data.session },
                 window.location.origin
@@ -168,14 +224,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         }
-        const cleanPath = window.location.pathname === "/auth/callback" ? "/" : window.location.pathname;
+        // Security: Never leave access_token or recovery tokens in URL hash
+        const cleanPath =
+          isRecoveryCallback
+            ? "/reset-password"
+            : window.location.pathname === "/auth/callback"
+            ? "/"
+            : window.location.pathname;
         window.history.replaceState({}, document.title, cleanPath);
       }
     };
 
     processAuthCallback();
 
-    // 2. Fetch current active session
+    // 2. Fetch current active verified session
     supabase.auth
       .getSession()
       .then(async ({ data: { session } }) => {
@@ -187,12 +249,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           SubscriptionManager.resetToFree();
           SyncEngine.setCurrentUserId("guest");
+          setUser(null);
         }
         setLoading(false);
       })
       .catch((err) => {
         console.warn("[AuthContext] getSession warning:", err);
+        SubscriptionManager.resetToFree();
         SyncEngine.setCurrentUserId("guest");
+        setUser(null);
         setLoading(false);
       });
 
@@ -200,7 +265,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log(`[AuthContext] onAuthStateChange event: ${_event}`);
       setSession(session);
       setSupabaseUser(session?.user ?? null);
       if (_event === "PASSWORD_RECOVERY") {
@@ -210,21 +274,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         SyncEngine.setCurrentUserId(session.user.id);
         await syncProfile(session.user);
       } else if (_event === "SIGNED_OUT") {
-        // Logged out
         SubscriptionManager.resetToFree();
         SyncEngine.setCurrentUserId("guest");
         clearUserCache();
-        const loggedOutUser: UserProfile = {
-          id: "guest",
-          name: "Sign In",
-          email: "",
-          avatarUrl: "",
-          isLoggedIn: false,
-          plan: "Free",
-          storageLimitMB: 1000,
-        };
-        setUser(loggedOutUser);
-        saveUserProfile(loggedOutUser);
+        setIsRecoveryMode(false);
+        setUser(null);
+        saveUserProfile(GUEST_USER);
       }
       setLoading(false);
     });
@@ -269,7 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pass: string
   ): Promise<{ error?: string; isUnconfirmedEmail?: boolean }> => {
     const cleanEmail = email.trim();
-    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       return { error: "Please enter a valid email address." };
     }
     if (!pass) {
@@ -277,25 +332,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (!isSupabaseConfigured) {
-      // Demo authentication simulation with server-authoritative entitlement
-      const localId = `user_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-      const currentEnt = await SubscriptionManager.syncEntitlementsFromServer(localId);
-      const mockUser: UserProfile = {
-        id: localId,
-        name: cleanEmail.split("@")[0],
-        email: cleanEmail,
-        isLoggedIn: true,
-        plan: currentEnt.tier,
-        storageLimitMB: currentEnt.features?.maxStorageMB ?? ((currentEnt.isPro || currentEnt.isFounder) ? 50000 : 1000),
-        createdAt: new Date().toISOString(),
-        provider: "email",
-        entitlement: currentEnt,
-      };
-      setUser(mockUser);
-      saveUserProfile(mockUser);
-      SyncEngine.setCurrentUserId(mockUser.id);
-      NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
-      return {};
+      return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -303,11 +340,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password: pass,
     });
     if (error) {
-      console.error("[AuthContext] signInWithPassword error:", error.message);
-      const isUnconfirmed = error.message.toLowerCase().includes("email not confirmed");
+      const lower = error.message.toLowerCase();
+      const isUnconfirmed = lower.includes("email not confirmed");
+      const isInvalidCreds = lower.includes("invalid login credentials");
       return {
         error: isUnconfirmed
-          ? "Your email address has not been confirmed yet. Please verify your email with the confirmation link sent to your inbox."
+          ? "Your email address has not been confirmed yet. Please verify your email using the link sent to your inbox."
+          : isInvalidCreds
+          ? "Incorrect email address or password. Please check your credentials and try again."
           : error.message,
         isUnconfirmedEmail: isUnconfirmed,
       };
@@ -326,31 +366,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name?: string
   ): Promise<{ error?: string; requiresVerification?: boolean; message?: string }> => {
     const cleanEmail = email.trim();
-    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    const cleanName = (name || "").trim();
+    if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       return { error: "Please enter a valid email address." };
     }
-    if (!pass || pass.length < 6) {
-      return { error: "Password must be at least 6 characters long." };
+    if (!pass || pass.length < 8) {
+      return { error: "Password must be at least 8 characters long." };
     }
 
     if (!isSupabaseConfigured) {
-      const localId = `user_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-      const currentEnt = await SubscriptionManager.syncEntitlementsFromServer(localId);
-      const mockUser: UserProfile = {
-        id: localId,
-        name: name || cleanEmail.split("@")[0],
-        email: cleanEmail,
-        isLoggedIn: true,
-        plan: currentEnt.tier,
-        storageLimitMB: currentEnt.features?.maxStorageMB ?? ((currentEnt.isPro || currentEnt.isFounder) ? 50000 : 1000),
-        createdAt: new Date().toISOString(),
-        provider: "email",
-        entitlement: currentEnt,
-      };
-      setUser(mockUser);
-      saveUserProfile(mockUser);
-      SyncEngine.setCurrentUserId(mockUser.id);
-      return { message: "Account created and logged in." };
+      return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
     const { data, error } = await supabase.auth.signUp({
@@ -358,18 +383,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password: pass,
       options: {
         data: {
-          full_name: name || cleanEmail.split("@")[0],
+          full_name: cleanName || cleanEmail.split("@")[0],
         },
         emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : "https://snapfind.ai.studio/",
       },
     });
 
     if (error) {
-      console.warn("[AuthContext] signUp error:", error);
       const msg = error.message || "";
       const lower = msg.toLowerCase();
 
-      // Check for security cooldown with exact seconds (e.g. "For security purposes, you can only request this after 38 seconds.")
       const secondsMatch = msg.match(/after (\d+) seconds/i);
       if (secondsMatch) {
         return {
@@ -379,7 +402,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error.code === "over_email_send_rate_limit" || lower.includes("email rate limit exceeded") || lower.includes("rate limit")) {
         return {
-          error: "The email verification delivery limit has been reached on the email service. If you already created an account, please sign in. If you need a new confirmation email, please try again shortly.",
+          error: "Too many verification emails were sent recently. Please wait a few minutes or sign in if you already created an account.",
         };
       }
 
@@ -391,7 +414,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (lower.includes("password should be at least")) {
         return {
-          error: "Password must be at least 6 characters long.",
+          error: "Password must be at least 8 characters long.",
         };
       }
 
@@ -406,12 +429,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return {
         requiresVerification: true,
-        message: "Registration successful! A verification link has been sent to your email. Please check your inbox and verify your email before logging in.",
+        message: "Account created! Please check your inbox and click the verification link before signing in.",
       };
     }
 
     if (data?.session?.user) {
-      syncProfile(data.session.user);
+      await syncProfile(data.session.user);
       SyncEngine.setCurrentUserId(data.session.user.id);
       NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
     }
@@ -423,11 +446,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string
   ): Promise<{ error?: string; success?: boolean }> => {
     const cleanEmail = email.trim();
-    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       return { error: "Please enter a valid email address to resend confirmation." };
     }
     if (!isSupabaseConfigured) {
-      return { success: true };
+      return { error: AUTH_UNCONFIGURED_ERROR };
     }
     const { error } = await supabase.auth.resend({
       type: "signup",
@@ -452,21 +475,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async (): Promise<{ error?: string }> => {
     if (!isSupabaseConfigured) {
-      const googleUser: UserProfile = {
-        id: `google_${Date.now()}`,
-        name: "Google Account User",
-        email: "user.google@gmail.com",
-        avatarUrl: undefined,
-        isLoggedIn: true,
-        plan: "Pro",
-        storageLimitMB: 5000,
-        createdAt: new Date().toISOString(),
-        provider: "google",
-      };
-      setUser(googleUser);
-      saveUserProfile(googleUser);
-      SyncEngine.setCurrentUserId(googleUser.id);
-      return {};
+      return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
     try {
@@ -514,17 +523,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     SubscriptionManager.resetToFree();
     SyncEngine.setCurrentUserId("guest");
     clearUserCache();
-    const guestUser: UserProfile = {
-      id: "guest",
-      name: "Sign In",
-      email: "",
-      avatarUrl: "",
-      isLoggedIn: false,
-      plan: "Free",
-      storageLimitMB: 1000,
-    };
-    setUser(guestUser);
-    saveUserProfile(guestUser);
+    setIsRecoveryMode(false);
+    setSession(null);
+    setSupabaseUser(null);
+    setUser(null);
+    saveUserProfile(GUEST_USER);
   };
 
   const signOutAllDevices = async (): Promise<{ error?: string }> => {
@@ -532,24 +535,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isSupabaseConfigured) {
         const { error } = await supabase.auth.signOut({ scope: "global" });
         if (error) {
-          console.error("[AuthContext] Sign out global error:", error.message);
           return { error: error.message };
         }
       }
       SubscriptionManager.resetToFree();
       SyncEngine.setCurrentUserId("guest");
       clearUserCache();
-      const guestUser: UserProfile = {
-        id: "guest",
-        name: "Sign In",
-        email: "",
-        avatarUrl: "",
-        isLoggedIn: false,
-        plan: "Free",
-        storageLimitMB: 1000,
-      };
-      setUser(guestUser);
-      saveUserProfile(guestUser);
+      setIsRecoveryMode(false);
+      setSession(null);
+      setSupabaseUser(null);
+      setUser(null);
+      saveUserProfile(GUEST_USER);
       return {};
     } catch (err: any) {
       return { error: err?.message || "Failed to sign out from all devices" };
@@ -558,84 +554,95 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Re-authentication helper for sensitive operations
   const reauthenticate = async (password: string): Promise<{ error?: string }> => {
-    if (!isSupabaseConfigured) return {};
+    if (!isSupabaseConfigured) return { error: AUTH_UNCONFIGURED_ERROR };
     const email = supabaseUser?.email || user?.email;
-    if (!email) return { error: "No active user email found" };
-    if (!password) return { error: "Current password is required for verification" };
+    if (!email) return { error: "No active user email found." };
+    if (!password) return { error: "Current password is required for verification." };
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) {
-      return { error: "Current password verification failed: " + error.message };
+      return { error: "Current password is incorrect. Please try again." };
     }
     return {};
   };
 
   const updateName = async (newName: string): Promise<{ error?: string }> => {
     const cleanName = newName.trim();
-    if (!cleanName) return { error: "Name cannot be empty" };
+    if (cleanName.length < 2) return { error: "Display name must be at least 2 characters." };
+    if (cleanName.length > 80) return { error: "Display name cannot exceed 80 characters." };
 
-    if (isSupabaseConfigured && supabaseUser) {
-      const { data, error } = await supabase.auth.updateUser({
-        data: { full_name: cleanName },
-      });
-      if (error) return { error: error.message };
-
-      try {
-        await supabase.from("profiles").upsert({
-          id: supabaseUser.id,
-          name: cleanName,
-          email: supabaseUser.email,
-          updated_at: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.warn("[AuthContext] Profile update error:", e);
-      }
-
-      if (data?.user) {
-        syncProfile(data.user);
-      }
+    if (!isSupabaseConfigured) {
+      return { error: AUTH_UNCONFIGURED_ERROR };
+    }
+    if (!supabaseUser || !session) {
+      return { error: "You must be signed in to update your display name." };
     }
 
-    if (user) {
+    const { data, error } = await supabase.auth.updateUser({
+      data: { full_name: cleanName },
+    });
+    if (error) return { error: error.message };
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: supabaseUser.id,
+      name: cleanName,
+      email: supabaseUser.email,
+      updated_at: new Date().toISOString(),
+    });
+    if (profileError) {
+      console.warn("[AuthContext] Profile table name update warning:", profileError.message);
+    }
+
+    if (data?.user) {
+      setSupabaseUser(data.user);
+      await syncProfile(data.user);
+    } else if (user) {
       const updated = { ...user, name: cleanName };
       setUser(updated);
       saveUserProfile(updated);
     }
+
     NotificationService.notifyProfileUpdated("Updated account display name");
     return {};
   };
 
   const updateProfilePicture = async (avatarUrl: string): Promise<{ error?: string }> => {
     const cleanAvatar = avatarUrl.trim();
-    if (isSupabaseConfigured && supabaseUser) {
-      const { data, error } = await supabase.auth.updateUser({
-        data: { avatar_url: cleanAvatar, picture: cleanAvatar },
-      });
-      if (error) return { error: error.message };
-
-      try {
-        await supabase.from("profiles").upsert({
-          id: supabaseUser.id,
-          avatar_url: cleanAvatar,
-          updated_at: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.warn("[AuthContext] Profile avatar update error:", e);
-      }
-
-      if (data?.user) {
-        syncProfile(data.user);
-      }
+    if (!isSupabaseConfigured) {
+      return { error: AUTH_UNCONFIGURED_ERROR };
+    }
+    if (!supabaseUser || !session) {
+      return { error: "You must be signed in to update your profile picture." };
     }
 
-    if (user) {
+    const { data, error } = await supabase.auth.updateUser({
+      data: { avatar_url: cleanAvatar, picture: cleanAvatar },
+    });
+    if (error) return { error: error.message };
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: supabaseUser.id,
+      name: user?.name || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
+      email: supabaseUser.email,
+      avatar_url: cleanAvatar,
+      updated_at: new Date().toISOString(),
+    });
+    if (profileError) {
+      console.warn("[AuthContext] Profile avatar update warning:", profileError.message);
+    }
+
+    if (data?.user) {
+      setSupabaseUser(data.user);
+      await syncProfile(data.user);
+    } else if (user) {
       const updated = { ...user, avatarUrl: cleanAvatar };
       setUser(updated);
       saveUserProfile(updated);
     }
+
     NotificationService.notifyProfileUpdated("Updated profile photo avatar");
     return {};
   };
@@ -644,90 +651,101 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     newEmail: string,
     currentPassword?: string
   ): Promise<{ error?: string; requiresVerification?: boolean }> => {
-    const cleanEmail = newEmail.trim();
-    if (!cleanEmail || !cleanEmail.includes("@")) {
+    const cleanEmail = newEmail.trim().toLowerCase();
+    if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       return { error: "Please enter a valid email address." };
     }
+    if (!isSupabaseConfigured) {
+      return { error: AUTH_UNCONFIGURED_ERROR };
+    }
+    if (!supabaseUser || !session) {
+      return { error: "You must be signed in to change your email address." };
+    }
 
-    if (currentPassword && isSupabaseConfigured) {
+    const currentEmail = (supabaseUser.email || user?.email || "").trim().toLowerCase();
+    if (currentEmail && cleanEmail === currentEmail) {
+      return { error: "The new email address must be different from your current email." };
+    }
+
+    const provider = supabaseUser.app_metadata?.provider || user?.provider || "email";
+    if (provider === "email") {
+      if (!currentPassword) {
+        return { error: "Please enter your current password to verify this email change." };
+      }
+      const reauthRes = await reauthenticate(currentPassword);
+      if (reauthRes.error) return reauthRes;
+    } else if (currentPassword) {
       const reauthRes = await reauthenticate(currentPassword);
       if (reauthRes.error) return reauthRes;
     }
 
-    if (isSupabaseConfigured && supabaseUser) {
-      const { error } = await supabase.auth.updateUser(
-        { email: cleanEmail },
-        { emailRedirectTo: `${window.location.origin}/` }
-      );
-      if (error) return { error: error.message };
+    // Security: Do not overwrite public.profiles.email until the user confirms the verification link.
+    const { error } = await supabase.auth.updateUser(
+      { email: cleanEmail },
+      { emailRedirectTo: `${window.location.origin}/` }
+    );
+    if (error) return { error: error.message };
 
-      try {
-        await supabase.from("profiles").upsert({
-          id: supabaseUser.id,
-          email: cleanEmail,
-          updated_at: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.warn("[AuthContext] Profile email sync error:", e);
-      }
-
-      return { requiresVerification: true };
-    }
-
-    if (user) {
-      const oldEmail = user.email;
-      const updated = { ...user, email: cleanEmail };
-      setUser(updated);
-      saveUserProfile(updated);
-      NotificationService.notifyEmailChanged(cleanEmail, oldEmail);
-    }
-    return { requiresVerification: false };
+    return { requiresVerification: true };
   };
 
   const changePassword = async (
     newPass: string,
     currentPassword?: string
   ): Promise<{ error?: string }> => {
-    if (!newPass || newPass.length < 6) {
-      return { error: "Password must be at least 6 characters long." };
+    if (!newPass || newPass.length < 8) {
+      return { error: "Password must be at least 8 characters long." };
     }
 
-    if (currentPassword && isSupabaseConfigured) {
+    if (!isSupabaseConfigured) {
+      return { error: AUTH_UNCONFIGURED_ERROR };
+    }
+
+    if (!session) {
+      return { error: "Your session is inactive or expired. Please sign in or request a new password reset link." };
+    }
+
+    const provider = supabaseUser?.app_metadata?.provider || user?.provider || "email";
+    if (!isRecoveryMode && provider === "email") {
+      if (!currentPassword) {
+        return { error: "Please enter your current password to confirm this change." };
+      }
+      const reauthRes = await reauthenticate(currentPassword);
+      if (reauthRes.error) return reauthRes;
+    } else if (!isRecoveryMode && currentPassword) {
       const reauthRes = await reauthenticate(currentPassword);
       if (reauthRes.error) return reauthRes;
     }
 
-    const targetEmail = user?.email || supabaseUser?.email;
-
-    if (!isSupabaseConfigured) {
-      NotificationService.notifyPasswordChanged(targetEmail);
-      return {};
-    }
-
-    if (!session) {
-      return { error: "You must have an active logged-in session to change your password." };
-    }
-
     const { error } = await supabase.auth.updateUser({ password: newPass });
     if (error) return { error: error.message };
+
+    if (isRecoveryMode) {
+      setIsRecoveryMode(false);
+    }
+
+    const targetEmail = user?.email || supabaseUser?.email;
     NotificationService.notifyPasswordChanged(targetEmail);
     return {};
   };
 
   const resetPassword = async (emailToUse?: string): Promise<{ error?: string }> => {
     const targetEmail = (emailToUse || user?.email || supabaseUser?.email || "").trim();
-    if (!targetEmail) {
-      return { error: "Email address is required to send password reset link." };
+    if (!targetEmail || !EMAIL_REGEX.test(targetEmail)) {
+      return { error: "Please enter a valid registered email address." };
     }
-
-    NotificationService.notifyAccountRecovery(targetEmail);
 
     if (!isSupabaseConfigured) {
-      return {};
+      return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin.replace(/\/+$/, "")}/reset-password`
+        : "https://snapfind.ai.studio/reset-password";
+
     const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : "https://snapfind.ai.studio/",
+      redirectTo,
     });
 
     if (error) {
@@ -741,6 +759,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return { error: msg };
     }
+
+    NotificationService.notifyAccountRecovery(targetEmail);
     return {};
   };
 

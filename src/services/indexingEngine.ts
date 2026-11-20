@@ -60,6 +60,8 @@ export interface CandidateImage {
   base64Data?: string;
   file?: File;
   blob?: Blob;
+  userId?: string;
+  isModified?: boolean;
 }
 
 export interface IndexingProgressEvent {
@@ -174,14 +176,17 @@ class IncrementalIndexingEngine {
   }
 
   /**
-   * Get the last scan timestamp ISO string or epoch ms
+   * Get the last scan timestamp ISO string or epoch ms (scoped per user when provided)
    */
-  public getLastScanTimestamp(): string {
-    if (this.cachedLastScanTimestamp) return this.cachedLastScanTimestamp;
+  public getLastScanTimestamp(userId?: string): string {
+    const storageKey = userId && userId !== "guest"
+      ? `${STORAGE_KEYS.LAST_SCAN_TIMESTAMP}_${userId}`
+      : STORAGE_KEYS.LAST_SCAN_TIMESTAMP;
+    if (!userId && this.cachedLastScanTimestamp) return this.cachedLastScanTimestamp;
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.LAST_SCAN_TIMESTAMP);
+      const stored = localStorage.getItem(storageKey);
       if (stored) {
-        this.cachedLastScanTimestamp = stored;
+        if (!userId) this.cachedLastScanTimestamp = stored;
         return stored;
       }
     } catch {}
@@ -189,12 +194,15 @@ class IncrementalIndexingEngine {
   }
 
   /**
-   * Set and save the updated scan timestamp
+   * Set and save the updated scan timestamp (scoped per user when provided)
    */
-  public setLastScanTimestamp(timestampIso: string): void {
-    this.cachedLastScanTimestamp = timestampIso;
+  public setLastScanTimestamp(timestampIso: string, userId?: string): void {
+    const storageKey = userId && userId !== "guest"
+      ? `${STORAGE_KEYS.LAST_SCAN_TIMESTAMP}_${userId}`
+      : STORAGE_KEYS.LAST_SCAN_TIMESTAMP;
+    if (!userId) this.cachedLastScanTimestamp = timestampIso;
     try {
-      localStorage.setItem(STORAGE_KEYS.LAST_SCAN_TIMESTAMP, timestampIso);
+      localStorage.setItem(storageKey, timestampIso);
     } catch {}
     const provider = StorageManager.getProvider();
     if (provider.setLastScanTimestamp) {
@@ -880,41 +888,68 @@ class IncrementalIndexingEngine {
 
   /**
    * Ingest a single native screenshot candidate:
-   * Performs duplicate detection, indexed_image_ids check & update,
-   * last_scan_timestamp updates, and enqueues to ProcessingQueue.
+   * Performs duplicate & modification detection, user scoping, quota-aware queueing,
+   * and last_scan_timestamp updates.
    */
   public ingestScreenshotCandidate(candidate: CandidateImage): boolean {
     const indexedIds = this.getIndexedImageIds();
     const uri = candidate.image_uri || candidate.imageUrl || "";
     const candidateId = candidate.id;
+    const ownerId = candidate.userId || "guest";
+    const candidateModMs = parseTimestampMillis(candidate.date_modified || candidate.dateModified);
 
-    // Duplicate detection: check if already in indexed_image_ids or processingQueue
-    if (indexedIds.has(candidateId) || (uri && processingQueue.isDuplicate(candidateId, uri))) {
-      return false; // Skipped (duplicate)
-    }
-
-    // Add to indexed IDs set and persist
-    indexedIds.add(candidateId);
-    this.saveIndexedImageIds(indexedIds);
-
-    // Update last scan timestamp if candidate date is newer
-    const dateMs = parseTimestampMillis(candidate.date_modified || candidate.dateModified);
-    if (dateMs > 0) {
-      const currentLastMs = parseTimestampMillis(this.getLastScanTimestamp());
-      if (dateMs > currentLastMs) {
-        this.setLastScanTimestamp(new Date(dateMs).toISOString());
+    // Check if this screenshot was modified since last indexed
+    let isModified = Boolean(candidate.isModified);
+    if (!isModified && candidateModMs > 0) {
+      const existingStored = loadStoredScreenshots().find(
+        (s) =>
+          !s.isDeleted &&
+          !s.is_deleted &&
+          (s.id === candidateId || (uri && (s.imageUrl === uri || s.image_uri === uri)))
+      );
+      if (existingStored) {
+        const storedModMs = parseTimestampMillis(existingStored.dateModified || existingStored.date_modified || existingStored.createdAt);
+        if (candidateModMs > storedModMs + 1000) {
+          isModified = true;
+        }
       }
     }
 
-    // Enqueue to ProcessingQueue for OCR & AI analysis
+    // Duplicate detection: skip unmodified already-indexed or already-queued screenshots
+    if (!isModified) {
+      if (indexedIds.has(candidateId) || (uri && processingQueue.isDuplicate(candidateId, uri, undefined, ownerId))) {
+        return false; // Skipped (duplicate)
+      }
+    }
+
+    // Enqueue to ProcessingQueue for OCR & AI analysis (respects account quota limits)
     const fileName = candidate.file_name || candidate.fileName || `screenshot_${candidateId}.png`;
-    processingQueue.enqueue({
+    const queuedJob = processingQueue.enqueue({
       id: candidateId,
       imageUri: uri,
       fileName,
       folder: candidate.folder || "Screenshots",
       base64Data: candidate.base64Data,
+      userId: ownerId,
+      dateModified: candidateModMs > 0 ? new Date(candidateModMs).toISOString() : undefined,
+      isModified,
     });
+
+    if (!queuedJob) {
+      return false;
+    }
+
+    // Only record as tracked once accepted into active queue
+    indexedIds.add(candidateId);
+    this.saveIndexedImageIds(indexedIds);
+
+    // Update last scan timestamp if candidate date is newer
+    if (candidateModMs > 0) {
+      const currentLastMs = parseTimestampMillis(this.getLastScanTimestamp(ownerId));
+      if (candidateModMs > currentLastMs) {
+        this.setLastScanTimestamp(new Date(candidateModMs).toISOString(), ownerId);
+      }
+    }
 
     return true; // Enqueued
   }

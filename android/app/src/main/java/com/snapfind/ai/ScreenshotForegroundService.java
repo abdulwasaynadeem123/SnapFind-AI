@@ -64,6 +64,13 @@ public class ScreenshotForegroundService extends Service {
             }
         }
 
+        if (!SnapFindMediaScannerPlugin.hasGalleryReadPermission(getApplicationContext())) {
+            Log.w(TAG, "Gallery permission not granted; stopping ScreenshotForegroundService safely.");
+            stopSelf();
+            isRunning = false;
+            return START_NOT_STICKY;
+        }
+
         startForegroundServiceWithNotification("SnapFind AI is monitoring screenshots", -1);
         registerContentObserverIfNeeded();
         return START_STICKY;

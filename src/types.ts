@@ -263,6 +263,9 @@ export interface ProcessingJob {
   batchTotal?: number;
   batchCurrent?: number;
   batchProgressText?: string;
+  userId?: string;
+  dateModified?: string;
+  isModified?: boolean;
 }
 
 export interface SearchResultMatch {

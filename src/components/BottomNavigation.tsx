@@ -29,6 +29,7 @@ export type NavViewType =
   | "demo"
   | "admin-payments"
   | "game"
+  | "reset-password"
   | "not-found";
 
 interface BottomNavigationProps {

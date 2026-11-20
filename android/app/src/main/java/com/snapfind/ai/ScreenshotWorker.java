@@ -31,6 +31,10 @@ public class ScreenshotWorker extends Worker {
         Log.d(TAG, "WorkManager background execution running under batteryNotLow constraint.");
 
         Context context = getApplicationContext();
+        if (!SnapFindMediaScannerPlugin.hasGalleryReadPermission(context)) {
+            Log.w(TAG, "Gallery permission missing/revoked; skipping background screenshot sync.");
+            return Result.success();
+        }
 
         // 1. Ensure ForegroundService is running and ContentObserver is active
         try {

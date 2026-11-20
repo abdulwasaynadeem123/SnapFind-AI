@@ -42,6 +42,7 @@ import { searchScreenshotsAI, instantKeywordSearch } from "./services/api";
 
 import { collectionSecurity } from "./services/collectionSecurity";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { useFounder } from "./context/FounderContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navbar } from "./components/Navbar";
 import { SidebarNavigation } from "./components/SidebarNavigation";
@@ -62,6 +63,7 @@ import { TimelineView } from "./components/TimelineView";
 import { SearchView } from "./components/SearchView";
 import { FavoritesView } from "./components/FavoritesView";
 import { TrashView } from "./components/TrashView";
+import { ResetPasswordView } from "./components/ResetPasswordView";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useRouteScrollReset } from "./hooks/useRouteScrollReset";
@@ -75,6 +77,7 @@ import { FeedbackView } from "./components/FeedbackView";
 import { FounderFeedbackPrompt } from "./components/FounderFeedbackPrompt";
 import { FounderBanner } from "./components/FounderBanner";
 import { FoundersPageView } from "./components/FoundersPageView";
+import { VipSeatInvitationModal } from "./components/VipSeatInvitationModal";
 import { SnapDashPageView } from "./components/game/SnapDashPageView";
 import { GiveFeedbackModal } from "./components/feedback/GiveFeedbackModal";
 import { DemoView } from "./components/DemoView";
@@ -91,8 +94,46 @@ import { WhatsNewModal } from "./components/update/WhatsNewModal";
 import { applySeoMetadata } from "./services/seoManager";
 
 function AppContent() {
-  const { user: authUser, signOut, isRecoveryMode } = useAuth();
+  const {
+    user: authUser,
+    entitlement,
+    loading: authLoading,
+    refreshEntitlement,
+    signOut,
+    isRecoveryMode,
+  } = useAuth();
+  const {
+    remaining: vipRemaining,
+    totalSpots: vipTotalSpots,
+    isLive: isVipLive,
+    isLoading: isVipLoading,
+    claimFounderSpot,
+    refreshFounderStats,
+  } = useFounder();
   const isOnline = useOnlineStatus();
+  const [isVipInviteOpen, setIsVipInviteOpen] = useState(false);
+  const [vipClaimedInModal, setVipClaimedInModal] = useState(false);
+
+  const isAuthenticatedAccount = Boolean(
+    authUser?.id && authUser.id !== "guest" && authUser.isLoggedIn !== false
+  );
+  const resolvedEntitlement = authUser?.entitlement || entitlement;
+  const isUserAlreadyVip = Boolean(
+    resolvedEntitlement?.isFounder ||
+      (typeof resolvedEntitlement?.founderNumber === "number" &&
+        resolvedEntitlement.founderNumber >= 1) ||
+      (typeof resolvedEntitlement?.founderRank === "number" &&
+        resolvedEntitlement.founderRank >= 1)
+  );
+  const canOfferVipClaim = Boolean(
+    isAuthenticatedAccount &&
+      !authLoading &&
+      !isUserAlreadyVip &&
+      isVipLive &&
+      !isVipLoading &&
+      vipRemaining !== null &&
+      vipRemaining > 0
+  );
 
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>(() => loadStoredScreenshots());
   const [collections, setCollections] = useState<CollectionItem[]>(() => {
@@ -107,6 +148,9 @@ function AppContent() {
 
   const [activeView, setActiveView] = useState<NavViewType>(() => {
     if (typeof window !== "undefined") {
+      if (window.location.pathname === "/reset-password" || window.location.hash.includes("type=recovery") || window.location.search.includes("type=recovery")) {
+        return "reset-password";
+      }
       if (window.location.pathname === "/admin/payments" || window.location.pathname === "/admin-payments") {
         return "admin-payments";
       }
@@ -123,6 +167,9 @@ function AppContent() {
         }
         if (rawHash === "demo") {
           return "demo";
+        }
+        if (rawHash === "reset-password") {
+          return "reset-password";
         }
         const validViews: NavViewType[] = [
           "landing",
@@ -143,6 +190,7 @@ function AppContent() {
           "feedback",
           "game",
           "admin-payments",
+          "reset-password",
           "demo",
         ];
         if (validViews.includes(rawHash as NavViewType)) {
@@ -167,7 +215,16 @@ function AppContent() {
   // Keep browser history and URL hash synchronized for back/forward navigation
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const currentHash = window.location.hash.replace(/^#\/?/, "");
+    const rawLocationHash = window.location.hash || "";
+    // Never overwrite OAuth or password-recovery callback hash tokens before AuthContext consumes them
+    if (
+      rawLocationHash.includes("access_token=") ||
+      rawLocationHash.includes("type=recovery") ||
+      rawLocationHash.includes("error=")
+    ) {
+      return;
+    }
+    const currentHash = rawLocationHash.replace(/^#\/?/, "");
     const formattedHash = activeView === "admin-payments" ? "admin/payments" : activeView;
     if (currentHash !== formattedHash && currentHash !== activeView) {
       window.history.replaceState({ view: activeView }, "", `#${formattedHash}`);
@@ -206,6 +263,7 @@ function AppContent() {
         "feedback",
         "game",
         "admin-payments",
+        "reset-password",
         "demo",
       ];
       if (targetView && validViews.includes(targetView)) {
@@ -232,12 +290,65 @@ function AppContent() {
     setIsAuthOpen(true);
   };
 
-  // Automatically show auth modal in reset-password mode if recovery flow is triggered
+  // Automatically navigate to dedicated secure reset-password page when recovery flow is triggered
   useEffect(() => {
     if (isRecoveryMode) {
-      setIsAuthOpen(true);
+      setIsAuthOpen(false);
+      setIsVipInviteOpen(false);
+      setActiveView("reset-password");
     }
   }, [isRecoveryMode]);
+
+  // Automatically show VIP seat invitation modal on signup/login when seats remain and user is not already VIP
+  useEffect(() => {
+    if (!isAuthenticatedAccount || !authUser?.id) {
+      setIsVipInviteOpen(false);
+      setVipClaimedInModal(false);
+      return;
+    }
+
+    if (authLoading || isRecoveryMode || activeView === "reset-password") {
+      return;
+    }
+
+    // Never prompt existing VIP seat holders (preserve confirmation view if they just claimed inside the modal)
+    if (isUserAlreadyVip) {
+      if (!vipClaimedInModal) {
+        setIsVipInviteOpen(false);
+      }
+      return;
+    }
+
+    // Wait for live authoritative seat availability; stop showing invitations when all 50 seats are occupied
+    if (!isVipLive || isVipLoading || vipRemaining === null || vipRemaining <= 0) {
+      if (!vipClaimedInModal) {
+        setIsVipInviteOpen(false);
+      }
+      return;
+    }
+
+    const dismissKey = `snapfind_vip_invite_dismissed_${authUser.id}`;
+    try {
+      if (sessionStorage.getItem(dismissKey) === "1") {
+        return;
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+
+    setIsVipInviteOpen(true);
+  }, [
+    isAuthenticatedAccount,
+    authUser?.id,
+    authLoading,
+    isRecoveryMode,
+    activeView,
+    isUserAlreadyVip,
+    isVipLive,
+    isVipLoading,
+    vipRemaining,
+    vipClaimedInModal,
+  ]);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [feedbackPageContext, setFeedbackPageContext] = useState("General");
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -306,14 +417,33 @@ function AppContent() {
   // Keep local user profile in sync with Auth Context
   const activeUser = authUser || userProfile;
 
-  // Active non-deleted screenshots vs Trash screenshots
+  // Enforce strict user ownership scoping for screenshots (never expose another user's items)
+  const isOwnedByCurrentUser = (item: ScreenshotItem) => {
+    const owner = item.user_id || item.userId;
+    if (authUser?.id && authUser.id !== "guest") {
+      return !owner || owner === "guest" || owner === authUser.id;
+    }
+    return !owner || owner === "guest";
+  };
+
+  const ownedScreenshots = useMemo(() => {
+    return screenshots.filter((item) => {
+      const owner = item.user_id || item.userId;
+      if (authUser?.id && authUser.id !== "guest") {
+        return !owner || owner === "guest" || owner === authUser.id;
+      }
+      return !owner || owner === "guest";
+    });
+  }, [screenshots, authUser?.id]);
+
+  // Active non-deleted screenshots vs Trash screenshots (strictly owner-scoped)
   const activeScreenshots = useMemo(() => {
-    return screenshots.filter((item) => !item.isDeleted && !item.is_deleted);
-  }, [screenshots]);
+    return ownedScreenshots.filter((item) => !item.isDeleted && !item.is_deleted);
+  }, [ownedScreenshots]);
 
   const trashScreenshots = useMemo(() => {
-    return screenshots.filter((item) => Boolean(item.isDeleted || item.is_deleted));
-  }, [screenshots]);
+    return ownedScreenshots.filter((item) => Boolean(item.isDeleted || item.is_deleted));
+  }, [ownedScreenshots]);
 
   // Subscribe to collection security lock/unlock updates
   const [securityNonce, setSecurityNonce] = useState(0);
@@ -340,15 +470,15 @@ function AppContent() {
   // Listen for plan quota limit exceeded and pricing navigation events
   useEffect(() => {
     const handleQuotaExceeded = (e: any) => {
-      NotificationService.notifyQuotaExceeded(activeScreenshots.length, SubscriptionManager.getMaxScreenshotLimit(activeUser?.id));
+      const limit = SubscriptionManager.getMaxScreenshotLimit(activeUser?.id);
+      NotificationService.notifyQuotaExceeded(activeScreenshots.length, limit);
       addToast({
-        title: e.detail?.title || "Your indexing limit has been reached.",
+        title: e.detail?.title || "Indexing limit reached",
         description:
           e.detail?.message ||
-          "Your indexing limit has been reached. Upgrade to Pro Monthly, Pro Annual, or claim an available free VIP Seat.",
+          `Automatic indexing has paused at your ${limit.toLocaleString()}-screenshot limit. Existing indexed screenshots remain safe. Upgrade or claim a free VIP seat to continue.`,
         type: "info",
       });
-      setActiveView("pricing");
     };
 
     const handleOpenProModal = () => {
@@ -362,40 +492,40 @@ function AppContent() {
       window.removeEventListener("snapfind_quota_exceeded", handleQuotaExceeded);
       window.removeEventListener("snapfind_open_pro_modal", handleOpenProModal);
     };
-  }, [activeScreenshots.length]);
+  }, [activeScreenshots.length, activeUser?.id]);
 
-  // Auto-purge items from Trash older than 30 days
+  // Auto-purge items from Trash older than 30 days (persists to local storage & cloud DB)
   useEffect(() => {
-    if (screenshots.length === 0) return;
+    if (ownedScreenshots.length === 0) return;
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
     const now = Date.now();
-    let purgedCount = 0;
+    const expiredIds: string[] = [];
 
-    const remaining = screenshots.filter((item) => {
+    for (const item of ownedScreenshots) {
       const isDel = item.isDeleted || item.is_deleted;
-      if (!isDel) return true;
+      if (!isDel) continue;
       const delAt = item.deletedAt || item.deleted_at;
-      if (!delAt) return true;
+      if (!delAt) continue;
       const delTime = new Date(delAt).getTime();
-      if (isNaN(delTime)) return true;
+      if (Number.isNaN(delTime)) continue;
 
-      const elapsed = now - delTime;
-      if (elapsed > THIRTY_DAYS_MS) {
-        purgedCount++;
-        return false;
+      if (now - delTime > THIRTY_DAYS_MS) {
+        expiredIds.push(item.id);
       }
-      return true;
-    });
+    }
 
-    if (purgedCount > 0) {
-      setScreenshots(remaining);
+    if (expiredIds.length > 0) {
+      const expiredSet = new Set(expiredIds);
+      deleteStoredScreenshotsBatch(expiredIds);
+      SyncEngine.deleteScreenshotsBatchFromCloud(expiredIds, authUser?.id).catch(() => {});
+      setScreenshots((prev) => prev.filter((item) => !expiredSet.has(item.id)));
       addToast({
         title: "Auto-Cleanup Performed",
-        description: `Purged ${purgedCount} item(s) in Trash older than 30 days.`,
+        description: `Permanently removed ${expiredIds.length} item(s) in Trash older than 30 days.`,
         type: "info",
       });
     }
-  }, [screenshots.length]);
+  }, [ownedScreenshots.length, authUser?.id]);
 
   // Sync collections whenever screenshots change
   useEffect(() => {
@@ -466,9 +596,6 @@ function AppContent() {
         setSettings(loadSettings());
         setSearchHistory(loadSearchHistory());
         setUserProfile(loadUserProfile());
-        nativeMediaScanner.initialize().catch((scannerErr) => {
-          console.warn("[App] nativeMediaScanner.initialize warning:", scannerErr);
-        });
         setIsStorageReady(true);
       })
       .catch((storageErr) => {
@@ -479,18 +606,32 @@ function AppContent() {
       });
   }, []);
 
-  // Listen for real-time background OCR / AI processing completions & failures
+  // Listen for real-time background OCR / AI processing completions & failures (upsert new auto-indexed items immediately)
   useEffect(() => {
     const handleScreenshotProcessed = (e: any) => {
       const updatedScreenshot: ScreenshotItem | undefined = e.detail?.screenshot;
       if (!updatedScreenshot || !updatedScreenshot.id) return;
 
-      setScreenshots((prev) =>
-        prev.map((item) => (item.id === updatedScreenshot.id ? { ...item, ...updatedScreenshot } : item))
-      );
+      const ownerId =
+        updatedScreenshot.user_id ||
+        updatedScreenshot.userId ||
+        (authUser?.id && authUser.id !== "guest" ? authUser.id : undefined);
 
-      if (selectedItem?.id === updatedScreenshot.id) {
-        setSelectedItem((prev) => (prev ? { ...prev, ...updatedScreenshot } : null));
+      const stampedItem: ScreenshotItem = ownerId
+        ? { ...updatedScreenshot, user_id: ownerId, userId: ownerId }
+        : updatedScreenshot;
+
+      setScreenshots((prev) => {
+        const exists = prev.some((item) => item.id === stampedItem.id);
+        const next = exists
+          ? prev.map((item) => (item.id === stampedItem.id ? { ...item, ...stampedItem } : item))
+          : [stampedItem, ...prev];
+        searchEngine.updateIndex(next);
+        return next;
+      });
+
+      if (selectedItem?.id === stampedItem.id) {
+        setSelectedItem((prev) => (prev ? { ...prev, ...stampedItem } : null));
       }
     };
 
@@ -498,13 +639,14 @@ function AppContent() {
     return () => {
       window.removeEventListener("snapfind_screenshot_processed", handleScreenshotProcessed);
     };
-  }, [selectedItem?.id]);
+  }, [selectedItem?.id, authUser?.id]);
 
-  // Restore user-scoped data when auth user changes (e.g. login/logout)
+  // Restore user-scoped data and bind native Android screenshot scanner when auth user changes (login/logout)
   useEffect(() => {
     if (!isStorageReady) return;
     if (authUser?.id && authUser.id !== "guest") {
       console.log(`[App] Auth user logged in (${authUser.id}), restoring remote & local screenshots...`);
+      refreshFounderStats().catch(() => {});
       SyncEngine.restoreUserDataOnLogin(authUser.id)
         .then((restored) => {
           if (restored.screenshots) {
@@ -520,8 +662,15 @@ function AppContent() {
         })
         .catch((syncErr) => {
           console.warn("[App] restoreUserDataOnLogin warning:", syncErr);
+        })
+        .finally(() => {
+          // Only activate automatic Android gallery scanning/monitoring after authenticated login
+          nativeMediaScanner.setActiveUser(authUser.id).catch((scannerErr) => {
+            console.warn("[App] nativeMediaScanner.setActiveUser warning:", scannerErr);
+          });
         });
     } else {
+      nativeMediaScanner.setActiveUser(null).catch(() => {});
       SyncEngine.setCurrentUserId("guest");
       clearUserSessionData();
       const localStored = loadStoredScreenshots();
@@ -788,12 +937,12 @@ function AppContent() {
     });
   };
 
-  // Restore Screenshot from Trash
+  // Restore Screenshot from Trash (owner-verified)
   const handleRestoreScreenshot = (id: string) => {
     let restoredTitle = "";
     setScreenshots((prev) =>
       prev.map((item) => {
-        if (item.id === id) {
+        if (item.id === id && isOwnedByCurrentUser(item)) {
           restoredTitle = item.title;
           const updated: ScreenshotItem = {
             ...item,
@@ -801,6 +950,8 @@ function AppContent() {
             is_deleted: false,
             deletedAt: undefined,
             deleted_at: undefined,
+            dateModified: new Date().toISOString(),
+            date_modified: new Date().toISOString(),
           };
           SyncEngine.markScreenshotPending(updated);
           return updated;
@@ -817,18 +968,23 @@ function AppContent() {
     });
   };
 
-  // Batch Restore
+  // Batch Restore (owner-verified)
   const handleBatchRestore = (ids: string[]) => {
     const idSet = new Set(ids);
+    let restoredCount = 0;
+    const nowIso = new Date().toISOString();
     setScreenshots((prev) =>
       prev.map((item) => {
-        if (idSet.has(item.id)) {
+        if (idSet.has(item.id) && isOwnedByCurrentUser(item)) {
+          restoredCount++;
           const updated: ScreenshotItem = {
             ...item,
             isDeleted: false,
             is_deleted: false,
             deletedAt: undefined,
             deleted_at: undefined,
+            dateModified: nowIso,
+            date_modified: nowIso,
           };
           SyncEngine.markScreenshotPending(updated);
           return updated;
@@ -838,52 +994,65 @@ function AppContent() {
     );
     addToast({
       title: "Screenshots Restored",
-      description: `${ids.length} item(s) restored to Gallery.`,
+      description: `${restoredCount || ids.length} item(s) restored to Gallery.`,
       type: "success",
     });
   };
 
-  // Permanent Delete single item
+  // Restore All items in Trash (owner-verified)
+  const handleRestoreAllTrash = () => {
+    const ownedTrashIds = trashScreenshots.map((item) => item.id);
+    if (ownedTrashIds.length === 0) return;
+    handleBatchRestore(ownedTrashIds);
+  };
+
+  // Permanent Delete single item (owner-verified, persists locally & in cloud DB)
   const handlePermanentDelete = (id: string) => {
+    const target = trashScreenshots.find((item) => item.id === id);
+    if (!target) return;
     deleteStoredScreenshot(id);
+    SyncEngine.deleteScreenshotFromCloud(id, authUser?.id).catch(() => {});
     setScreenshots((prev) => prev.filter((item) => item.id !== id));
     setSearchResults((prev) => prev.filter((r) => r.id !== id));
     if (selectedItem?.id === id) setSelectedItem(null);
     addToast({
       title: "Permanently Deleted",
-      description: "Item erased from storage.",
+      description: "Screenshot permanently removed from SnapFind AI.",
       type: "info",
     });
   };
 
-  // Batch Permanent Delete
+  // Batch Permanent Delete (owner-verified, persists locally & in cloud DB)
   const handleBatchPermanentDelete = (ids: string[]) => {
-    deleteStoredScreenshotsBatch(ids);
-    const idSet = new Set(ids);
+    const ownedTrashIdSet = new Set(trashScreenshots.map((item) => item.id));
+    const verifiedIds = ids.filter((id) => ownedTrashIdSet.has(id));
+    if (verifiedIds.length === 0) return;
+
+    deleteStoredScreenshotsBatch(verifiedIds);
+    SyncEngine.deleteScreenshotsBatchFromCloud(verifiedIds, authUser?.id).catch(() => {});
+    const idSet = new Set(verifiedIds);
     setScreenshots((prev) => prev.filter((item) => !idSet.has(item.id)));
     setSearchResults((prev) => prev.filter((r) => !idSet.has(r.id)));
     if (selectedItem && idSet.has(selectedItem.id)) setSelectedItem(null);
     addToast({
       title: "Permanently Deleted",
-      description: `Erased ${ids.length} item(s) permanently.`,
+      description: `Permanently removed ${verifiedIds.length} item(s) from SnapFind AI.`,
       type: "info",
     });
   };
 
-  // Empty Entire Trash
+  // Empty Entire Trash (owner-verified, persists locally & in cloud DB)
   const handleEmptyTrash = () => {
-    const trashIds = Array.from(
-      new Set(
-        screenshots.filter((s) => Boolean(s.isDeleted || s.is_deleted)).map((s) => s.id)
-      )
-    );
+    const trashIds = Array.from(new Set(trashScreenshots.map((s) => s.id)));
     const count = trashIds.length;
     if (count > 0) {
       deleteStoredScreenshotsBatch(trashIds);
+      SyncEngine.deleteScreenshotsBatchFromCloud(trashIds, authUser?.id).catch(() => {});
     }
     const trashSet = new Set(trashIds);
     setScreenshots((prev) => prev.filter((item) => !trashSet.has(item.id)));
     setSearchResults((prev) => prev.filter((r) => !trashSet.has(r.id)));
+    if (selectedItem && trashSet.has(selectedItem.id)) setSelectedItem(null);
     addToast({
       title: "Trash Emptied",
       description: `Permanently deleted ${count} item(s).`,
@@ -1337,7 +1506,12 @@ function AppContent() {
                   onOpenAuth={() => setIsAuthOpen(true)}
                   isDark={isDark}
                 >
-                  <GalleryPermissionModal onManualUploadClick={() => setActiveView("import")} />
+                  <GalleryPermissionModal
+                    userId={authUser?.id}
+                    onManualUploadClick={() => setActiveView("import")}
+                    onOpenPricing={() => setActiveView("pricing")}
+                    onOpenVipClaim={canOfferVipClaim ? () => setIsVipInviteOpen(true) : undefined}
+                  />
 
                   <DashboardView
                     screenshots={accessibleScreenshots}
@@ -1463,16 +1637,34 @@ function AppContent() {
                   isDark={isDark}
                 >
                   <TrashView
-                    screenshots={screenshots}
+                    screenshots={trashScreenshots}
                     isDark={isDark}
                     onRestoreScreenshot={handleRestoreScreenshot}
                     onBatchRestore={handleBatchRestore}
+                    onRestoreAll={handleRestoreAllTrash}
                     onPermanentDelete={handlePermanentDelete}
                     onBatchPermanentDelete={handleBatchPermanentDelete}
                     onEmptyTrash={handleEmptyTrash}
                     onSelectScreenshot={(item) => setSelectedItem(item)}
                   />
                 </ProtectedRoute>
+              </motion.div>
+            )}
+
+            {/* Dedicated Secure Reset Password Page (/reset-password) */}
+            {activeView === "reset-password" && (
+              <motion.div
+                key="reset-password"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <ResetPasswordView
+                  onNavigate={(v) => setActiveView(v)}
+                  onOpenAuth={(mode) => openAuthModal(mode || "login")}
+                  addToast={addToast}
+                />
               </motion.div>
             )}
 
@@ -1492,7 +1684,12 @@ function AppContent() {
                   onOpenAuth={() => setIsAuthOpen(true)}
                   isDark={isDark}
                 >
-                  <GalleryPermissionModal onManualUploadClick={() => setActiveView("import")} />
+                  <GalleryPermissionModal
+                    userId={authUser?.id}
+                    onManualUploadClick={() => setActiveView("import")}
+                    onOpenPricing={() => setActiveView("pricing")}
+                    onOpenVipClaim={canOfferVipClaim ? () => setIsVipInviteOpen(true) : undefined}
+                  />
 
                   <SearchBar
                     query={searchQuery}
@@ -1838,6 +2035,49 @@ function AppContent() {
           }}
         />
       )}
+
+      {/* Automatic VIP Seat Invitation Popup (50-seat limited program) */}
+      <VipSeatInvitationModal
+        isOpen={isVipInviteOpen && (vipClaimedInModal || (vipRemaining !== null && vipRemaining > 0))}
+        remainingSpots={vipRemaining ?? 0}
+        totalSpots={vipTotalSpots}
+        onClaim={async () => {
+          if (!authUser?.id || authUser.id === "guest") {
+            return { success: false, error: "Please sign in to claim your VIP seat." };
+          }
+          const result = await claimFounderSpot(authUser.id);
+          if (result.success && typeof result.founderNumber === "number") {
+            setVipClaimedInModal(true);
+            await refreshEntitlement();
+            await refreshFounderStats();
+            addToast({
+              title: `VIP Member #${result.founderNumber}`,
+              description: "Your permanent VIP seat has been linked to your account.",
+              type: "success",
+            });
+          }
+          return result;
+        }}
+        onMaybeLater={() => {
+          if (authUser?.id) {
+            try {
+              sessionStorage.setItem(`snapfind_vip_invite_dismissed_${authUser.id}`, "1");
+            } catch {
+              // ignore storage restrictions
+            }
+          }
+          setIsVipInviteOpen(false);
+          addToast({
+            title: "VIP invitation dismissed",
+            description: "You can still claim an available VIP seat anytime from your Account page.",
+            type: "info",
+          });
+        }}
+        onCloseAfterClaim={() => {
+          setIsVipInviteOpen(false);
+          setVipClaimedInModal(false);
+        }}
+      />
 
       {/* Give Feedback Modal */}
       <GiveFeedbackModal

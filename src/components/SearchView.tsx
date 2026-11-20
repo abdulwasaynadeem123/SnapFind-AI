@@ -1,26 +1,25 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
+  Sparkles,
+  Image as ImageIcon,
+  Calendar,
+  Tag,
+  X,
+  ArrowUpDown,
+  Clock,
   SlidersHorizontal,
-  RotateCcw,
-  Play,
-  ArrowRight,
-  FilterX,
+  Heart,
+  Trash2,
+  Loader2,
+  Upload,
 } from "lucide-react";
 import { ScreenshotItem, SearchResultMatch, CategoryType, SearchHistoryItem } from "../types";
-import { ScreenshotCard } from "./ScreenshotCard";
-import { instantKeywordSearch } from "../services/api";
-import { PaginationControls } from "./PaginationControls";
 import { SearchBar } from "./SearchBar";
+import { ScreenshotCard } from "./ScreenshotCard";
+import { PaginationControls } from "./PaginationControls";
+import { instantKeywordSearch } from "../services/api";
 import { PageHeroHeader } from "./PageHeroHeader";
-import {
-  SearchFilterPanel,
-  FilterState,
-  DateFilterType,
-  SortOptionType,
-  ProcessingStatusType,
-  FileTypeFilter,
-} from "./SearchFilterPanel";
 
 interface SearchViewProps {
   screenshots: ScreenshotItem[];
@@ -30,36 +29,53 @@ interface SearchViewProps {
   onExecuteSearch: (q: string) => void;
   selectedCategory: CategoryType;
   setSelectedCategory: (cat: CategoryType) => void;
-  isDark: boolean;
-  isSearching: boolean;
+  isDark?: boolean;
+  isSearching?: boolean;
   onSelectScreenshot: (item: ScreenshotItem) => void;
   onToggleFavorite: (id: string) => void;
-  onMoveCategory?: (id: string, newCategory: CategoryType) => void;
+  onMoveCategory: (id: string, cat: CategoryType) => void;
   onDelete: (id: string) => void;
-  onCopyText: (text: string) => void;
+  onCopyText?: (text: string) => void;
   searchHistory?: SearchHistoryItem[];
   onDeleteHistoryItem?: (id: string) => void;
   onClearHistory?: () => void;
   onOpenImport?: () => void;
-  onOpenDemo?: (query?: string) => void;
+  onOpenDemo?: (initialQuery?: string) => void;
   onLoadSamplePack?: () => void;
 }
 
 const EXAMPLE_SEARCHES = [
-  "Find my passport",
-  "Show shopping receipts",
-  "Find my resume",
+  "receipt",
+  "invoice",
+  "flight ticket",
+  "password",
+  "code",
+  "bank transfer",
 ];
+
+const QUICK_CATEGORIES: CategoryType[] = [
+  "All",
+  "Receipt & Invoice",
+  "Ticket & Travel",
+  "Financial",
+  "Code & Dev",
+  "Chat & Message",
+  "Notes & Ideas",
+  "E-Commerce",
+];
+
+const SEARCH_RESULTS_PER_PAGE = 12;
 
 export const SearchView: React.FC<SearchViewProps> = ({
   screenshots,
+  searchResults,
   query,
   setQuery,
   onExecuteSearch,
   selectedCategory,
   setSelectedCategory,
-  isDark,
-  isSearching,
+  isDark = true,
+  isSearching = false,
   onSelectScreenshot,
   onToggleFavorite,
   onMoveCategory,
@@ -67,381 +83,511 @@ export const SearchView: React.FC<SearchViewProps> = ({
   onCopyText,
   searchHistory = [],
   onDeleteHistoryItem,
+  onClearHistory,
   onOpenImport,
   onOpenDemo,
   onLoadSamplePack,
 }) => {
+  const [dateFilter, setDateFilter] = useState<"all" | "7d" | "30d" | "year">("all");
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [sortBy, setSortBy] = useState<"relevance" | "newest" | "oldest">("relevance");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
-  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
-  // Consolidated Filter State
-  const [filters, setFilters] = useState<FilterState>({
-    category: selectedCategory || "All",
-    date: "all",
-    onlyFavorites: false,
-    hasOcrText: false,
-    aiAnalyzed: false,
-    processingStatus: "all",
-    fileType: "all",
-    sortBy: "relevance",
-  });
+  const trimmedQuery = query.trim();
+  const hasSearched = trimmedQuery.length > 0;
 
-  // Sync external category prop with internal filter state
-  useEffect(() => {
-    if (selectedCategory && selectedCategory !== filters.category) {
-      setFilters((prev) => ({ ...prev, category: selectedCategory }));
+  // Merge AI/hybrid searchResults with instantKeywordSearch without breaking the indexing engine
+  const { mergedMatches, matchMap } = useMemo(() => {
+    if (!hasSearched) {
+      return { mergedMatches: [] as SearchResultMatch[], matchMap: new Map<string, SearchResultMatch>() };
     }
-  }, [selectedCategory]);
 
-  const handleUpdateFilters = (newFilters: Partial<FilterState>) => {
-    setFilters((prev) => {
-      const updated = { ...prev, ...newFilters };
-      if (newFilters.category && newFilters.category !== selectedCategory) {
-        setSelectedCategory(newFilters.category);
+    const instantMatches = instantKeywordSearch(trimmedQuery, screenshots);
+    const map = new Map<string, SearchResultMatch>();
+
+    // Seed with AI / hybrid searchResults first (if provided by App.tsx)
+    for (const m of searchResults || []) {
+      if (m && m.id && !map.has(m.id)) {
+        map.set(m.id, m);
       }
-      return updated;
-    });
-    setCurrentPage(1);
-  };
+    }
 
-  const handleClearFilters = () => {
-    setFilters({
-      category: "All",
-      date: "all",
-      onlyFavorites: false,
-      hasOcrText: false,
-      aiAnalyzed: false,
-      processingStatus: "all",
-      fileType: "all",
-      sortBy: "relevance",
-    });
-    setSelectedCategory("All");
-    setCurrentPage(1);
-  };
+    // Merge instant keyword matches (preserving OCR snippet & matchedTerms)
+    for (const m of instantMatches) {
+      const existing = map.get(m.id);
+      if (!existing) {
+        map.set(m.id, m);
+      } else {
+        map.set(m.id, {
+          ...existing,
+          score: Math.max(existing.score || 0, m.score || 0),
+          highlightSnippet: existing.highlightSnippet || m.highlightSnippet,
+          matchedTerms:
+            existing.matchedTerms && existing.matchedTerms.length > 0
+              ? existing.matchedTerms
+              : m.matchedTerms,
+          matchReason: existing.matchReason || m.matchReason,
+        });
+      }
+    }
 
-  // Count active non-default filters
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filters.category !== "All") count++;
-    if (filters.date !== "all") count++;
-    if (filters.onlyFavorites) count++;
-    if (filters.hasOcrText) count++;
-    if (filters.aiAnalyzed) count++;
-    if (filters.processingStatus !== "all") count++;
-    if (filters.fileType !== "all") count++;
-    if (filters.sortBy !== "relevance") count++;
-    return count;
-  }, [filters]);
+    const merged = Array.from(map.values()).sort((a, b) => (b.score || 0) - (a.score || 0));
+    return { mergedMatches: merged, matchMap: map };
+  }, [hasSearched, trimmedQuery, screenshots, searchResults]);
 
-  // Compute instantaneous keyword search results
-  const activeMatches = useMemo(() => {
-    const q = query.trim();
-    if (!q) return [];
-    return instantKeywordSearch(q, screenshots);
-  }, [query, screenshots]);
-
-  const screenshotMap = useMemo(() => {
-    return new Map<string, ScreenshotItem>(screenshots.map((s) => [s.id, s]));
-  }, [screenshots]);
-
-  const matchMap = useMemo(() => {
-    return new Map<string, SearchResultMatch>(activeMatches.map((r) => [r.id, r]));
-  }, [activeMatches]);
-
-  // Filter & Sort Results
   const displayItems = useMemo(() => {
-    const rawList = query.trim()
-      ? activeMatches
-          .map((m) => screenshotMap.get(m.id))
-          .filter((s): s is ScreenshotItem => Boolean(s))
-      : screenshots;
+    const screenshotById = new Map<string, ScreenshotItem>();
+    for (const sc of screenshots) {
+      screenshotById.set(sc.id, sc);
+    }
 
-    const now = Date.now();
-    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    let items: ScreenshotItem[] = hasSearched
+      ? mergedMatches
+          .map((m) => screenshotById.get(m.id))
+          .filter((item): item is ScreenshotItem => Boolean(item))
+      : [...screenshots];
 
-    return rawList
-      .filter((item) => {
-        // Exclude deleted items
-        if (item.isDeleted || item.is_deleted) return false;
+    if (selectedCategory !== "All") {
+      items = items.filter((item) => item.category === selectedCategory);
+    }
 
-        // 1. Category
-        if (filters.category !== "All" && item.category !== filters.category) {
-          return false;
-        }
+    if (onlyFavorites) {
+      items = items.filter((item) => Boolean(item.isFavorite || item.favorite));
+    }
 
-        // 2. Only Favorites
-        if (filters.onlyFavorites && !item.isFavorite && !item.favorite) {
-          return false;
-        }
+    if (dateFilter !== "all") {
+      const now = Date.now();
+      const windowMs =
+        dateFilter === "7d"
+          ? 7 * 24 * 60 * 60 * 1000
+          : dateFilter === "30d"
+          ? 30 * 24 * 60 * 60 * 1000
+          : 365 * 24 * 60 * 60 * 1000;
 
-        // 3. Has OCR text
-        if (filters.hasOcrText && !item.ocr_text?.trim() && (!item.fullText || item.fullText.trim().length < 5)) {
-          return false;
-        }
-
-        // 4. AI Analyzed
-        if (filters.aiAnalyzed && (!item.tags || item.tags.length === 0) && !item.summary) {
-          return false;
-        }
-
-        // 5. Processing Status
-        const isFullyIndexed = Boolean(item.summary && (item.ocr_text || item.fullText));
-        if (filters.processingStatus === "indexed" && !isFullyIndexed) {
-          return false;
-        }
-        if (filters.processingStatus === "pending" && isFullyIndexed) {
-          return false;
-        }
-
-        // 6. File Type
-        if (filters.fileType !== "all") {
-          const name = (item.fileName || item.file_name || "").toLowerCase();
-          const uri = (item.imageUrl || item.image_uri || "").toLowerCase();
-          if (filters.fileType === "png" && !name.endsWith(".png") && !uri.includes("png")) return false;
-          if (filters.fileType === "jpeg" && !name.endsWith(".jpg") && !name.endsWith(".jpeg") && !uri.includes("jpeg")) return false;
-          if (filters.fileType === "webp" && !name.endsWith(".webp") && !uri.includes("webp")) return false;
-        }
-
-        // 7. Date Filter
-        if (filters.date !== "all") {
-          const itemTime = new Date(item.createdAt).getTime();
-          const diff = now - itemTime;
-          if (filters.date === "today" && diff > ONE_DAY_MS) return false;
-          if (filters.date === "week" && diff > 7 * ONE_DAY_MS) return false;
-          if (filters.date === "month" && diff > 30 * ONE_DAY_MS) return false;
-          if (filters.date === "year" && diff > 365 * ONE_DAY_MS) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (filters.sortBy === "relevance" && query.trim()) {
-          const scoreA = matchMap.get(a.id)?.score || 0;
-          const scoreB = matchMap.get(b.id)?.score || 0;
-          return scoreB - scoreA;
-        }
-        if (filters.sortBy === "newest") {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        if (filters.sortBy === "oldest") {
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        }
-        if (filters.sortBy === "ocrScore") {
-          return (b.ocrAccuracyScore || 0.8) - (a.ocrAccuracyScore || 0.8);
-        }
-        return 0;
+      items = items.filter((item) => {
+        const ts = new Date(item.createdAt || item.date_created || 0).getTime();
+        return !Number.isNaN(ts) && now - ts <= windowMs;
       });
-  }, [query, activeMatches, screenshots, filters, matchMap, screenshotMap]);
+    }
 
-  // Pagination
-  const totalPages = Math.ceil(displayItems.length / itemsPerPage) || 1;
+    if (sortBy === "newest") {
+      items.sort(
+        (a, b) =>
+          new Date(b.createdAt || b.date_created || 0).getTime() -
+          new Date(a.createdAt || a.date_created || 0).getTime()
+      );
+    } else if (sortBy === "oldest") {
+      items.sort(
+        (a, b) =>
+          new Date(a.createdAt || a.date_created || 0).getTime() -
+          new Date(b.createdAt || b.date_created || 0).getTime()
+      );
+    } else if (hasSearched) {
+      items.sort((a, b) => (matchMap.get(b.id)?.score || 0) - (matchMap.get(a.id)?.score || 0));
+    }
+
+    return items;
+  }, [
+    screenshots,
+    hasSearched,
+    mergedMatches,
+    matchMap,
+    selectedCategory,
+    onlyFavorites,
+    dateFilter,
+    sortBy,
+  ]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [trimmedQuery, selectedCategory, dateFilter, onlyFavorites, sortBy, screenshots.length]);
+
+  const totalPages = Math.max(1, Math.ceil(displayItems.length / SEARCH_RESULTS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
   const paginatedItems = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return displayItems.slice(start, start + itemsPerPage);
-  }, [displayItems, currentPage, itemsPerPage]);
+    const start = (safePage - 1) * SEARCH_RESULTS_PER_PAGE;
+    return displayItems.slice(start, start + SEARCH_RESULTS_PER_PAGE);
+  }, [displayItems, safePage]);
 
-  const hasSearched = query.trim().length > 0;
+  const hasActiveFilters = selectedCategory !== "All" || dateFilter !== "all" || onlyFavorites;
+
+  const handleClearSearch = () => {
+    setQuery("");
+    onExecuteSearch("");
+  };
+
+  const handleResetFilters = () => {
+    setSelectedCategory("All");
+    setDateFilter("all");
+    setOnlyFavorites(false);
+    setSortBy("relevance");
+  };
+
+  const handleRunExample = (example: string) => {
+    setQuery(example);
+    onExecuteSearch(example);
+  };
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6 pb-16 px-3 sm:px-4 md:px-0 select-none">
-      {/* Search Hero Header */}
-      {!hasSearched && (
-        <PageHeroHeader
-          type="search"
-          title="Search your screenshots"
-          isDark={isDark}
-        />
-      )}
+    <div className="space-y-6">
+      {/* Header */}
+      <PageHeroHeader
+        type="search"
+        title="Search Screenshots"
+        subtitle="Find any screenshot instantly by extracted OCR text, descriptions, tags, categories, or keywords."
+        isDark={isDark}
+      />
 
-      {/* 1. Main Search Bar at Top */}
-      <div className="w-full pt-1">
+      {/* Primary Search Input */}
+      <div className="p-4 sm:p-5 rounded-2xl border bg-[#141714] border-[#30362E] space-y-4">
         <SearchBar
           query={query}
           setQuery={setQuery}
           onExecuteSearch={onExecuteSearch}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
           isDark={isDark}
           isSearching={isSearching}
           screenshots={screenshots}
           searchHistory={searchHistory}
           onDeleteHistoryItem={onDeleteHistoryItem}
-          placeholder="Search screenshots by text, objects, dates, or natural language..."
         />
-      </div>
 
-      {/* 2. Top Controls Bar: Results Count & Filter Button */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <div>
-          {hasSearched ? (
-            <p className="text-xs sm:text-sm text-[#A5AAA1] font-medium">
-              {displayItems.length === 1
-                ? "1 result found"
-                : `${displayItems.length} results found`}
-            </p>
-          ) : (
-            <p className="text-xs sm:text-sm text-[#A5AAA1] font-medium">
-              {screenshots.length} total screenshots in vault
-            </p>
-          )}
-        </div>
-
-        {/* ONE Filter Button with Active Count Badge */}
-        <button
-          id="snapfind-open-filters-btn"
-          type="button"
-          onClick={() => setIsFilterPanelOpen(true)}
-          className={`flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-            activeFiltersCount > 0
-              ? "bg-[#B7F36B] text-[#10130D] font-bold border-[#B7F36B] shadow-[2px_2px_8px_rgba(0,0,0,0.5)]"
-              : "bg-[#141714] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#1B1F1A] hover:border-[#B7F36B]"
-          }`}
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate whitespace-nowrap">Filters</span>
-          {activeFiltersCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-md bg-[#0D0F0D] text-[#B7F36B] text-[10px] font-mono font-bold border border-[#30362E]">
-              {activeFiltersCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* 3. Empty Search State (When no search has been performed) */}
-      {!hasSearched && (
-        <div className="py-12 sm:py-16 text-center space-y-4 max-w-lg mx-auto">
-          <div className="space-y-1">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-[#F7F8F5] truncate whitespace-nowrap">
-              Find anything you've saved
-            </h2>
-            <p className="text-xs sm:text-sm text-[#A5AAA1] leading-relaxed truncate whitespace-nowrap">
-              Search screenshots using words, descriptions, receipt amounts, or natural language.
-            </p>
+        {/* Filters Row */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+          {/* Category Filter Chips */}
+          <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by category">
+            {QUICK_CATEGORIES.map((cat) => {
+              const isActive = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                    isActive
+                      ? "bg-[#B7F36B] border-[#B7F36B] text-[#080908]"
+                      : "bg-[#1B1F1A] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:border-[#777E74]"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Minimal Subtle Example Searches */}
-          <div className="flex flex-wrap justify-center gap-2 pt-2">
-            {EXAMPLE_SEARCHES.map((example) => (
-              <button
-                key={example}
-                type="button"
-                onClick={() => {
-                  setQuery(example);
-                  onExecuteSearch(example);
-                }}
-                className="px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-semibold border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] hover:border-[#B7F36B] transition-all cursor-pointer flex items-center gap-1.5 shadow-[2px_2px_6px_rgba(0,0,0,0.4)]"
+          {/* Date, Favorites & Sort Controls */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[#777E74]" aria-hidden="true" />
+              <label htmlFor="search-date-filter" className="sr-only">
+                Filter by date range
+              </label>
+              <select
+                id="search-date-filter"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value as "all" | "7d" | "30d" | "year")}
+                className="px-2.5 py-1.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-xs font-medium text-[#F7F8F5] outline-none focus:border-[#B7F36B] cursor-pointer"
               >
-                <span className="truncate whitespace-nowrap">"{example}"</span>
-                <ArrowRight className="w-3 h-3 text-[#B7F36B] shrink-0" />
+                <option value="all">Any time</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="year">Past year</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setOnlyFavorites((prev) => !prev)}
+              aria-pressed={onlyFavorites}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                onlyFavorites
+                  ? "bg-[#B7F36B] border-[#B7F36B] text-[#080908]"
+                  : "bg-[#0D0F0D] border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5]"
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${onlyFavorites ? "fill-[#080908]" : ""}`} />
+              <span>Favorites</span>
+            </button>
+
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#777E74]" aria-hidden="true" />
+              <label htmlFor="search-sort-select" className="sr-only">
+                Sort search results
+              </label>
+              <select
+                id="search-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "relevance" | "newest" | "oldest")}
+                className="px-2.5 py-1.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-xs font-medium text-[#F7F8F5] outline-none focus:border-[#B7F36B] cursor-pointer"
+              >
+                <option value="relevance">Best match</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Searches Panel (clearly shown when idle or when history exists) */}
+      {!hasSearched && searchHistory.length > 0 && (
+        <section
+          aria-label="Recent searches"
+          className="p-4 sm:p-5 rounded-2xl border bg-[#141714] border-[#30362E] space-y-3"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#A5AAA1] flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-[#B7F36B]" />
+              Recent Searches
+            </h2>
+            {onClearHistory && (
+              <button
+                type="button"
+                onClick={onClearHistory}
+                className="text-xs font-semibold text-[#A5AAA1] hover:text-rose-400 transition-colors cursor-pointer"
+              >
+                Clear history
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {searchHistory.slice(0, 8).map((item) => (
+              <div
+                key={item.id}
+                className="inline-flex items-center gap-1 rounded-xl bg-[#0D0F0D] border border-[#30362E] hover:border-[#B7F36B] transition-colors"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleRunExample(item.query)}
+                  className="px-3 py-1.5 text-xs font-medium text-[#F7F8F5] hover:text-[#B7F36B] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Clock className="w-3 h-3 text-[#777E74]" />
+                  <span>{item.query}</span>
+                  {typeof item.resultCount === "number" && (
+                    <span className="text-[10px] font-mono text-[#777E74]">({item.resultCount})</span>
+                  )}
+                </button>
+                {onDeleteHistoryItem && (
+                  <button
+                    type="button"
+                    aria-label={`Delete recent search "${item.query}"`}
+                    onClick={() => onDeleteHistoryItem(item.id)}
+                    className="pr-2 pl-1 py-1.5 text-[#777E74] hover:text-rose-400 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Active Search Results Header Bar */}
+      {(hasSearched || hasActiveFilters) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-[#141714] border-[#30362E]">
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm text-[#F7F8F5]">
+            <SlidersHorizontal className="w-4 h-4 text-[#B7F36B] shrink-0" />
+            {isSearching && displayItems.length === 0 ? (
+              <span className="flex items-center gap-2 text-[#A5AAA1]">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B7F36B]" />
+                Searching your screenshots for &ldquo;{trimmedQuery}&rdquo;...
+              </span>
+            ) : (
+              <span>
+                <strong className="font-bold text-[#B7F36B]">{displayItems.length}</strong>{" "}
+                {displayItems.length === 1 ? "screenshot" : "screenshots"}
+                {hasSearched && (
+                  <>
+                    {" "}
+                    matching <strong className="font-semibold">&ldquo;{trimmedQuery}&rdquo;</strong>
+                  </>
+                )}
+              </span>
+            )}
+            {isSearching && displayItems.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#B7F36B] px-2 py-0.5 rounded-md bg-[#1B1F1A] border border-[#30362E]">
+                <Loader2 className="w-3 h-3 animate-spin" /> Refining
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] cursor-pointer"
+              >
+                Reset Filters
+              </button>
+            )}
+            {hasSearched && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-xs font-semibold text-[#B7F36B] flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear Search
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Results Content */}
+      {isSearching && displayItems.length === 0 ? (
+        /* Loading Skeleton Grid */
+        <div
+          role="status"
+          aria-live="polite"
+          aria-label="Searching screenshots"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        >
+          {Array.from({ length: 8 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="rounded-2xl border bg-[#141714] border-[#30362E] overflow-hidden animate-pulse"
+            >
+              <div className="aspect-[16/10] w-full bg-[#1B1F1A]" />
+              <div className="p-3.5 space-y-2.5">
+                <div className="h-4 w-3/4 rounded bg-[#1B1F1A]" />
+                <div className="h-3 w-full rounded bg-[#1B1F1A]" />
+                <div className="h-3 w-2/3 rounded bg-[#1B1F1A]" />
+                <div className="pt-2 flex items-center justify-between">
+                  <div className="h-3 w-20 rounded bg-[#1B1F1A]" />
+                  <div className="h-3 w-12 rounded bg-[#1B1F1A]" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : screenshots.length === 0 ? (
+        /* Empty Library State */
+        <div className="py-14 px-6 text-center rounded-2xl border bg-[#141714] border-[#30362E] space-y-5">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-[#B7F36B] flex items-center justify-center">
+            <ImageIcon className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-[#F7F8F5]">No screenshots indexed yet</h3>
+            <p className="text-sm text-[#A5AAA1] max-w-md mx-auto leading-relaxed">
+              Import screenshots to extract searchable OCR text, descriptions, and tags automatically.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            {onOpenImport && (
+              <button
+                type="button"
+                onClick={onOpenImport}
+                className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+                Import Screenshots
+              </button>
+            )}
+            {onLoadSamplePack && (
+              <button
+                type="button"
+                onClick={onLoadSamplePack}
+                className="px-4 py-2.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-xs font-semibold cursor-pointer"
+              >
+                Load Sample Pack
+              </button>
+            )}
+            {onOpenDemo && (
+              <button
+                type="button"
+                onClick={() => onOpenDemo(trimmedQuery)}
+                className="px-4 py-2.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#B7F36B] text-xs font-semibold cursor-pointer"
+              >
+                Try Interactive Demo
+              </button>
+            )}
+          </div>
+        </div>
+      ) : displayItems.length === 0 ? (
+        /* No Matching Results State */
+        <div className="py-14 px-6 text-center rounded-2xl border bg-[#141714] border-[#30362E] space-y-5">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-[#A5AAA1] flex items-center justify-center">
+            <Search className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-[#F7F8F5]">No matching screenshots found</h3>
+            <p className="text-sm text-[#A5AAA1] max-w-md mx-auto leading-relaxed">
+              {hasSearched
+                ? `We couldn't find any screenshots matching "${trimmedQuery}"${hasActiveFilters ? " with the active filters" : ""}. Try broader keywords or clear your filters.`
+                : "No screenshots match your current filters."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            {hasSearched && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold cursor-pointer"
+              >
+                Clear Search
+              </button>
+            )}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-4 py-2.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-xs font-semibold cursor-pointer"
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-xs text-[#777E74]">Try searching:</span>
+            {EXAMPLE_SEARCHES.slice(0, 4).map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => handleRunExample(ex)}
+                className="px-3 py-1 rounded-lg bg-[#0D0F0D] border border-[#30362E] hover:border-[#B7F36B] text-xs text-[#A5AAA1] hover:text-[#B7F36B] cursor-pointer"
+              >
+                {ex}
               </button>
             ))}
           </div>
         </div>
-      )}
-
-      {/* 4. No Result State: Clear distinction between Empty Vault and Zero Search Matches */}
-      {hasSearched && displayItems.length === 0 && (
-        <div className="py-16 text-center space-y-4 max-w-lg mx-auto">
-          {screenshots.length === 0 ? (
-            /* Scenario A: Empty Vault */
-            <>
-              <div className="w-14 h-14 rounded-2xl bg-[#141714] border border-[#30362E] flex items-center justify-center mx-auto text-[#B7F36B] shadow-[6px_6px_16px_rgba(0,0,0,0.65)]">
-                <Search className="w-7 h-7 text-[#B7F36B]" />
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-base sm:text-lg font-bold text-[#F7F8F5] truncate whitespace-nowrap">
-                  Your screenshot vault is empty
-                </h3>
-                <p className="text-xs text-[#A5AAA1] max-w-md mx-auto leading-relaxed">
-                  You have not added any screenshots to your vault yet. Upload your own screenshots or explore the interactive demo with 6 pre-indexed sample files.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                {onOpenDemo && (
+      ) : (
+        /* Matching Screenshots Grid */
+        <div className="space-y-5">
+          {!hasSearched && (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+              <p className="text-xs text-[#A5AAA1] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#B7F36B]" />
+                Showing all <strong className="text-[#F7F8F5]">{displayItems.length}</strong> indexed screenshots
+              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] text-[#777E74]">Quick try:</span>
+                {EXAMPLE_SEARCHES.slice(0, 4).map((ex) => (
                   <button
+                    key={ex}
                     type="button"
-                    onClick={() => onOpenDemo(query)}
-                    className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 active:scale-98 shadow-[2px_2px_8px_rgba(0,0,0,0.5)] border border-[#B7F36B]"
+                    onClick={() => handleRunExample(ex)}
+                    className="px-2.5 py-1 rounded-lg bg-[#141714] border border-[#30362E] hover:border-[#B7F36B] text-[11px] font-medium text-[#A5AAA1] hover:text-[#B7F36B] cursor-pointer"
                   >
-                    <Play className="w-3.5 h-3.5" />
-                    <span>Try Query in Demo</span>
+                    <Tag className="w-2.5 h-2.5 inline mr-1" />
+                    {ex}
                   </button>
-                )}
-                {onOpenImport && (
-                  <button
-                    type="button"
-                    onClick={onOpenImport}
-                    className="px-4 py-2.5 rounded-xl border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#F7F8F5] hover:border-[#B7F36B] text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Upload Screenshots
-                  </button>
-                )}
-                {onLoadSamplePack && (
-                  <button
-                    type="button"
-                    onClick={onLoadSamplePack}
-                    className="px-4 py-2.5 rounded-xl border border-[#30362E] bg-[#141714] hover:bg-[#1B1F1A] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Load 6 Sample Files
-                  </button>
-                )}
+                ))}
               </div>
-            </>
-          ) : (
-            /* Scenario B: Vault has screenshots, but this search returned 0 matches */
-            <>
-              <div className="w-12 h-12 rounded-2xl bg-[#141714] border border-[#30362E] flex items-center justify-center mx-auto text-[#B7F36B] shadow-[4px_4px_12px_rgba(0,0,0,0.5)]">
-                <FilterX className="w-6 h-6 text-[#B7F36B]" />
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-lg font-semibold text-[#F7F8F5]">
-                  No matching screenshots found for "{query}"
-                </h3>
-                <p className="text-xs text-[#A5AAA1] max-w-md mx-auto leading-relaxed">
-                  We scanned {screenshots.length} screenshot{screenshots.length > 1 ? "s" : ""} in your vault, but none matched. Check your spelling, try broader keywords, or reset category filters.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    onExecuteSearch("");
-                  }}
-                  className="px-4 py-2 rounded-xl border border-[#30362E] text-xs font-semibold text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] transition-colors cursor-pointer"
-                >
-                  Clear Search
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsFilterPanelOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold shadow-[2px_2px_8px_rgba(0,0,0,0.5)] border border-[#B7F36B] transition-colors cursor-pointer active:scale-98"
-                >
-                  Adjust Filters
-                </button>
-                {onOpenDemo && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenDemo(query)}
-                    className="px-4 py-2 rounded-xl border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Search in Public Demo
-                  </button>
-                )}
-              </div>
-            </>
+            </div>
           )}
-        </div>
-      )}
 
-      {/* 5. Clean Responsive Results Grid (1, 2, or 4 columns - NO 3-card rows) */}
-      {displayItems.length > 0 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {paginatedItems.map((item) => (
               <ScreenshotCard
                 key={item.id}
                 item={item}
-                matchInfo={matchMap.get(item.id)}
+                matchInfo={hasSearched ? matchMap.get(item.id) : undefined}
                 isDark={isDark}
                 onSelect={onSelectScreenshot}
                 onToggleFavorite={onToggleFavorite}
@@ -452,37 +598,18 @@ export const SearchView: React.FC<SearchViewProps> = ({
             ))}
           </div>
 
-          {/* Pagination Controls if more than itemsPerPage */}
           {totalPages > 1 && (
             <PaginationControls
-              currentPage={currentPage}
+              currentPage={safePage}
               totalPages={totalPages}
               totalItems={displayItems.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={(page) => {
-                setCurrentPage(page);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              onItemsPerPageChange={(num) => {
-                setItemsPerPage(num);
-                setCurrentPage(1);
-              }}
+              itemsPerPage={SEARCH_RESULTS_PER_PAGE}
+              onPageChange={setCurrentPage}
               isDark={isDark}
             />
           )}
         </div>
       )}
-
-      {/* Filter Slide-over Drawer / Mobile Bottom Sheet */}
-      <SearchFilterPanel
-        isOpen={isFilterPanelOpen}
-        onClose={() => setIsFilterPanelOpen(false)}
-        filters={filters}
-        onUpdateFilters={handleUpdateFilters}
-        onClearFilters={handleClearFilters}
-        activeCount={activeFiltersCount}
-        isDark={isDark}
-      />
     </div>
   );
 };

@@ -107,6 +107,11 @@ const VIEW_SEO_CONFIG: Record<NavViewType, PageSeoConfig> = {
     description: "Administration portal.",
     isPublic: false,
   },
+  "reset-password": {
+    title: "Reset Password – SnapFind AI",
+    description: "Set a new password for your SnapFind AI account.",
+    isPublic: false,
+  },
   "not-found": {
     title: "404 Page Not Found – SnapFind AI",
     description: "The requested visual memory or page could not be found.",

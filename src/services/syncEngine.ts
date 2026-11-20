@@ -110,6 +110,53 @@ class SyncEngineService {
   }
 
   /**
+   * Permanently delete screenshot record(s) from Supabase cloud DB scoped to the authenticated owner.
+   * Never deletes original device gallery files — only removes SnapFind cloud index rows.
+   */
+  public async deleteScreenshotsBatchFromCloud(
+    ids: string[],
+    explicitUserId?: string
+  ): Promise<{ error?: string }> {
+    const cleanIds = Array.from(new Set((ids || []).filter(Boolean)));
+    if (cleanIds.length === 0) return {};
+
+    const ownerId =
+      explicitUserId && explicitUserId !== "guest"
+        ? explicitUserId
+        : this.currentUserId && this.currentUserId !== "guest"
+        ? this.currentUserId
+        : null;
+
+    if (!isSupabaseConfigured || !ownerId) {
+      return {};
+    }
+
+    try {
+      const { error } = await supabase
+        .from("screenshots")
+        .delete()
+        .in("id", cleanIds)
+        .eq("user_id", ownerId);
+
+      if (error) {
+        console.warn("[SyncEngine] Cloud permanent delete warning:", error.message);
+        return { error: error.message };
+      }
+      return {};
+    } catch (err: any) {
+      console.warn("[SyncEngine] Cloud permanent delete exception:", err?.message);
+      return { error: err?.message || "Failed to delete items from cloud." };
+    }
+  }
+
+  public async deleteScreenshotFromCloud(
+    id: string,
+    explicitUserId?: string
+  ): Promise<{ error?: string }> {
+    return this.deleteScreenshotsBatchFromCloud([id], explicitUserId);
+  }
+
+  /**
    * Main sync process (Non-blocking background execution with exponential backoff)
    */
   public async syncNow(): Promise<void> {

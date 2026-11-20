@@ -23,6 +23,8 @@ import { detectScreenshotPrivacy } from "./privacyDetector";
 import { classifySmartSnaps } from "./smartSnapsClassifier";
 import { decodeQrFromImage, extractWebsitesFromText } from "../utils/qrDetector";
 import { intelligentCache } from "./intelligentCache";
+import { Capacitor } from "@capacitor/core";
+import SnapFindMediaScanner from "../plugins/SnapFindMediaScanner";
 
 const QUEUE_STORAGE_KEY = "snapfind_processing_queue_v1";
 const MAX_RETRIES = 3;
@@ -232,6 +234,42 @@ class ProcessingQueueService {
   }
 
   /**
+   * Count active (non-deleted) screenshots belonging to the given user
+   */
+  private countUserActiveScreenshots(userId?: string): number {
+    const stored = loadStoredScreenshots();
+    const target = userId && userId !== "guest" ? userId : null;
+    return stored.filter((s) => {
+      if (s.isDeleted || s.is_deleted) return false;
+      if (!target) return true;
+      const owner = s.user_id || s.userId;
+      return !owner || owner === "guest" || owner === target;
+    }).length;
+  }
+
+  /**
+   * Count active queued / in-flight non-modified jobs to prevent batch enqueue overshooting quota
+   */
+  private countPendingNewJobs(userId?: string): number {
+    const target = userId && userId !== "guest" ? userId : null;
+    return this.jobs.filter((j) => {
+      if (j.isModified) return false;
+      if (
+        j.status !== "Queued" &&
+        j.status !== "Preparing" &&
+        j.status !== "OCR Processing" &&
+        j.status !== "AI Analysis" &&
+        j.status !== "Saving Metadata" &&
+        j.status !== "Updating Search Index"
+      ) {
+        return false;
+      }
+      if (!target) return true;
+      return !j.userId || j.userId === "guest" || j.userId === target;
+    }).length;
+  }
+
+  /**
    * Enqueue a single image processing job
    */
   public enqueue(candidate: {
@@ -243,49 +281,72 @@ class ProcessingQueueService {
     sha256Hash?: string;
     contentHash?: string;
     userId?: string;
+    dateModified?: string;
+    isModified?: boolean;
   }): ProcessingJob | null {
     const hash = candidate.contentHash || candidate.sha256Hash;
     const userId = candidate.userId || "guest";
+    const isModified = Boolean(candidate.isModified);
 
-    if (this.isDuplicate(candidate.id, candidate.imageUri, hash, userId)) {
+    if (!isModified && this.isDuplicate(candidate.id, candidate.imageUri, hash, userId)) {
       console.log(`Already indexed screenshot skipped: ${candidate.id}`);
       return null;
     }
 
-    const currentStored = loadStoredScreenshots();
-    const activeCount = currentStored.filter((s) => !s.isDeleted && !s.is_deleted).length;
-    const quotaCheck = SubscriptionManager.canIndexScreenshot(activeCount);
-    if (!quotaCheck.allowed) {
-      console.warn(`[ProcessingQueue] ${quotaCheck.reason}`);
-      const pausedJob: ProcessingJob = {
-        id: `job_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        imageId: candidate.id,
-        imageUri: candidate.imageUri,
-        fileName: candidate.fileName || `image_${candidate.id}.png`,
-        folder: candidate.folder || "Screenshots",
-        sha256Hash: candidate.sha256Hash,
-        hash: candidate.sha256Hash,
-        status: "waiting_for_verification",
-        progressPercent: 0,
-        attempts: 0,
-        maxAttempts: MAX_RETRIES,
-        queuedAt: new Date().toISOString(),
-        errorMessage: "Quota limit reached — upgrade to resume indexing",
-      };
-      this.jobs.push(pausedJob);
-      this.persistQueue();
-      this.notifyListeners();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("snapfind_quota_exceeded", {
-            detail: {
-              title: quotaCheck.upgradePromptTitle,
-              message: quotaCheck.upgradePromptMessage,
-            },
-          })
+    // If modified, remove stale completed/failed job entries for this imageId so it can re-index cleanly
+    if (isModified) {
+      this.jobs = this.jobs.filter(
+        (j) => !(j.imageId === candidate.id && (j.status === "Completed" || j.status === "Failed"))
+      );
+    }
+
+    // Respect account indexing limits from authoritative entitlement (modified updates do not consume extra slots)
+    if (!isModified) {
+      const activeCount = this.countUserActiveScreenshots(userId);
+      const pendingNew = this.countPendingNewJobs(userId);
+      const projectedCount = activeCount + pendingNew;
+      const quotaCheck = SubscriptionManager.canIndexScreenshot(projectedCount, userId);
+      if (!quotaCheck.allowed) {
+        console.warn(`[ProcessingQueue] ${quotaCheck.reason}`);
+        const alreadyPaused = this.jobs.some(
+          (j) => j.imageId === candidate.id && j.status === "waiting_for_verification"
         );
+        if (!alreadyPaused) {
+          const pausedJob: ProcessingJob = {
+            id: `job_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            imageId: candidate.id,
+            imageUri: candidate.imageUri,
+            fileName: candidate.fileName || `image_${candidate.id}.png`,
+            folder: candidate.folder || "Screenshots",
+            sha256Hash: candidate.sha256Hash,
+            hash: candidate.sha256Hash,
+            status: "waiting_for_verification",
+            progressPercent: 0,
+            attempts: 0,
+            maxAttempts: MAX_RETRIES,
+            queuedAt: new Date().toISOString(),
+            errorMessage: "Quota limit reached — upgrade to resume indexing",
+            userId,
+            dateModified: candidate.dateModified,
+          };
+          this.jobs.push(pausedJob);
+          this.persistQueue();
+          this.notifyListeners();
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("snapfind_quota_exceeded", {
+              detail: {
+                title: quotaCheck.upgradePromptTitle,
+                message: quotaCheck.upgradePromptMessage,
+                used: activeCount,
+                limit: quotaCheck.limit,
+              },
+            })
+          );
+        }
+        return null;
       }
-      return null;
     }
 
     const newJob: ProcessingJob = {
@@ -302,6 +363,9 @@ class ProcessingQueueService {
       maxAttempts: MAX_RETRIES,
       queuedAt: new Date().toISOString(),
       base64Data: candidate.base64Data,
+      userId,
+      dateModified: candidate.dateModified,
+      isModified,
     };
 
     this.jobs.push(newJob);
@@ -325,6 +389,9 @@ class ProcessingQueueService {
       folder?: string;
       base64Data?: string;
       sha256Hash?: string;
+      userId?: string;
+      dateModified?: string;
+      isModified?: boolean;
     }>
   ): ProcessingJob[] {
     const enqueued: ProcessingJob[] = [];
@@ -470,11 +537,68 @@ class ProcessingQueueService {
     job.attempts += 1;
     job.startedAt = job.startedAt || new Date().toISOString();
 
-    // Step 1: Preparing & High-Performance Image Optimization
+    // Step 1: Preparing & Authoritative Quota Re-Check (prevents concurrent workers exceeding account limits)
+    const jobUserId = job.userId || "guest";
+    if (!job.isModified) {
+      const currentActiveCount = this.countUserActiveScreenshots(jobUserId);
+      const liveQuotaCheck = SubscriptionManager.canIndexScreenshot(currentActiveCount, jobUserId);
+      if (!liveQuotaCheck.allowed) {
+        job.status = "waiting_for_verification";
+        job.progressPercent = 0;
+        job.errorMessage = "Quota limit reached — upgrade to resume indexing";
+        this.persistQueue();
+        this.notifyListeners();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("snapfind_quota_exceeded", {
+              detail: {
+                title: liveQuotaCheck.upgradePromptTitle,
+                message: liveQuotaCheck.upgradePromptMessage,
+                used: currentActiveCount,
+                limit: liveQuotaCheck.limit,
+              },
+            })
+          );
+        }
+        return;
+      }
+    }
+
     this.updateJobState(job, "Preparing", 15);
     await yieldToMainThread(5);
 
     let rawSource = job.base64Data || job.imageUri;
+    let nativeThumb: string | undefined;
+
+    // On native Android, MediaStore URIs use content:// scheme which WebView canvas/OCR cannot read directly.
+    // Read and downscale safely via our native ContentResolver plugin method.
+    if (
+      (!rawSource || !rawSource.startsWith("data:image")) &&
+      job.imageUri &&
+      job.imageUri.startsWith("content://") &&
+      Capacitor.isNativePlatform()
+    ) {
+      try {
+        const mediaData = await SnapFindMediaScanner.readMediaAsBase64({
+          uri: job.imageUri,
+          maxDimension: 1600,
+          thumbnailMax: 320,
+        });
+        if (mediaData?.base64Data) {
+          rawSource = mediaData.base64Data;
+        }
+        if (mediaData?.thumbnailData) {
+          nativeThumb = mediaData.thumbnailData;
+        }
+      } catch (readErr: any) {
+        console.warn("[ProcessingQueue] Native MediaStore read error:", readErr?.message || readErr);
+        if (/permission|revoked/i.test(String(readErr?.message || ""))) {
+          this.pauseQueue();
+          throw new Error("Gallery permission was revoked.");
+        }
+      }
+    }
+
     if (!rawSource || !rawSource.startsWith("data:image")) {
       rawSource = job.imageUri;
     }
@@ -484,36 +608,38 @@ class ProcessingQueueService {
     job.sha256Hash = imgHash;
     job.hash = imgHash;
 
-    // Multi-factor duplicate check across hash, dimensions, OCR, Gemini summary, file size
+    // Multi-factor duplicate check across hash, dimensions, OCR, summary, file size (skip when refreshing modified image)
     const currentStored = loadStoredScreenshots();
-    const dupCheck = handleDuplicateIndexing(
-      {
-        id: job.imageId,
-        hash: imgHash,
-        sha256Hash: imgHash,
-        fileName: job.fileName,
-        folder: job.folder,
-        imageUrl: job.imageUri,
-        base64Data: rawSource,
-      },
-      currentStored
-    );
+    if (!job.isModified) {
+      const dupCheck = handleDuplicateIndexing(
+        {
+          id: job.imageId,
+          hash: imgHash,
+          sha256Hash: imgHash,
+          fileName: job.fileName,
+          folder: job.folder,
+          imageUrl: job.imageUri,
+          base64Data: rawSource,
+        },
+        currentStored
+      );
 
-    if (dupCheck.isDuplicate && dupCheck.processedItem) {
-      console.log(`[ProcessingQueue] "Already indexed" - ${job.fileName} duplicate detected. Skipping OCR & Gemini processing.`);
-      job.status = "Completed";
-      job.progressPercent = 100;
-      job.completedAt = new Date().toISOString();
-      job.title = dupCheck.processedItem.title;
-      job.description = dupCheck.processedItem.description || dupCheck.processedItem.summary;
-      job.aiDescription = dupCheck.processedItem.ai_description || dupCheck.processedItem.summary;
-      job.category = dupCheck.processedItem.category;
-      job.tags = dupCheck.processedItem.tags;
-      job.keywords = dupCheck.processedItem.keywords;
-      job.errorMessage = "Already Indexed";
-      job.base64Data = undefined;
-      this.updateJobState(job, "Completed", 100);
-      return;
+      if (dupCheck.isDuplicate && dupCheck.processedItem) {
+        console.log(`[ProcessingQueue] "Already indexed" - ${job.fileName} duplicate detected. Skipping OCR & AI processing.`);
+        job.status = "Completed";
+        job.progressPercent = 100;
+        job.completedAt = new Date().toISOString();
+        job.title = dupCheck.processedItem.title;
+        job.description = dupCheck.processedItem.description || dupCheck.processedItem.summary;
+        job.aiDescription = dupCheck.processedItem.ai_description || dupCheck.processedItem.summary;
+        job.category = dupCheck.processedItem.category;
+        job.tags = dupCheck.processedItem.tags;
+        job.keywords = dupCheck.processedItem.keywords;
+        job.errorMessage = "Already Indexed";
+        job.base64Data = undefined;
+        this.updateJobState(job, "Completed", 100);
+        return;
+      }
     }
 
     // Fast image optimization: generate crisp 1600px OCR/AI image + 320px thumbnail in one operation
@@ -525,7 +651,7 @@ class ProcessingQueueService {
     });
 
     const optimizedBase64 = optResult.optimizedBase64 || rawSource;
-    job.thumbnailUri = optResult.thumbnailBase64 || job.imageUri;
+    job.thumbnailUri = nativeThumb || optResult.thumbnailBase64 || job.imageUri;
 
     // Step 2: Automatic Tesseract.js OCR Text Extraction (Local Browser Worker with Safe Fallback)
     this.updateJobState(job, "OCR Processing", 30);
@@ -796,8 +922,13 @@ class ProcessingQueueService {
       }
     }
 
+    const resolvedOwnerId = job.userId && job.userId !== "guest" ? job.userId : undefined;
+    const effectiveModifiedIso = job.dateModified || nowIso;
+
     const updatedItem: ScreenshotItem = normalizeScreenshotItem({
       id: job.imageId,
+      user_id: resolvedOwnerId,
+      userId: resolvedOwnerId,
       imageUrl: job.imageUri,
       image_uri: job.imageUri,
       thumbnailUri: job.thumbnailUri || job.imageUri,
@@ -821,8 +952,8 @@ class ProcessingQueueService {
       folder: job.folder || "Screenshots",
       createdAt: nowIso,
       date_created: nowIso,
-      dateModified: nowIso,
-      date_modified: nowIso,
+      dateModified: effectiveModifiedIso,
+      date_modified: effectiveModifiedIso,
       indexedAt: nowIso,
       indexed_at: nowIso,
       isScreenshot: true,
@@ -1068,6 +1199,40 @@ class ProcessingQueueService {
    */
   public getJob(jobId: string): ProcessingJob | undefined {
     return this.jobs.find((j) => j.id === jobId || j.imageId === jobId);
+  }
+
+  /**
+   * Authoritative indexing progress summary for UI (e.g., "Indexed 120 of 500 screenshots.")
+   */
+  public getIndexingProgressSummary(userId?: string, discoveredTotal?: number): {
+    indexedCount: number;
+    totalCount: number;
+    pendingCount: number;
+    limitPausedCount: number;
+    limit: number;
+    isIndexing: boolean;
+    isPaused: boolean;
+    isLimitReached: boolean;
+  } {
+    const indexedCount = this.countUserActiveScreenshots(userId);
+    const pendingCount = this.countPendingNewJobs(userId);
+    const limitPausedCount = this.jobs.filter((j) => j.status === "waiting_for_verification").length;
+    const quota = SubscriptionManager.getQuota(indexedCount, userId);
+    const totalCount = Math.max(
+      indexedCount + pendingCount + limitPausedCount,
+      discoveredTotal || 0
+    );
+
+    return {
+      indexedCount,
+      totalCount,
+      pendingCount,
+      limitPausedCount,
+      limit: quota.limit,
+      isIndexing: this.isProcessing || pendingCount > 0,
+      isPaused: this.isPaused,
+      isLimitReached: quota.isExceeded || limitPausedCount > 0,
+    };
   }
 
   /**

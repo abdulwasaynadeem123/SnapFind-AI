@@ -1,47 +1,50 @@
 import { WebPlugin } from '@capacitor/core';
 import type {
   SnapFindMediaScannerPlugin,
-  ScanCompletedPayload,
-  ScanProgressPayload,
-  ScreenshotDetectedPayload,
+  ReadMediaBase64Result,
 } from './index';
 
+/**
+ * Honest web implementation:
+ * Web browsers cannot silently monitor device photo galleries via Android MediaStore.
+ * Never fake granted permissions or fake automatic gallery monitoring in browser environments.
+ */
 export class SnapFindMediaScannerWeb extends WebPlugin implements SnapFindMediaScannerPlugin {
-  async checkGalleryPermission(): Promise<{ granted: boolean; permissionState: 'granted' | 'partial' | 'denied' | 'prompt' }> {
-    return { granted: false, permissionState: 'prompt' };
+  async checkGalleryPermission(): Promise<{
+    granted: boolean;
+    permissionState: 'granted' | 'partial' | 'denied' | 'prompt' | 'unsupported';
+  }> {
+    return { granted: false, permissionState: 'unsupported' };
   }
 
-  async requestGalleryPermission(): Promise<{ granted: boolean; permissionState: 'granted' | 'partial' | 'denied' | 'prompt' }> {
-    console.log('[SnapFindMediaScannerWeb] requestGalleryPermission called');
-    return { granted: true, permissionState: 'granted' };
+  async requestGalleryPermission(): Promise<{
+    granted: boolean;
+    permissionState: 'granted' | 'partial' | 'denied' | 'prompt' | 'unsupported';
+  }> {
+    return { granted: false, permissionState: 'unsupported' };
   }
 
   async openAppSettings(): Promise<void> {
-    console.log('[SnapFindMediaScannerWeb] openAppSettings called');
+    // No-op on web; app settings intent is Android-only.
   }
 
-  async scanExistingScreenshots(options?: { sinceTimestamp?: number }): Promise<{ totalFound: number; lastScanTimestamp?: number }> {
-    console.log('[SnapFindMediaScannerWeb] scanExistingScreenshots called', options);
-    setTimeout(() => {
-      this.notifyListeners('onInitialScanCompleted', {
-        totalFound: 0,
-        screenshots: [],
-      });
-    }, 100);
-    return { totalFound: 0, lastScanTimestamp: Date.now() };
+  async readMediaAsBase64(): Promise<ReadMediaBase64Result> {
+    throw new Error('Native MediaStore access is only available in the Android app.');
+  }
+
+  async scanExistingScreenshots(): Promise<{ totalFound: number; lastScanTimestamp?: number }> {
+    return { totalFound: 0, lastScanTimestamp: 0 };
   }
 
   async startScreenshotMonitoring(): Promise<{ active: boolean }> {
-    console.log('[SnapFindMediaScannerWeb] startScreenshotMonitoring called');
-    return { active: true };
-  }
-
-  async stopScreenshotMonitoring(): Promise<{ active: boolean }> {
-    console.log('[SnapFindMediaScannerWeb] stopScreenshotMonitoring called');
     return { active: false };
   }
 
-  async updateNotificationProgress(options: { progressPercentage: number }): Promise<void> {
-    console.log('[SnapFindMediaScannerWeb] updateNotificationProgress:', options.progressPercentage);
+  async stopScreenshotMonitoring(): Promise<{ active: boolean }> {
+    return { active: false };
+  }
+
+  async updateNotificationProgress(): Promise<void> {
+    // No-op on web.
   }
 }
