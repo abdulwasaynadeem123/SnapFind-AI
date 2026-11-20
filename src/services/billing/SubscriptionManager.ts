@@ -673,6 +673,7 @@ class SubscriptionManagerService {
   public async claimFounder(
     userId?: string
   ): Promise<{ success: boolean; entitlement?: UserEntitlement; founderNumber?: number; message?: string; error?: string }> {
+    return { success: false, error: "VIP seats have been temporarily discontinued." };
     const targetUserId = userId || this.currentEntitlement.userId || "guest";
     let networkUnreachable = false;
 
