@@ -1579,7 +1579,7 @@ async function getAuthoritativeFounderRegistry(callerToken?: string): Promise<Au
     // founder_claims.user_id has an auth.users foreign key; do not filter against a
     // single auth.admin.listUsers page, which silently omits users after page 1.
 
-    const deduped = await queryPostgresFounderTables(supabaseServer, validUsersMap, false);
+    const deduped = await queryPostgresFounderTables(supabaseServer, null, false);
     return {
       totalSeats: 50,
       claims: deduped,
