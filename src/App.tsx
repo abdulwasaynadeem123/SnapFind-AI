@@ -320,7 +320,7 @@ function AppContent() {
         }
       });
     return () => { cancelled = true; };
-  }, [isAuthenticatedAccount, authUser?.id, authLoading]);
+  }, [isAuthenticatedAccount, authUser?.id, authLoading, isRecoveryMode, activeView]);
 
   useEffect(() => {
     const handleOpenFounderPromo = () => {
