@@ -3,7 +3,7 @@ import { Crown, CheckCircle2, AlertCircle, Loader2, ShieldCheck, Layers, Cloud, 
 
 interface VipSeatInvitationModalProps {
   isOpen: boolean;
-  remainingSpots: number;
+  signupNumber?: number;
   totalSpots?: number;
   onClaim: () => Promise<{
     success: boolean;
@@ -17,7 +17,7 @@ interface VipSeatInvitationModalProps {
 
 export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
   isOpen,
-  remainingSpots,
+  signupNumber,
   totalSpots = 50,
   onClaim,
   onMaybeLater,
@@ -46,9 +46,6 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
   if (!isOpen) return null;
 
   const safeTotal = totalSpots || 50;
-  const safeRemaining = Math.max(0, Math.min(safeTotal, remainingSpots));
-  const occupiedSpots = Math.max(0, safeTotal - safeRemaining);
-  const progressPercent = Math.min(100, Math.round((occupiedSpots / safeTotal) * 100));
 
   const handleClaimClick = async () => {
     if (isSubmittingRef.current || isClaiming) return;
@@ -109,16 +106,16 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
             <div className="space-y-2">
               <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#30362E] bg-[#1B1F1A] px-2.5 py-1 text-xs font-bold text-[#B7F36B]">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>Permanent VIP Seat Verified</span>
+                <span>Lifetime Free Verified</span>
               </div>
               <h2
                 id="vip-invitation-title"
                 className="text-2xl font-bold tracking-tight text-[#F7F8F5]"
               >
-                VIP Member #{claimedNumber}
+                Lifetime Free Member #{claimedNumber}
               </h2>
               <p className="text-sm leading-relaxed text-[#A5AAA1]">
-                Your permanent VIP seat is now linked to your account. You have Lifetime Free Pro access with up to 150,000 AI-indexed screenshots.
+                Your permanent Lifetime Free Pro access is now active on your account. You have Lifetime Free Pro access with up to 150,000 AI-indexed screenshots.
               </p>
             </div>
 
@@ -126,7 +123,7 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
               <div className="flex items-center justify-between">
                 <span>Assigned Seat</span>
                 <span className="font-mono font-bold text-[#B7F36B]">
-                  VIP Member #{claimedNumber} of {safeTotal}
+                  Early signup #{signupNumber || claimedNumber} of {safeTotal}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -155,38 +152,20 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
               </div>
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#B7F36B]">
-                  Limited to {safeTotal} Members
+                  FIRST {safeTotal} SIGNUPS
                 </span>
                 <h2
                   id="vip-invitation-title"
                   className="text-xl sm:text-2xl font-bold tracking-tight text-[#F7F8F5]"
                 >
-                  Claim Your Free VIP Seat
+                  Claim Lifetime Free
                 </h2>
               </div>
             </div>
 
             <p className="text-sm leading-relaxed text-[#A5AAA1]">
-              Get exclusive VIP benefits while seats are available.
+              You are among the first 50 new SnapFind accounts. Claim permanent Pro access at no cost — forever.
             </p>
-
-            {/* Authoritative Remaining Seat Counter */}
-            <div className="rounded-xl border border-[#30362E] bg-[#0D0F0D] p-4 space-y-2.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-[#F7F8F5]">
-                  {safeRemaining} of {safeTotal} seats remaining.
-                </span>
-                <span className="font-mono text-[#A5AAA1]">
-                  {occupiedSpots} / {safeTotal} claimed
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-[#1B1F1A] border border-[#30362E]">
-                <div
-                  className="h-full rounded-full bg-[#B7F36B] transition-all duration-300"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
 
             {/* VIP Benefits Summary */}
             <div className="space-y-2 text-xs text-[#A5AAA1]">
@@ -219,18 +198,18 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
               <button
                 type="button"
                 onClick={handleClaimClick}
-                disabled={isClaiming || safeRemaining <= 0}
+                disabled={isClaiming}
                 className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#B7F36B] px-4 py-3 text-sm font-bold text-[#080908] transition-colors hover:bg-[#A5E65A] disabled:opacity-50 cursor-pointer"
               >
                 {isClaiming ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Claiming VIP Seat...</span>
+                    <span>Activating Lifetime Free...</span>
                   </>
                 ) : errorMsg ? (
-                  <span>Retry Claim VIP Seat</span>
+                  <span>Retry Claim</span>
                 ) : (
-                  <span>Claim VIP Seat</span>
+                  <span>Claim Lifetime Free</span>
                 )}
               </button>
               <button
@@ -244,7 +223,7 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
             </div>
 
             <p className="text-[11px] text-[#777E74]">
-              If you choose Maybe Later, you can still claim an open VIP seat anytime from your Account page while seats remain.
+              If you choose Maybe Later, we'll add a notification so you can return and claim your Lifetime Free offer later.
             </p>
           </div>
         )}
