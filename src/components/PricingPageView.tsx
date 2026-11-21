@@ -18,7 +18,6 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useFounder } from "../context/FounderContext";
 import { PaddleBillingService } from "../services/billing/PaddleBillingService";
 import { PaddlePlanKey } from "../services/billing/paddleConfig";
 import { PaymentHistoryCard } from "./subscription/PaymentHistoryCard";
@@ -42,27 +41,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   addToast,
 }) => {
   const { user, entitlement, isPro, loading: authLoading, refreshEntitlement } = useAuth();
-  const {
-    claimed: rawClaimed,
-    totalSpots: totalVipSeats = 50,
-    remaining: rawRemaining,
-    isLive,
-    isLoading: isLoadingVipStats,
-    error: vipStatsError,
-    claimFounderSpot,
-    refreshFounderStats,
-  } = useFounder();
-
-  const hasValidVipStats =
-    !vipStatsError &&
-    typeof rawClaimed === "number" &&
-    typeof rawRemaining === "number";
-  const spotsClaimed = hasValidVipStats ? Math.max(0, Math.min(totalVipSeats, rawClaimed as number)) : null;
-  const spotsRemaining = hasValidVipStats ? Math.max(0, totalVipSeats - (spotsClaimed as number)) : null;
-
   const [billingTab, setBillingTab] = useState<BillingFilter>("all");
   const [openingCheckoutPlan, setOpeningCheckoutPlan] = useState<PaddlePlanKey | null>(null);
-  const [isClaimingFounder, setIsClaimingFounder] = useState(false);
   const [showAuthRequiredModal, setShowAuthRequiredModal] = useState(false);
   const [authModalPlanName, setAuthModalPlanName] = useState<string>("Pro");
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -100,20 +80,10 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   const monthlyPrice = 249;
   const yearlyPrice = 1999;
   const lifetimePrice = 5999;
-  const founderPrice = 0;
   const yearlySavings = monthlyPrice * 12 - yearlyPrice; // 989 PKR savings
 
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [comingSoonPlanName, setComingSoonPlanName] = useState<string>("Pro Plan");
-
-  // VIP seat copy based strictly on authoritative database state
-  const vipSeatAvailabilityLabel = !hasValidVipStats
-    ? isLoadingVipStats
-      ? "Checking VIP Seats..."
-      : "Temporarily Unavailable"
-    : (spotsRemaining as number) > 0
-    ? `${spotsRemaining} Available`
-    : "0 Available • Full";
 
   /**
    * Handle click on Paid Plans (Coming Soon)
@@ -124,84 +94,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   };
 
   /**
-   * 1-Click Free Founder Claim (No payment required, strictly 50 seats)
-   */
-  const handleClaimFreeFounder = async () => {
-    if (!user || !user.id || user.id === "guest" || user.id.startsWith("local-guest")) {
-      setAuthModalPlanName("VIP Program (Lifetime Free)");
-      setShowAuthRequiredModal(true);
-      return;
-    }
-
-    if (isFounder) {
-      addToast?.({
-        title: "VIP Access Active",
-        description: `You already hold ${founderNumber ? `VIP Seat #${founderNumber}` : "your VIP Seat"} with permanent Lifetime Free Pro access.`,
-        type: "success",
-      });
-      return;
-    }
-
-    if (!hasValidVipStats) {
-      addToast?.({
-        title: "Availability Unavailable",
-        description: vipStatsError || "Live VIP seat count is still loading. Please retry in a moment.",
-        type: "info",
-      });
-      refreshFounderStats();
-      return;
-    }
-
-    if ((spotsRemaining ?? 0) <= 0) {
-      addToast?.({
-        title: "VIP Seats Full",
-        description: "All 50 VIP seats have been occupied. You can choose Pro Lifetime or Pro Yearly.",
-        type: "info",
-      });
-      return;
-    }
-
-    try {
-      setIsClaimingFounder(true);
-      const result = await claimFounderSpot(user.id);
-      if (result.success) {
-        await refreshEntitlement();
-        await refreshFounderStats();
-        addToast?.({
-          title: "VIP Seat Activated",
-          description:
-            result.message ||
-            `Welcome, VIP User! You have been assigned ${result.founderNumber ? `VIP Seat #${result.founderNumber}` : "your VIP Seat"} with Lifetime Pro access.`,
-          type: "success",
-        });
-      } else {
-        addToast?.({
-          title: "VIP Seat Notice",
-          description: result.error || "Could not allocate a VIP seat at this time.",
-          type: "error",
-        });
-      }
-    } catch (err: any) {
-      console.error("[PricingPage] VIP claim error:", err);
-      addToast?.({
-        title: "Allocation Error",
-        description: err.message || "Failed to claim VIP seat. Please try again.",
-        type: "error",
-      });
-    } finally {
-      setIsClaimingFounder(false);
-    }
-  };
-
-  /**
    * Real Paddle Checkout Flow for Paid Plans
    */
   const handlePaddleCheckout = async (plan: PaddlePlanKey, planName: string) => {
-    if (plan === "founder") {
-      handleClaimFreeFounder();
-      return;
-    }
-
     // 1. Check if user is authenticated
     if (!user || !user.id || user.id === "guest" || user.id.startsWith("local-guest")) {
       setAuthModalPlanName(planName);
@@ -297,7 +192,6 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           </div>
         }
       />
-
       {/* 2. Active User Current Plan Status Banner */}
       {user && user.id !== "guest" && (
         <div
@@ -434,7 +328,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                 : "text-[#A5AAA1] hover:text-[#F7F8F5]"
             }`}
           >
-            Lifetime &amp; VIP Access
+            Lifetime
           </button>
         </div>
       </div>
@@ -596,8 +490,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Cloud sync &amp; multi-device backup</span>
-                  </li>
-                </ul>
+                  </li>                </ul>
               </div>
 
               {/* Limitations */}
@@ -877,262 +770,6 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           </div>
         )}
 
-        {/* ================= PLAN 5: VIP ACCESS PLAN (FREE 150K QUOTA - 50 VIP SEATS) ================= */}
-        <div
-          id="plan-card-founder"
-          className={`flex flex-col justify-between rounded-3xl p-6 sm:p-7 border bg-[#141714] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] transition-all relative ${
-            billingTab === "all" ? "md:col-span-2 lg:col-span-2" : ""
-          } ${
-            isFounder
-              ? "border-[#B7F36B] ring-1 ring-[#B7F36B]/40"
-              : "border-[#30362E] hover:border-[#30362E]/80"
-          }`}
-        >
-          {/* Top Tag */}
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-[#B7F36B] text-[#10130D] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[2px_2px_8px_rgba(0,0,0,0.4)] whitespace-nowrap">
-            <Crown className="w-3.5 h-3.5 fill-current" />
-            <span>VIP PROGRAM • 100% FREE • {totalVipSeats} VIP SEATS TOTAL</span>
-          </div>
-
-          <div className="space-y-5 pt-1">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-[#F7F8F5] tracking-tight">VIP ACCESS</h3>
-                  <Crown className="w-5 h-5 text-[#B7F36B]" />
-                </div>
-                <p className="text-xs text-[#A5AAA1] mt-0.5 font-medium">
-                  Strictly limited to {totalVipSeats} VIP User seats • 100% Free Lifetime VIP Program
-                </p>
-              </div>
-              {isFounder && (
-                <span className="px-3 py-1 rounded-xl bg-[#1B1F1A] border border-[#30362E] text-xs font-bold text-[#B7F36B] flex items-center gap-1.5">
-                  <Crown className="w-3.5 h-3.5 fill-[#B7F36B]" />
-                  <span>{founderNumber ? `VIP Seat #${founderNumber} Active` : "VIP Seat Active"}</span>
-                </span>
-              )}
-            </div>
-
-            {/* Price */}
-            <div className="space-y-1">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl font-bold text-[#B7F36B]">
-                  FREE (PKR 0)
-                </span>
-                <span className="text-xs font-bold text-[#B7F36B] bg-[#1B1F1A] px-2.5 py-0.5 rounded-full border border-[#30362E]">
-                  No Payment Required
-                </span>
-              </div>
-              <p className="text-xs text-[#777E74]">
-                Lifetime Free VIP Access • {totalVipSeats} total VIP seats • Instant 1-click allocation
-              </p>
-            </div>
-
-            {/* AUTHORITATIVE 50-SEAT VIP COUNTER */}
-            <div
-              id="founder-availability-tracker"
-              className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.5)] space-y-2.5"
-            >
-              {isLoadingVipStats && !hasValidVipStats ? (
-                <div className="flex items-center justify-between gap-3 py-2 text-xs text-[#A5AAA1]">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-[#B7F36B]" />
-                    <span>Loading live VIP seat availability...</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-[#777E74]">{totalVipSeats} total VIP seats</span>
-                </div>
-              ) : !hasValidVipStats ? (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#F7F8F5]">
-                      <AlertCircle className="w-4 h-4 text-[#B7F36B] shrink-0" />
-                      <span>VIP seat availability temporarily unavailable</span>
-                    </div>
-                    <p className="text-[11px] text-[#A5AAA1]">
-                      {vipStatsError || "Unable to verify live seat occupancy right now."}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => refreshFounderStats()}
-                    className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-xs font-bold text-[#F7F8F5] flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-[#B7F36B]" />
-                    <span>Retry</span>
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between text-xs sm:text-sm gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-[#B7F36B]" />
-                      <span className="font-bold text-[#F7F8F5]">
-                        {spotsClaimed} / {totalVipSeats} occupied
-                      </span>
-                    </div>
-                    <span
-                      className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                        (spotsRemaining as number) > 0
-                          ? "bg-[#1B1F1A] text-[#B7F36B] border border-[#30362E]"
-                          : "bg-[#1B1F1A] text-[#A5AAA1] border border-[#30362E]"
-                      }`}
-                    >
-                      {vipSeatAvailabilityLabel}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-[11px]">
-                    <div className="px-2.5 py-1.5 rounded-xl bg-[#141714] border border-[#30362E]">
-                      <span className="text-[#777E74] block">Total VIP seats</span>
-                      <span className="font-bold font-mono text-[#F7F8F5]">{totalVipSeats}</span>
-                    </div>
-                    <div className="px-2.5 py-1.5 rounded-xl bg-[#141714] border border-[#30362E]">
-                      <span className="text-[#777E74] block">Occupied seats</span>
-                      <span className="font-bold font-mono text-[#F7F8F5]">{spotsClaimed}</span>
-                    </div>
-                    <div className="px-2.5 py-1.5 rounded-xl bg-[#141714] border border-[#30362E]">
-                      <span className="text-[#777E74] block">Available seats</span>
-                      <span className="font-bold font-mono text-[#B7F36B]">{spotsRemaining}</span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full h-2 rounded-full bg-[#141714] overflow-hidden p-0.5 border border-[#30362E] shadow-[inset_1px_1px_3px_rgba(0,0,0,0.6)]">
-                    <div
-                      className="h-full bg-[#B7F36B] rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, Math.max(0, ((spotsClaimed as number) / totalVipSeats) * 100))}%` }}
-                    />
-                  </div>
-
-                  <p className="text-[11px] text-[#A5AAA1]">
-                    {(spotsRemaining as number) > 0
-                      ? `${totalVipSeats} total VIP seats • ${spotsClaimed} occupied • ${spotsRemaining} available right now.`
-                      : "All 50 VIP seats have been occupied."}
-                  </p>
-                </>
-              )}
-            </div>
-
-            {/* Grid of VIP Inclusions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#30362E]">
-              <div className="space-y-2.5">
-                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">VIP Access Inclusions</p>
-                <ul className="space-y-2 text-xs sm:text-sm text-[#A5AAA1]">
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-[#F7F8F5]">150,000 AI-indexed screenshots lifetime</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-[#F7F8F5]">Lifetime Free Pro access (No payment required)</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-[#F7F8F5]">Permanent VIP Badge (#1–#50)</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span className="font-semibold text-[#F7F8F5]">Permanent VIP User status</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="space-y-2.5">
-                <p className="text-xs font-semibold text-[#A5AAA1] uppercase tracking-wider">VIP Program Privileges</p>
-                <ul className="space-y-2 text-xs sm:text-sm text-[#A5AAA1]">
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span>Early access to major new features</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span>Official VIP User recognition &amp; VIP Badge</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span>VIP priority processing queue</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
-                    <span>Direct priority customer support</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Eligibility Limits */}
-            <div className="pt-2 border-t border-[#30362E] space-y-1.5">
-              <p className="text-[11px] font-semibold text-[#777E74] uppercase tracking-wider">Eligibility Limits</p>
-              <p className="text-xs text-[#777E74]">
-                • Hard maximum of 50 VIP seats. Seat allocation is atomic, deduplicated, and verified on the server.
-              </p>
-            </div>
-          </div>
-
-          {/* VIP CTA Button */}
-          <div className="pt-6">
-            {isFounder ? (
-              <div className="p-3.5 rounded-2xl bg-[#1B1F1A] border border-[#30362E] text-center space-y-0.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)]">
-                <div className="text-xs font-bold text-[#B7F36B] flex items-center justify-center gap-1.5">
-                  <Crown className="w-4 h-4 fill-[#B7F36B]" />
-                  <span>
-                    {founderNumber ? `VIP Seat #${founderNumber} of 50` : "VIP Seat Verified"} • Lifetime Free Pro Active
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#A5AAA1]">150,000 AI-indexed screenshots • VIP User</p>
-              </div>
-            ) : authLoading ? (
-              <button
-                type="button"
-                disabled
-                className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] text-[#A5AAA1] text-xs font-bold flex items-center justify-center gap-2 border border-[#30362E] opacity-80 cursor-wait"
-              >
-                <RefreshCw className="w-4 h-4 animate-spin text-[#B7F36B]" />
-                <span>Verifying Account Status...</span>
-              </button>
-            ) : !hasValidVipStats ? (
-              <button
-                type="button"
-                onClick={() => refreshFounderStats()}
-                disabled={isLoadingVipStats}
-                className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] text-[#F7F8F5] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer border border-[#30362E] disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 text-[#B7F36B] ${isLoadingVipStats ? "animate-spin" : ""}`} />
-                <span>{isLoadingVipStats ? "Checking VIP Seat Availability..." : "Retry VIP Seat Check"}</span>
-              </button>
-            ) : (spotsRemaining as number) <= 0 ? (
-              <button
-                type="button"
-                disabled
-                className="w-full py-3.5 px-4 rounded-xl bg-[#1B1F1A] text-[#777E74] text-xs font-bold text-center cursor-not-allowed border border-[#30362E]"
-              >
-                All 50 VIP Seats Occupied
-              </button>
-            ) : (
-              <button
-                id="claim-founder-spot-btn"
-                type="button"
-                onClick={handleClaimFreeFounder}
-                disabled={isClaimingFounder}
-                className="w-full py-3.5 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)] disabled:opacity-50"
-              >
-                {isClaimingFounder ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-[#10130D]" />
-                    <span>Allocating VIP Seat...</span>
-                  </>
-                ) : (
-                  <>
-                    <Crown className="w-4 h-4 text-[#10130D] fill-current" />
-                    <span>Claim Free VIP Seat ({spotsRemaining} Available)</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* 5. Complete Plan Comparison Matrix Table */}
       <div id="plan-comparison-section" className="space-y-6 pt-6">
         <div className="text-center space-y-2">
@@ -1168,10 +805,6 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     <div>Lifetime</div>
                     <div className="text-[10px] text-[#A5AAA1] font-bold">PKR 5,999 once (Coming Soon)</div>
                   </th>
-                  <th className="p-4 sm:p-5 font-bold text-center bg-[#1B1F1A]/80 border-l border-[#30362E]">
-                    <div className="text-[#B7F36B]">VIP User</div>
-                    <div className="text-[10px] text-[#B7F36B] font-bold">FREE (50 VIP Seats)</div>
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#30362E] text-[#A5AAA1]">
@@ -1186,9 +819,6 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     30,000 / year
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">100,000 lifetime</td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
-                    150,000 lifetime
-                  </td>
                 </tr>
 
                 {/* Row 2: OCR Extraction */}
@@ -1196,15 +826,11 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
                     On-Device OCR Text Extraction
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
                   <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-x border-[#30362E]">
                     ✓ Included
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
-                    ✓ Included
-                  </td>
                 </tr>
 
                 {/* Row 3: Multimodal AI Search */}
@@ -1218,9 +844,6 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     ✓ Full AI (Priority)
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Full AI</td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
-                    ✓ Full AI (Priority)
-                  </td>
                 </tr>
 
                 {/* Row 4: Cloud Sync & Backup */}
@@ -1234,24 +857,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     ✓ Included
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Included</td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
-                    ✓ Included
-                  </td>
                 </tr>
 
-                {/* Row 5: Founder Badge & Rank */}
-                <tr className="hover:bg-white/[0.02] transition">
-                  <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
-                    VIP Badge &amp; Seat Number
-                  </td>
-                  <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
-                  <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
-                  <td className="p-4 sm:p-5 text-center text-[#777E74] bg-[#1B1F1A]/40 border-x border-[#30362E]">-</td>
-                  <td className="p-4 sm:p-5 text-center text-[#777E74]">-</td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-l border-[#30362E]">
-                    Rank #1-50
-                  </td>
-                </tr>
               </tbody>
             </table>
           </div>
@@ -1259,7 +866,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
       </div>
 
       {/* 6. Transparency & Trust FAQ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
         <div className="p-5 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-2">
           <div className="flex items-center gap-2 text-[#F7F8F5] font-bold text-sm">
             <Lock className="w-4 h-4 text-[#B7F36B]" />
@@ -1276,20 +883,12 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             <span>Payment Gateway in Progress</span>
           </div>
           <p className="text-xs text-[#A5AAA1] leading-relaxed">
-            Paid checkouts are currently in preparation. Claim an available free VIP Seat or enjoy the 250 AI-indexed screenshot Free tier.
+            Paid checkouts are currently in preparation. You can enjoy the 250 AI-indexed screenshot Free tier.
           </p>
         </div>
 
         <div className="p-5 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-2">
-          <div className="flex items-center gap-2 text-[#F7F8F5] font-bold text-sm">
-            <Crown className="w-4 h-4 text-[#B7F36B]" />
-            <span>Real Database Scarcity</span>
-          </div>
-          <p className="text-xs text-[#A5AAA1] leading-relaxed">
-            VIP seats are strictly limited to 50 members backed by atomic verification.
-          </p>
         </div>
-      </div>
 
       {/* 7. Payment History & Transaction Status */}
       <PaymentHistoryCard
@@ -1320,27 +919,9 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
               <p className="text-xs text-[#A5AAA1] leading-relaxed">
                 Direct online payment for <span className="font-semibold text-[#F7F8F5]">{comingSoonPlanName}</span> is currently under active integration. No credit card charges or fake transactions are accepted.
               </p>
-              {hasValidVipStats && (spotsRemaining as number) > 0 && (
-                <p className="text-xs text-[#B7F36B] bg-[#1B1F1A] p-3 rounded-xl border border-[#30362E] leading-relaxed font-medium">
-                  You can claim an available <span className="font-bold text-[#F7F8F5]">Free VIP Seat</span> right now ({spotsRemaining} of {totalVipSeats} available) for 150,000 AI-indexed screenshots with zero payment required.
-                </p>
-              )}
             </div>
 
             <div className="space-y-3 pt-2">
-              {!isFounder && hasValidVipStats && (spotsRemaining as number) > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowComingSoonModal(false);
-                    handleClaimFreeFounder();
-                  }}
-                  className="w-full py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-[2px_2px_8px_rgba(0,0,0,0.4)]"
-                >
-                  <Crown className="w-4 h-4 text-[#10130D] fill-current" />
-                  <span>Claim Free VIP Seat ({spotsRemaining} Available)</span>
-                </button>
-              )}
 
               <button
                 type="button"
