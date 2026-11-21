@@ -429,7 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return {
         requiresVerification: true,
-        message: "Account created! Please check your inbox and click the verification link before signing in.",
+        message: "Account created! Verify your email first. Your First 50 Lifetime Free eligibility is counted after verification; then sign in and the claim popup will appear automatically.",
       };
     }
 
