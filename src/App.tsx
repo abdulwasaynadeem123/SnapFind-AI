@@ -2017,7 +2017,7 @@ function AppContent() {
         />
       )}
 
-      {/* Automatic Lifetime Free invitation for the first 50 newly created accounts */}
+      {/* Automatic Lifetime Free invitation for the first 50 newly verified accounts */}
       <VipSeatInvitationModal
         isOpen={isVipInviteOpen}
         totalSpots={50}
