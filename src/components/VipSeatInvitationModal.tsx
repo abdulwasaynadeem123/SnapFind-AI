@@ -152,7 +152,7 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
               </div>
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#B7F36B]">
-                  FIRST {safeTotal} SIGNUPS
+                  FIRST {safeTotal} VERIFIED SIGNUPS
                 </span>
                 <h2
                   id="vip-invitation-title"
@@ -164,7 +164,7 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
             </div>
 
             <p className="text-sm leading-relaxed text-[#A5AAA1]">
-              You are signup #{signupNumber || "—"} among the first 50 new SnapFind accounts. Claim permanent Pro access at no cost — forever.
+              You are verified signup #{signupNumber || "—"} among the first 50 new SnapFind accounts. Claim permanent Pro access at no cost — forever.
             </p>
 
             {/* VIP Benefits Summary */}
