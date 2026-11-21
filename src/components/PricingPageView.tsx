@@ -3,14 +3,12 @@ import {
   Check,
   Crown,
   ShieldCheck,
-  RefreshCw,
   Infinity as InfinityIcon,
   Sparkles,
   Gem,
   Zap,
   Lock,
   Star,
-  Activity,
   AlertCircle,
   Clock,
   LogIn,
@@ -40,7 +38,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   onOpenAuth,
   addToast,
 }) => {
-  const { user, entitlement, isPro, loading: authLoading, refreshEntitlement } = useAuth();
+  const { user, entitlement, isPro, refreshEntitlement } = useAuth();
   const [billingTab, setBillingTab] = useState<BillingFilter>("all");
   const [openingCheckoutPlan, setOpeningCheckoutPlan] = useState<PaddlePlanKey | null>(null);
   const [showAuthRequiredModal, setShowAuthRequiredModal] = useState(false);
