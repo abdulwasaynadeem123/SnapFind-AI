@@ -59,7 +59,7 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
         setClaimedNumber(result.founderNumber);
       } else {
         setErrorMsg(
-          result.error || "Unable to claim a VIP seat right now. Please try again."
+          result.error || "Unable to activate Lifetime Free right now. Please try again."
         );
       }
     } catch (err: any) {
@@ -91,7 +91,7 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
             }
           }}
           disabled={isClaiming}
-          aria-label="Close VIP seat invitation"
+          aria-label="Close Lifetime Free offer"
           className="absolute right-4 top-4 rounded-xl border border-[#30362E] bg-[#1B1F1A] p-2 text-[#A5AAA1] transition-colors hover:bg-[#222720] hover:text-[#F7F8F5] disabled:opacity-50 cursor-pointer"
         >
           <X className="h-4 w-4" />
@@ -115,13 +115,13 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
                 Lifetime Free Member #{claimedNumber}
               </h2>
               <p className="text-sm leading-relaxed text-[#A5AAA1]">
-                Your permanent Lifetime Free Pro access is now active on your account. You have Lifetime Free Pro access with up to 150,000 AI-indexed screenshots.
+                Your permanent Lifetime Free Pro access is now active, with up to 150,000 AI-indexed screenshots.
               </p>
             </div>
 
             <div className="rounded-xl border border-[#30362E] bg-[#0D0F0D] p-4 space-y-2 text-xs text-[#A5AAA1]">
               <div className="flex items-center justify-between">
-                <span>Assigned Seat</span>
+                <span>Signup Position</span>
                 <span className="font-mono font-bold text-[#B7F36B]">
                   Early signup #{signupNumber || claimedNumber} of {safeTotal}
                 </span>
@@ -164,14 +164,14 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
             </div>
 
             <p className="text-sm leading-relaxed text-[#A5AAA1]">
-              You are among the first 50 new SnapFind accounts. Claim permanent Pro access at no cost — forever.
+              You are signup #{signupNumber || "—"} among the first 50 new SnapFind accounts. Claim permanent Pro access at no cost — forever.
             </p>
 
             {/* VIP Benefits Summary */}
             <div className="space-y-2 text-xs text-[#A5AAA1]">
               <div className="flex items-center gap-2.5">
                 <Layers className="h-4 w-4 shrink-0 text-[#B7F36B]" />
-                <span>150,000 AI-indexed screenshots lifetime capacity (Free forever)</span>
+                <span>150,000 AI-indexed screenshots, lifetime</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Cloud className="h-4 w-4 shrink-0 text-[#B7F36B]" />
@@ -179,7 +179,7 @@ export const VipSeatInvitationModal: React.FC<VipSeatInvitationModalProps> = ({
               </div>
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-[#B7F36B]" />
-                <span>Permanent VIP Member badge (#1–#{safeTotal}) tied to your account</span>
+                <span>Permanent early-member badge tied to your account</span>
               </div>
             </div>
 
