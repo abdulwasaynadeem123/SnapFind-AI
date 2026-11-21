@@ -102,14 +102,7 @@ function AppContent() {
     signOut,
     isRecoveryMode,
   } = useAuth();
-  const {
-    remaining: vipRemaining,
-    totalSpots: vipTotalSpots,
-    isLive: isVipLive,
-    isLoading: isVipLoading,
-    claimFounderSpot,
-    refreshFounderStats,
-  } = useFounder();
+  const { claimFounderSpot } = useFounder();
   const isOnline = useOnlineStatus();
   const [isVipInviteOpen, setIsVipInviteOpen] = useState(false);
   const [vipClaimedInModal, setVipClaimedInModal] = useState(false);
@@ -125,14 +118,15 @@ function AppContent() {
       (typeof resolvedEntitlement?.founderRank === "number" &&
         resolvedEntitlement.founderRank >= 1)
   );
+  const [founderPromoStatus, setFounderPromoStatus] = useState<
+    Awaited<ReturnType<typeof SubscriptionManager.getFounderPromoStatus>>
+  >(null);
   const canOfferVipClaim = Boolean(
     isAuthenticatedAccount &&
       !authLoading &&
-      !isUserAlreadyVip &&
-      isVipLive &&
-      !isVipLoading &&
-      vipRemaining !== null &&
-      vipRemaining > 0
+      founderPromoStatus?.eligible &&
+      !founderPromoStatus.claimed &&
+      !isUserAlreadyVip
   );
 
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>(() => loadStoredScreenshots());
@@ -299,56 +293,43 @@ function AppContent() {
     }
   }, [isRecoveryMode]);
 
-  // Automatically show VIP seat invitation modal on signup/login when seats remain and user is not already VIP
+  // Check server-recorded first-50-signup eligibility after authentication.
   useEffect(() => {
-    if (!isAuthenticatedAccount || !authUser?.id) {
+    let cancelled = false;
+    if (!isAuthenticatedAccount || !authUser?.id || authLoading) {
+      setFounderPromoStatus(null);
       setIsVipInviteOpen(false);
       setVipClaimedInModal(false);
       return;
     }
+    SubscriptionManager.getFounderPromoStatus()
+      .then((status) => {
+        if (cancelled) return;
+        setFounderPromoStatus(status);
+        setIsVipInviteOpen(Boolean(
+          status?.eligible && !status.claimed && !status.dismissed &&
+          !isRecoveryMode && activeView !== "reset-password"
+        ));
+        setVipClaimedInModal(false);
+      })
+      .catch((error) => {
+        console.warn("[App] Could not verify first-50-signup offer:", error?.message || error);
+        if (!cancelled) {
+          setFounderPromoStatus(null);
+          setIsVipInviteOpen(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [isAuthenticatedAccount, authUser?.id, authLoading]);
 
-    if (authLoading || isRecoveryMode || activeView === "reset-password") {
-      return;
-    }
+  useEffect(() => {
+    const handleOpenFounderPromo = () => {
+      if (founderPromoStatus?.eligible && !founderPromoStatus.claimed) setIsVipInviteOpen(true);
+    };
+    window.addEventListener("snapfind_open_founder_promo", handleOpenFounderPromo);
+    return () => window.removeEventListener("snapfind_open_founder_promo", handleOpenFounderPromo);
+  }, [founderPromoStatus]);
 
-    // Never prompt existing VIP seat holders (preserve confirmation view if they just claimed inside the modal)
-    if (isUserAlreadyVip) {
-      if (!vipClaimedInModal) {
-        setIsVipInviteOpen(false);
-      }
-      return;
-    }
-
-    // Wait for live authoritative seat availability; stop showing invitations when all 50 seats are occupied
-    if (!isVipLive || isVipLoading || vipRemaining === null || vipRemaining <= 0) {
-      if (!vipClaimedInModal) {
-        setIsVipInviteOpen(false);
-      }
-      return;
-    }
-
-    const dismissKey = `snapfind_vip_invite_dismissed_${authUser.id}`;
-    try {
-      if (sessionStorage.getItem(dismissKey) === "1") {
-        return;
-      }
-    } catch {
-      // sessionStorage unavailable
-    }
-
-    setIsVipInviteOpen(true);
-  }, [
-    isAuthenticatedAccount,
-    authUser?.id,
-    authLoading,
-    isRecoveryMode,
-    activeView,
-    isUserAlreadyVip,
-    isVipLive,
-    isVipLoading,
-    vipRemaining,
-    vipClaimedInModal,
-  ]);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [feedbackPageContext, setFeedbackPageContext] = useState("General");
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -2036,40 +2017,52 @@ function AppContent() {
         />
       )}
 
-      {/* Automatic VIP Seat Invitation Popup (50-seat limited program) */}
+      {/* Automatic Lifetime Free invitation for the first 50 newly created accounts */}
       <VipSeatInvitationModal
-        isOpen={isVipInviteOpen && (vipClaimedInModal || (vipRemaining !== null && vipRemaining > 0))}
-        remainingSpots={vipRemaining ?? 0}
-        totalSpots={vipTotalSpots}
+        isOpen={isVipInviteOpen}
+        remainingSpots={50}
+        totalSpots={50}
+        signupNumber={founderPromoStatus?.signupNumber ?? undefined}
         onClaim={async () => {
           if (!authUser?.id || authUser.id === "guest") {
-            return { success: false, error: "Please sign in to claim your VIP seat." };
+            return { success: false, error: "Please sign in to claim Lifetime Free." };
           }
           const result = await claimFounderSpot(authUser.id);
           if (result.success && typeof result.founderNumber === "number") {
             setVipClaimedInModal(true);
+            setFounderPromoStatus((prev) => prev ? { ...prev, claimed: true, founderRank: result.founderNumber! } : prev);
             await refreshEntitlement();
-            await refreshFounderStats();
             addToast({
-              title: `VIP Member #${result.founderNumber}`,
-              description: "Your permanent VIP seat has been linked to your account.",
+              title: "Lifetime Free activated",
+              description: `Your permanent Pro access is active. Founder member #${result.founderNumber}.`,
               type: "success",
             });
           }
           return result;
         }}
-        onMaybeLater={() => {
-          if (authUser?.id) {
-            try {
-              sessionStorage.setItem(`snapfind_vip_invite_dismissed_${authUser.id}`, "1");
-            } catch {
-              // ignore storage restrictions
-            }
+        onMaybeLater={async () => {
+          const userId = authUser?.id;
+          if (userId) {
+            await SubscriptionManager.dismissFounderPromo().catch((error) => {
+              console.warn("[App] Could not save offer dismissal:", error?.message || error);
+            });
+            setFounderPromoStatus((prev) => prev ? { ...prev, dismissed: true } : prev);
+            NotificationService.pushNotification(
+              "SUBSCRIPTION",
+              "Your Lifetime Free offer is waiting",
+              "You are eligible for permanent SnapFind Pro access. Open this notification whenever you are ready to claim it.",
+              {
+                id: `founder_offer_waiting_${userId}`,
+                userId,
+                priority: "high",
+                metadata: { eventType: "founder_offer_waiting", signupNumber: founderPromoStatus?.signupNumber },
+              }
+            );
           }
           setIsVipInviteOpen(false);
           addToast({
-            title: "VIP invitation dismissed",
-            description: "You can still claim an available VIP seat anytime from your Account page.",
+            title: "Offer saved for later",
+            description: "A notification has been added. You can reopen it anytime to claim Lifetime Free.",
             type: "info",
           });
         }}
