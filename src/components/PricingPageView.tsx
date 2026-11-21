@@ -173,10 +173,10 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-[11px] text-[#A5AAA1] bg-[#141714] px-3 py-1.5 rounded-xl border border-[#30362E] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4)]">
               <span className="flex h-2 w-2 relative">
-                <span className="sr-only">Live spot indicator</span>
+                <span className="sr-only">Plan availability</span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#B7F36B]"></span>
               </span>
-              <span>{isLive ? "Live Realtime Sync" : "Authoritative Sync"}</span>
+              <span>Standard plans</span>
             </div>
             {isAdmin && (
               <button
@@ -192,6 +192,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           </div>
         }
       />
+
       {/* 2. Active User Current Plan Status Banner */}
       {user && user.id !== "guest" && (
         <div
@@ -333,7 +334,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
         </div>
       </div>
 
-      {/* 4. Complete Plans Grid: ALL 5 Plans */}
+      {/* 4. Complete Plans Grid: Standard Plans */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
         {/* ================= PLAN 1: FREE ================= */}
         {(billingTab === "all" || billingTab === "monthly") && (
@@ -490,7 +491,8 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-[#B7F36B] shrink-0 mt-0.5" />
                     <span>Cloud sync &amp; multi-device backup</span>
-                  </li>                </ul>
+                  </li>
+                </ul>
               </div>
 
               {/* Limitations */}
@@ -777,7 +779,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             Detailed Plan Comparison
           </h2>
           <p className="text-xs sm:text-sm text-[#A5AAA1]">
-            Compare all features across Free, Monthly, Yearly, Lifetime, and VIP Access tiers.
+            Compare all features across Free, Monthly, Yearly, and Lifetime tiers.
           </p>
         </div>
 
@@ -805,6 +807,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     <div>Lifetime</div>
                     <div className="text-[10px] text-[#A5AAA1] font-bold">PKR 5,999 once (Coming Soon)</div>
                   </th>
+
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#30362E] text-[#A5AAA1]">
@@ -819,6 +822,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     30,000 / year
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">100,000 lifetime</td>
+                  
                 </tr>
 
                 {/* Row 2: OCR Extraction */}
@@ -826,11 +830,13 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                   <td className="p-4 sm:p-5 font-semibold text-[#F7F8F5] sticky left-0 bg-[#141714] z-10">
                     On-Device OCR Text Extraction
                   </td>
-                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
+                  <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
                   <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold bg-[#1B1F1A]/40 border-x border-[#30362E]">
                     ✓ Included
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#B7F36B] font-bold">✓ Included</td>
+                  
                 </tr>
 
                 {/* Row 3: Multimodal AI Search */}
@@ -844,6 +850,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     ✓ Full AI (Priority)
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Full AI</td>
+                  
                 </tr>
 
                 {/* Row 4: Cloud Sync & Backup */}
@@ -857,6 +864,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
                     ✓ Included
                   </td>
                   <td className="p-4 sm:p-5 text-center text-[#F7F8F5] font-bold">✓ Included</td>
+                  
                 </tr>
 
               </tbody>
@@ -887,8 +895,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#141714] border border-[#30362E] shadow-[6px_6px_16px_rgba(0,0,0,0.65),-2px_-2px_8px_rgba(255,255,255,0.025)] space-y-2">
-        </div>
+      </div>
 
       {/* 7. Payment History & Transaction Status */}
       <PaymentHistoryCard
