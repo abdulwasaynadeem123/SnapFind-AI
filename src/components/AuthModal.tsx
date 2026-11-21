@@ -236,7 +236,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         } else if (res.requiresVerification) {
           setSuccessMsg(
             res.message ||
-              "Account created! Please check your inbox and click the verification link before signing in."
+              "Account created! Verify your email to secure your account. Your First 50 Lifetime Free eligibility is counted after verification; sign in afterward and the claim popup will appear automatically."
           );
           setShowResendOption(true);
           setPassword("");
