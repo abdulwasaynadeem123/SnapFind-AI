@@ -769,6 +769,7 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
             </div>
           </div>
         )}
+      </div>
 
       {/* 5. Complete Plan Comparison Matrix Table */}
       <div id="plan-comparison-section" className="space-y-6 pt-6">
