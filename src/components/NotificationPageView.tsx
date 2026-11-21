@@ -171,6 +171,11 @@ export const NotificationPageView: React.FC<NotificationPageViewProps> = ({
     if (!isRead) {
       onMarkAsRead(notification.id);
     }
+    if (notification.metadata?.eventType === "founder_offer_waiting") {
+      window.dispatchEvent(new CustomEvent("snapfind_open_founder_promo"));
+      
+      return;
+    }
     const screenshotId = notification.screenshotId || notification.metadata?.screenshotId;
     if (screenshotId && onSelectScreenshot) {
       const item = screenshotMap.get(screenshotId);
