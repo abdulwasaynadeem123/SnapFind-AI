@@ -102,7 +102,7 @@ function AppContent() {
     signOut,
     isRecoveryMode,
   } = useAuth();
-  const { claimFounderSpot } = useFounder();
+  const { claimFounderSpot, refreshFounderStats } = useFounder();
   const isOnline = useOnlineStatus();
   const [isVipInviteOpen, setIsVipInviteOpen] = useState(false);
   const [vipClaimedInModal, setVipClaimedInModal] = useState(false);
@@ -2020,7 +2020,6 @@ function AppContent() {
       {/* Automatic Lifetime Free invitation for the first 50 newly created accounts */}
       <VipSeatInvitationModal
         isOpen={isVipInviteOpen}
-        remainingSpots={50}
         totalSpots={50}
         signupNumber={founderPromoStatus?.signupNumber ?? undefined}
         onClaim={async () => {
