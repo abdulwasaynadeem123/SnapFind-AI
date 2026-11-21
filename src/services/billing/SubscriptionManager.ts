@@ -44,6 +44,16 @@ export interface FeatureGateCheck {
   upgradePromptMessage?: string;
 }
 
+export interface FounderPromoStatus {
+  eligible: boolean;
+  signupNumber: number | null;
+  dismissed: boolean;
+  claimed: boolean;
+  founderRank: number | null;
+  signupCount: number;
+  remainingSignups: number;
+}
+
 type EntitlementListener = (entitlement: UserEntitlement) => void;
 
 function createDefaultFreeEntitlement(userId: string = "guest"): UserEntitlement {
@@ -668,59 +678,88 @@ class SubscriptionManagerService {
   }
 
   /**
-   * Claim Founder 50 Spot (Complimentary Lifetime Free + Crown Tag)
+   * Claim Lifetime Free. The database validates first-50-signup eligibility
+   * and allocates a permanent entitlement atomically using the authenticated user.
    */
   public async claimFounder(
     userId?: string
   ): Promise<{ success: boolean; entitlement?: UserEntitlement; founderNumber?: number; message?: string; error?: string }> {
-    return { success: false, error: "VIP seats have been temporarily discontinued." };
-    const targetUserId = userId || this.currentEntitlement.userId || "guest";
-    let networkUnreachable = false;
-
-    try {
-      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
-      const res = await fetch("/api/billing/claim-founder", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": targetUserId,
-          ...authHeaders,
-        },
-        body: JSON.stringify({ userId: targetUserId }),
-      });
-
-      const parsed = await readJsonResponse(res);
-      if (!parsed.isJson || !parsed.data) {
-        networkUnreachable = true;
-      } else {
-        const data = parsed.data;
-        if (res.ok && data.success && data.entitlement) {
-          this.saveCachedEntitlement({ ...data.entitlement, userId: targetUserId });
-          if (!data.alreadyClaimed) {
-            NotificationService.notifyProActivated("lifetime", true);
-          }
-          return {
-            success: true,
-            entitlement: { ...data.entitlement, userId: targetUserId },
-            founderNumber: data.founderNumber || data.entitlement.founderNumber,
-            message: data.message || `VIP Seat #${data.founderNumber || "VIP"} activated!`,
-          };
-        }
-
-        return {
-          success: false,
-          error: data.error || "Could not claim VIP seat.",
-        };
-      }
-    } catch (err: any) {
-      networkUnreachable = true;
-      console.warn("[SubscriptionManager] Claim VIP API unreachable, checking direct DB RPC:", err?.message || err);
+    const targetUserId = userId || this.currentEntitlement.userId;
+    if (!targetUserId || targetUserId === "guest" || targetUserId.startsWith("local-")) {
+      return { success: false, error: "Please sign in with your account before claiming Lifetime Free." };
+    }
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: "Lifetime Free claims are temporarily unavailable." };
     }
 
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user || authData.user.id !== targetUserId) {
+        return { success: false, error: "Your session could not be verified. Please sign in again." };
+      }
+
+      const { data, error } = await supabase.rpc("claim_vip_seat_for_user", {
+        p_payment_id: "first_50_signup_lifetime_free",
+      });
+      if (error) throw error;
+
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.success) {
+        return { success: false, error: row?.message || "This account is not eligible for the Lifetime Free offer." };
+      }
+
+      const entitlement = await this.syncEntitlementsFromServer(targetUserId);
+      const founderNumber = Number(row.founder_rank || entitlement.founderNumber || 0) || undefined;
+
+      if (!row.already_claimed) {
+        NotificationService.pushNotification(
+          "SUBSCRIPTION",
+          "🎉 Lifetime Free activated",
+          "Your permanent SnapFind Pro Lifetime Free access is now active.",
+          {
+            userId: targetUserId,
+            priority: "high",
+            metadata: { eventType: "founder_lifetime_free_activated", founderNumber },
+          }
+        );
+      }
+
+      return {
+        success: true,
+        entitlement,
+        founderNumber,
+        message: row.message || "Lifetime Free successfully activated.",
+      };
+    } catch (err: any) {
+      console.error("[SubscriptionManager] Lifetime Free claim failed:", err?.message || err);
+      return { success: false, error: err?.message || "Unable to claim Lifetime Free right now. Please try again." };
+    }
+  }
+
+  /** Read the authenticated user's first-50-signup offer status. */
+  public async getFounderPromoStatus(): Promise<FounderPromoStatus | null> {
+    if (!isSupabaseConfigured || !supabase) return null;
+    const { data, error } = await supabase.rpc("get_founder_promo_status");
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
     return {
-      success: false,
-      error: "VIP seat allocation service is temporarily unavailable. Please try again shortly.",
+      eligible: Boolean(row.eligible),
+      signupNumber: typeof row.signup_number === "number" ? row.signup_number : null,
+      dismissed: Boolean(row.dismissed),
+      claimed: Boolean(row.claimed),
+      founderRank: typeof row.founder_rank === "number" ? row.founder_rank : null,
+      signupCount: Number(row.signup_count || 0),
+      remainingSignups: Number(row.remaining_signups || 0),
     };
+  }
+
+  /** Persist that an eligible user skipped the automatic offer popup. */
+  public async dismissFounderPromo(): Promise<boolean> {
+    if (!isSupabaseConfigured || !supabase) return false;
+    const { data, error } = await supabase.rpc("dismiss_founder_promo");
+    if (error) throw error;
+    return Boolean(data);
   }
 
   /**
