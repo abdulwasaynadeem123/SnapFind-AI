@@ -308,6 +308,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userEntitlement = await SubscriptionManager.syncEntitlementsFromServer(sbUser.id);
     setEntitlement(userEntitlement);
 
+    const { error: profileSyncError } = await supabase.from("profiles").upsert({
+      id: sbUser.id,
+      username: name,
+      name,
+      email: sbUser.email || "",
+      avatar_url: avatarUrl || null,
+      updated_at: new Date().toISOString(),
+    });
+    if (profileSyncError) console.warn("[AuthContext] Profile sync warning:", profileSyncError.message);
+
     const updatedProfile: UserProfile = {
       id: sbUser.id,
       name,
@@ -371,7 +381,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pass: string,
     name?: string
   ): Promise<{ error?: string; requiresVerification?: boolean; message?: string }> => {
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const cleanName = (name || "").trim();
     if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       return { error: "Please enter a valid email address." };
@@ -451,7 +461,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resendVerificationEmail = async (
     email: string
   ): Promise<{ error?: string; success?: boolean }> => {
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       return { error: "Please enter a valid email address to resend confirmation." };
     }
