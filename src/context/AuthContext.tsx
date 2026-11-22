@@ -264,15 +264,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 3. Listen to persistent Auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setSupabaseUser(session?.user ?? null);
-      if (_event === "PASSWORD_RECOVERY") {
-        setIsRecoveryMode(true);
-      }
-      if (session?.user) {
-        SyncEngine.setCurrentUserId(session.user.id);
-        await syncProfile(session.user);
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      // Keep this callback synchronous. Calling Supabase again from inside it can
+      // deadlock the auth lock (syncProfile fetches the session for its API token).
+      setSession(nextSession);
+      setSupabaseUser(nextSession?.user ?? null);
+      if (_event === "PASSWORD_RECOVERY") setIsRecoveryMode(true);
+      if (nextSession?.user) {
+        SyncEngine.setCurrentUserId(nextSession.user.id);
+        const activeUser = nextSession.user;
+        setTimeout(() => {
+          syncProfile(activeUser).catch((err) =>
+            console.warn("[AuthContext] Deferred profile sync warning:", err)
+          );
+        }, 0);
       } else if (_event === "SIGNED_OUT") {
         SubscriptionManager.resetToFree();
         SyncEngine.setCurrentUserId("guest");
