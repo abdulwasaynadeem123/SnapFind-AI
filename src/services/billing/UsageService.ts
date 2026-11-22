@@ -230,10 +230,10 @@ class UsageServiceEngine {
 
     // AI Analysis scans (monthly)
     const localSavedAiScans = this.getLocalAiScanCount();
-    const aiAnalysesUsed = Math.max(
-      localSavedAiScans,
-      serverUsageData?.aiAnalysesUsed || 0
-    );
+    const aiAnalysesUsed =
+      typeof serverUsageData?.aiAnalysesUsed === "number"
+        ? serverUsageData.aiAnalysesUsed
+        : localSavedAiScans;
     const aiAnalysesRemaining = Math.max(0, aiAnalysesLimit - aiAnalysesUsed);
     const aiAnalysesPercent = Math.min(
       100,
