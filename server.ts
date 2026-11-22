@@ -5512,6 +5512,7 @@ app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
       await supabaseServer.from("founder_claims").delete().eq("user_id", uid),
       await supabaseServer.from("user_entitlements").delete().eq("user_id", uid),
       await supabaseServer.from("user_usage").delete().eq("user_id", uid),
+      await supabaseServer.from("profiles").delete().eq("id", uid),
     ];
     const cleanupError = cleanup.find((result) => result.error)?.error;
     if (cleanupError) {
