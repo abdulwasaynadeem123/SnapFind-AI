@@ -289,6 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const syncProfile = async (sbUser: User) => {
     const name =
+      sbUser.user_metadata?.username ||
       sbUser.user_metadata?.full_name ||
       sbUser.user_metadata?.name ||
       sbUser.email?.split("@")[0] ||
@@ -323,7 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     pass: string
   ): Promise<{ error?: string; isUnconfirmedEmail?: boolean }> => {
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       return { error: "Please enter a valid email address." };
     }
@@ -582,7 +583,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const { data, error } = await supabase.auth.updateUser({
-      data: { full_name: cleanName },
+      data: { full_name: cleanName, name: cleanName, username: cleanName },
     });
     if (error) return { error: error.message };
 
@@ -765,43 +766,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteAccount = async (currentPassword?: string): Promise<{ error?: string }> => {
+    if (!isSupabaseConfigured || !supabaseUser || !session) {
+      return { error: "You must be signed in to permanently delete your account." };
+    }
+
+    const provider = supabaseUser.app_metadata?.provider || user?.provider || "email";
+    if (provider === "email") {
+      if (!currentPassword) return { error: "Enter your current password to confirm account deletion." };
+      const reauthRes = await reauthenticate(currentPassword);
+      if (reauthRes.error) return reauthRes;
+    }
+
     try {
-      if (currentPassword && isSupabaseConfigured) {
-        const reauthRes = await reauthenticate(currentPassword);
-        if (reauthRes.error) return reauthRes;
+      const authHeaders = await getAuthBearerHeader();
+      const delRes = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        cache: "no-store",
+      });
+      let payload: any = null;
+      try { payload = await delRes.json(); } catch {}
+      if (!delRes.ok || payload?.success !== true) {
+        return { error: payload?.error || `Account deletion failed (HTTP ${delRes.status}). No local data was cleared.` };
       }
 
-      if (isSupabaseConfigured && supabaseUser) {
-        try {
-          const authHeaders = await getAuthBearerHeader();
-          const delRes = await fetch("/api/account/delete", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...authHeaders,
-            },
-          });
-          if (!delRes.ok) {
-            const uid = supabaseUser.id;
-            await supabase.from("screenshots").delete().eq("user_id", uid);
-            await supabase.from("search_history").delete().eq("user_id", uid);
-            await supabase.from("settings").delete().eq("user_id", uid);
-            await supabase.from("profiles").delete().eq("id", uid);
-          }
-        } catch {
-          const uid = supabaseUser.id;
-          await supabase.from("screenshots").delete().eq("user_id", uid);
-          await supabase.from("search_history").delete().eq("user_id", uid);
-          await supabase.from("settings").delete().eq("user_id", uid);
-          await supabase.from("profiles").delete().eq("id", uid);
-        }
-        await supabase.auth.signOut();
+      // Only clear local data after the server confirms the Auth user was deleted.
+      try { await supabase.auth.signOut({ scope: "local" }); } catch {}
+      try {
+        const providerStore = StorageManager.getProvider();
+        await providerStore.clearAllData();
+      } catch (storageError) {
+        console.warn("[AuthContext] Local account data cleanup warning:", storageError);
       }
+      try { localStorage.clear(); } catch {}
 
-      const provider = StorageManager.getProvider();
-      await provider.clearAllData();
-      localStorage.clear();
-
+      SubscriptionManager.resetToFree();
+      clearUserCache();
       const loggedOutUser: UserProfile = {
         id: "guest",
         name: "Guest User",
@@ -810,15 +810,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         plan: "Free",
         storageLimitMB: 1000,
       };
+      setSession(null);
+      setSupabaseUser(null);
       setUser(loggedOutUser);
       saveUserProfile(loggedOutUser);
-
       SyncEngine.setCurrentUserId("guest");
-
       return {};
     } catch (err: any) {
       console.error("[AuthContext] Delete account error:", err);
-      return { error: err?.message || "Failed to delete account" };
+      return { error: err?.message || "Failed to delete account. Your data has not been cleared locally." };
     }
   };
 
