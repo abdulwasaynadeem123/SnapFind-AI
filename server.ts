@@ -5332,58 +5332,48 @@ app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
   try {
     const authUser = await getAuthenticatedUser(req);
     if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
-      return res.status(401).json({
-        success: false,
-        error: "Valid authentication session required to delete your account.",
-      });
+      return res.status(401).json({ success: false, error: "Valid authentication session required to delete your account." });
     }
+    if (!supabaseServer || !hasSupabaseServiceRole) {
+      return res.status(503).json({ success: false, error: "Secure account deletion is unavailable: server admin credentials are not configured." });
+    }
+
     const uid = authUser.id;
+    // Remove every currently deployed user-owned database record. Check every result:
+    // never report success when a cleanup or Auth deletion failed.
+    const cleanup = [
+      await supabaseServer.from("founder_promo_eligibility").delete().eq("user_id", uid),
+      await supabaseServer.from("founder_claims").delete().eq("user_id", uid),
+      await supabaseServer.from("user_entitlements").delete().eq("user_id", uid),
+      await supabaseServer.from("user_usage").delete().eq("user_id", uid),
+    ];
+    const cleanupError = cleanup.find((result) => result.error)?.error;
+    if (cleanupError) {
+      console.error("[AccountDelete] Database cleanup failed:", cleanupError.message);
+      return res.status(500).json({ success: false, error: "Could not remove all account records. Account was not deleted; please retry." });
+    }
+
+    const { error: authDeleteError } = await supabaseServer.auth.admin.deleteUser(uid);
+    if (authDeleteError) {
+      console.error("[AccountDelete] Auth user deletion failed:", authDeleteError.message);
+      return res.status(500).json({ success: false, error: "Database records were cleaned, but the login account could not be deleted. Please contact support before retrying." });
+    }
 
     serverEntitlements.delete(uid);
     serverUsageStore.delete(`usr_${uid}`);
     serverGameProfiles.delete(uid);
     for (const [nid, notif] of serverNotifications.entries()) {
-      if (notif.user_id === uid || notif.userId === uid) {
-        serverNotifications.delete(nid);
-      }
+      if (notif.user_id === uid || notif.userId === uid) serverNotifications.delete(nid);
     }
     for (const [rid, reqRec] of serverPaymentRequests.entries()) {
-      if (reqRec.user_id === uid || reqRec.userId === uid) {
-        serverPaymentRequests.delete(rid);
-      }
+      if (reqRec.user_id === uid || reqRec.userId === uid) serverPaymentRequests.delete(rid);
     }
     saveBillingStateToDisk();
 
-    if (supabaseServer) {
-      const cleanupOps = [
-        supabaseServer.from("screenshots").delete().eq("user_id", uid),
-        supabaseServer.from("search_history").delete().eq("user_id", uid),
-        supabaseServer.from("settings").delete().eq("user_id", uid),
-        supabaseServer.from("notifications").delete().eq("user_id", uid),
-        supabaseServer.from("user_entitlements").delete().eq("user_id", uid),
-        supabaseServer.from("payment_requests").delete().eq("user_id", uid),
-        supabaseServer.from("game_scores").delete().eq("user_id", uid),
-        supabaseServer.from("game_profiles").delete().eq("user_id", uid),
-        supabaseServer.from("profiles").delete().eq("id", uid),
-      ];
-      await Promise.allSettled(cleanupOps);
-      try {
-        await supabaseServer.auth.admin.deleteUser(uid);
-      } catch (authDelErr) {
-        console.warn("[AccountDelete] Auth user removal notice:", authDelErr);
-      }
-    }
-
-    return res.json({
-      success: true,
-      message: "Account and associated cloud records deleted permanently.",
-    });
+    return res.json({ success: true, message: "Account and all deployed user records deleted permanently." });
   } catch (err: any) {
     console.error("[AccountDelete] Error:", err);
-    return res.status(500).json({
-      success: false,
-      error: "Unable to complete account deletion right now.",
-    });
+    return res.status(500).json({ success: false, error: "Unable to complete account deletion right now." });
   }
 });
 
