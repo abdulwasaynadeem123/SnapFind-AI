@@ -5196,36 +5196,108 @@ app.get("/api/game/user-stats", async (req, res) => {
 // AUTHORITATIVE USAGE & QUOTA ENGINE ENDPOINTS
 // ==============================================================================
 
+async function hydrateUsageEntitlement(
+  req: express.Request,
+  userId: string
+): Promise<{ entitlement: any; dbClient: SupabaseClient | null }> {
+  if (!userId || userId === "guest") {
+    return { entitlement: { plan: "free", tier: "Free", isPro: false, isFounder: false }, dbClient: null };
+  }
+  const authUser = await getAuthenticatedUser(req);
+  const dbClient = hasSupabaseServiceRole
+    ? supabaseServer
+    : createSupabaseClientWithToken(authUser.token);
+  if (dbClient) {
+    try {
+      const [{ data: claim }, { data: row }] = await Promise.all([
+        dbClient.from("founder_claims").select("founder_rank,status").eq("user_id", userId).eq("status", "claimed").maybeSingle(),
+        dbClient.from("user_entitlements").select("*").eq("user_id", userId).maybeSingle(),
+      ]);
+      const rank = Number(claim?.founder_rank || row?.founder_number || 0);
+      if ((claim?.status === "claimed" || row?.is_founder) && rank >= 1 && rank <= 50) {
+        const founder = createFounderEntitlement(userId, rank);
+        serverEntitlements.set(userId, founder);
+        return { entitlement: founder, dbClient };
+      }
+      if (row) {
+        const isPro = Boolean(row.is_pro);
+        const rawPlan = String(row.plan || "").toLowerCase();
+        const plan = isPro
+          ? (["monthly", "yearly", "lifetime", "pro"].includes(rawPlan) ? rawPlan : "pro")
+          : "free";
+        const features = row.features && Object.keys(row.features).length
+          ? row.features
+          : (PLAN_FEATURES_MAP as any)[plan] || PLAN_FEATURES_MAP.free;
+        const ent = {
+          userId,
+          plan,
+          tier: isPro ? "Pro" : "Free",
+          isPro,
+          isFounder: false,
+          founderNumber: null,
+          features,
+          maxScreenshots: features.maxIndexedScreenshots,
+          canCloudSync: features.cloudSync,
+          canAiMultimodalSearch: features.advancedSearch,
+          priorityProcessing: features.priorityProcessing,
+          status: isPro ? "active" : "free",
+          expiresAt: row.expires_at || null,
+          updatedAt: row.updated_at || new Date().toISOString(),
+        };
+        serverEntitlements.set(userId, ent);
+        return { entitlement: ent, dbClient };
+      }
+    } catch (error: any) {
+      console.warn("[Usage] Entitlement hydration failed:", error?.message || error);
+    }
+  }
+  return {
+    entitlement: serverEntitlements.get(userId) || { plan: "free", tier: "Free", isPro: false, isFounder: false },
+    dbClient,
+  };
+}
+
 // Endpoint: Query Authoritative User & Device Usage Metrics
 app.get("/api/usage", async (req, res) => {
-  const { userKey, userId, deviceId } = await resolveEffectiveUserContext(req);
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  const context = await resolveEffectiveUserContext(req);
+  const { userKey, userId, deviceId, isAuthenticated } = context;
+  const { entitlement: ent, dbClient } = await hydrateUsageEntitlement(req, userId);
   const usage = getOrInitServerUsage(userKey, userId, deviceId);
-  const ent = serverEntitlements.get(userId) || {
-    plan: "free",
-    tier: "Free",
-    isPro: false,
-    isFounder: false,
-  };
+
+  if (isAuthenticated && dbClient) {
+    try {
+      const { data: row, error } = await dbClient.from("user_usage").select("*").eq("user_id", userId).maybeSingle();
+      if (!error && row) {
+        usage.screenshotsIndexed = Number(row.screenshots_indexed || 0);
+        usage.aiAnalysesUsed = row.period_start && new Date(row.period_start).getTime() < new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+          ? 0
+          : Number(row.ai_analyses_used || 0);
+        usage.storageBytesUsed = Number(row.storage_bytes_used || 0);
+        usage.cloudSyncCount = Number(row.cloud_sync_count || 0);
+        usage.periodStart = row.period_start || usage.periodStart;
+        usage.monthlyResetDate = row.monthly_reset_date || usage.monthlyResetDate;
+        usage.lastUpdated = row.updated_at || usage.lastUpdated;
+        serverUsageStore.set(userKey, usage);
+      } else if (error) {
+        console.warn("[Usage] Persistent usage read warning:", error.message);
+      }
+    } catch (error: any) {
+      console.warn("[Usage] Persistent usage read failed:", error?.message || error);
+    }
+  }
 
   const isFounder = Boolean(ent.isFounder);
   const isPro = Boolean(ent.isPro || isFounder);
   const limits = resolvePlanFeatures(ent);
-
   const now = new Date();
   const resetDateObj = new Date(usage.monthlyResetDate);
-  const diffTime = resetDateObj.getTime() - now.getTime();
-  const daysUntilReset = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  const daysUntilReset = Math.max(1, Math.ceil((resetDateObj.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
   return res.json({
-    success: true,
-    userKey,
-    userId,
-    deviceId,
-    tier: isFounder ? "Founder Pro" : isPro ? "Pro" : "Free",
-    plan: ent.plan || "free",
-    isPro,
-    isFounder,
-    founderNumber: ent.founderNumber || null,
+    success: true, userKey, userId, deviceId,
+    tier: isFounder ? "Lifetime Free" : isPro ? "Pro" : "Free",
+    plan: ent.plan || "free", isPro, isFounder, founderNumber: ent.founderNumber || null,
     usage: {
       screenshotsIndexed: usage.screenshotsIndexed,
       aiAnalysesUsed: usage.aiAnalysesUsed,
@@ -5249,7 +5321,7 @@ app.get("/api/usage", async (req, res) => {
       aiAnalysesRemaining: Math.max(0, limits.maxAIScansPerMonth - usage.aiAnalysesUsed),
       storageBytesRemaining: Math.max(0, limits.maxStorageMB * 1024 * 1024 - usage.storageBytesUsed),
     },
-    isUnlimitedResource: false, // We accurately reflect the concrete backend capabilities
+    isUnlimitedResource: false,
   });
 });
 
