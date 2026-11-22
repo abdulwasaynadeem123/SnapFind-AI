@@ -605,6 +605,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: supabaseUser.id,
       name: cleanName,
+      username: cleanName,
       email: supabaseUser.email,
       updated_at: new Date().toISOString(),
     });
@@ -642,6 +643,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: supabaseUser.id,
       name: user?.name || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
+      username: user?.name || supabaseUser.user_metadata?.username || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
       email: supabaseUser.email,
       avatar_url: cleanAvatar,
       updated_at: new Date().toISOString(),
