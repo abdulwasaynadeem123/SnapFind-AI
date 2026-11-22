@@ -46,27 +46,31 @@ export const YourUsageCard: React.FC<YourUsageCardProps> = ({
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Compute live metrics when screenshots, user, or entitlements change
+  // Compute local metrics immediately, then hydrate from the authoritative account ledger.
   useEffect(() => {
-    const updated = UsageService.computeMetrics(screenshots, user?.id);
-    setMetrics(updated);
-
-    // Subscribe to background usage updates
-    const unsubscribe = UsageService.subscribe((newMetrics) => {
-      setMetrics(newMetrics);
-    });
-
-    return () => unsubscribe();
+    let cancelled = false;
+    setMetrics(UsageService.computeMetrics(screenshots, user?.id));
+    const unsubscribe = UsageService.subscribe((newMetrics) => setMetrics(newMetrics));
+    UsageService.syncWithServer(user?.id).then((serverData) => {
+      if (!cancelled && serverData?.success && serverData.usage) {
+        setMetrics(UsageService.computeMetrics(screenshots, user?.id, {
+          ...serverData.usage,
+          limits: serverData.limits,
+        }));
+      }
+    }).catch((err) => console.warn("Initial usage sync failed:", err));
+    return () => { cancelled = true; unsubscribe(); };
   }, [screenshots, user?.id, entitlement]);
 
-  // Initial and manual sync with authoritative server
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       const serverData = await UsageService.syncWithServer(user?.id);
-      if (serverData) {
-        const updated = UsageService.computeMetrics(screenshots, user?.id, serverData.usage);
-        setMetrics(updated);
+      if (serverData?.success && serverData.usage) {
+        setMetrics(UsageService.computeMetrics(screenshots, user?.id, {
+          ...serverData.usage,
+          limits: serverData.limits,
+        }));
       }
     } catch (err) {
       console.warn("Usage sync failed:", err);
@@ -74,7 +78,6 @@ export const YourUsageCard: React.FC<YourUsageCardProps> = ({
       setTimeout(() => setIsRefreshing(false), 500);
     }
   };
-
   const handleUpgradeClick = () => {
     if (onOpenUpgrade) {
       onOpenUpgrade("aiScans");
