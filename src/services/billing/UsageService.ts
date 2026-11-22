@@ -200,15 +200,20 @@ class UsageServiceEngine {
     const planDefaults = PLAN_CONFIG[planKey].features;
 
     const screenshotsLimit =
+      serverUsageData?.limits?.maxIndexedScreenshots ??
       ent.features?.maxIndexedScreenshots ??
       ent.maxScreenshots ??
       planDefaults.maxIndexedScreenshots;
 
     const aiAnalysesLimit =
-      ent.features?.maxAIScansPerMonth ?? planDefaults.maxAIScansPerMonth;
+      serverUsageData?.limits?.maxAIScansPerMonth ??
+      ent.features?.maxAIScansPerMonth ??
+      planDefaults.maxAIScansPerMonth;
 
     const storageLimitMB =
-      ent.features?.maxStorageMB ?? planDefaults.maxStorageMB;
+      serverUsageData?.limits?.maxStorageMB ??
+      ent.features?.maxStorageMB ??
+      planDefaults.maxStorageMB;
     const storageLimitBytes = storageLimitMB * 1024 * 1024;
 
     // 3. Calculated Usage
