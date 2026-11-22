@@ -617,35 +617,47 @@ app.post("/api/analyze-screenshot", aiRateLimiter, async (req, res) => {
       return res.status(400).json({ error: imgErr || "Invalid image payload or unsupported format." });
     }
 
-    // Authoritative Server-side Quota Check
-    const { userKey, userId, deviceId } = await resolveEffectiveUserContext(req);
+    // Authoritative plan + persistent usage are loaded on every request (Vercel instances are ephemeral).
+    const context = await resolveEffectiveUserContext(req);
+    const { userKey, userId, deviceId, isAuthenticated } = context;
+    const { entitlement: ent, dbClient } = await hydrateUsageEntitlement(req, userId);
     const usage = getOrInitServerUsage(userKey, userId, deviceId);
-    const ent = serverEntitlements.get(userId) || { plan: "free", isPro: false, isFounder: false };
+    if (isAuthenticated && dbClient) {
+      const { data: row } = await dbClient.from("user_usage").select("*").eq("user_id", userId).maybeSingle();
+      if (row) {
+        usage.screenshotsIndexed = Number(row.screenshots_indexed || 0);
+        usage.aiAnalysesUsed = row.period_start && new Date(row.period_start).getTime() < new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+          ? 0 : Number(row.ai_analyses_used || 0);
+        usage.storageBytesUsed = Number(row.storage_bytes_used || 0);
+        usage.cloudSyncCount = Number(row.cloud_sync_count || 0);
+        usage.periodStart = row.period_start || usage.periodStart;
+        usage.monthlyResetDate = row.monthly_reset_date || usage.monthlyResetDate;
+      }
+    }
     const planFeatures = resolvePlanFeatures(ent);
-
     const maxScreenshots = planFeatures.maxIndexedScreenshots;
-    const countToCheck = usage.screenshotsIndexed;
+    const maxScans = planFeatures.maxAIScansPerMonth;
+    const maxStorageBytes = planFeatures.maxStorageMB * 1024 * 1024;
 
-    if (countToCheck >= maxScreenshots) {
+    if (usage.screenshotsIndexed >= maxScreenshots) {
       return res.status(429).json({
-        success: false,
-        code: "LIMIT_REACHED",
+        success: false, code: "LIMIT_REACHED",
         error: `Screenshot indexing limit reached (${maxScreenshots.toLocaleString()} max). Upgrade your plan to index additional screenshots.`,
         quotaExceeded: true,
       });
     }
-
-    const maxScans = planFeatures.maxAIScansPerMonth;
-
     if (usage.aiAnalysesUsed >= maxScans) {
       return res.status(429).json({
-        error: "Monthly AI Vision processing limit reached.",
+        success: false, error: "Monthly AI Vision processing limit reached.",
         quotaExceeded: true,
-        usage: {
-          used: usage.aiAnalysesUsed,
-          limit: maxScans,
-          resetDate: usage.monthlyResetDate,
-        },
+        usage: { used: usage.aiAnalysesUsed, limit: maxScans, resetDate: usage.monthlyResetDate },
+      });
+    }
+    const imageBytes = Buffer.from(cleanBase64, "base64").length;
+    if (usage.storageBytesUsed + imageBytes > maxStorageBytes) {
+      return res.status(429).json({
+        success: false, code: "STORAGE_LIMIT_REACHED",
+        error: "Your plan's storage limit has been reached.", quotaExceeded: true,
       });
     }
 
@@ -851,9 +863,33 @@ CRITICAL INSTRUCTIONS:
       }
     }
 
-    // Record authoritative AI scan usage if valid analysis performed
+    // Record a completed analysis + indexed screenshot atomically in Supabase.
     if (response) {
-      usage.aiAnalysesUsed += 1;
+      if (isAuthenticated && dbClient) {
+        const { data: saved, error: usageError } = await dbClient.rpc("record_snapfind_usage", {
+          p_user_id: userId,
+          p_action: "analyze_screenshot",
+          p_count: 1,
+          p_bytes: imageBytes,
+        });
+        if (usageError) {
+          console.error("[Usage] Could not persist completed AI analysis:", usageError.message);
+          return res.status(503).json({ success: false, error: "Analysis completed but usage could not be saved. Please contact support before retrying." });
+        }
+        const row = Array.isArray(saved) ? saved[0] : saved;
+        if (row) {
+          usage.screenshotsIndexed = Number(row.screenshots_indexed || 0);
+          usage.aiAnalysesUsed = Number(row.ai_analyses_used || 0);
+          usage.storageBytesUsed = Number(row.storage_bytes_used || 0);
+          usage.cloudSyncCount = Number(row.cloud_sync_count || 0);
+          usage.periodStart = row.period_start || usage.periodStart;
+          usage.monthlyResetDate = row.monthly_reset_date || usage.monthlyResetDate;
+        }
+      } else {
+        usage.aiAnalysesUsed += 1;
+        usage.screenshotsIndexed += 1;
+        usage.storageBytesUsed += imageBytes;
+      }
       usage.lastUpdated = new Date().toISOString();
       serverUsageStore.set(userKey, usage);
     }
