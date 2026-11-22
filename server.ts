@@ -5327,37 +5327,95 @@ app.get("/api/usage", async (req, res) => {
 
 // Endpoint: Record Authoritative AI Scan or Screenshot Action
 app.post("/api/usage/record", async (req, res) => {
-  const { userKey, userId, deviceId } = await resolveEffectiveUserContext(req);
-  const usage = getOrInitServerUsage(userKey, userId, deviceId);
-  const { action, byteSize = 0, count = 1 } = req.body;
-  const safeCount = Math.max(0, Math.min(100, Number(count) || 0));
-  const safeBytes = Math.max(0, Number(byteSize) || 0);
+  try {
+    const context = await resolveEffectiveUserContext(req);
+    const { userKey, userId, deviceId, isAuthenticated } = context;
+    const { action, byteSize = 0, count = 1 } = req.body || {};
+    if (!["ai_scan", "index_screenshot", "delete_screenshot", "cloud_sync"].includes(action)) {
+      return res.status(400).json({ success: false, error: "Unsupported usage action." });
+    }
+    const safeCount = Math.max(0, Math.min(1000, Math.floor(Number(count) || 0)));
+    const safeBytes = Math.max(0, Math.floor(Number(byteSize) || 0));
+    const { entitlement: ent, dbClient } = await hydrateUsageEntitlement(req, userId);
+    const limits = resolvePlanFeatures(ent);
+    const usage = getOrInitServerUsage(userKey, userId, deviceId);
 
-  if (action === "ai_scan") {
-    usage.aiAnalysesUsed += safeCount;
-  } else if (action === "index_screenshot") {
-    usage.screenshotsIndexed += safeCount;
-    usage.storageBytesUsed = Math.max(0, usage.storageBytesUsed + safeBytes);
-  } else if (action === "delete_screenshot") {
-    usage.screenshotsIndexed = Math.max(0, usage.screenshotsIndexed - safeCount);
-    usage.storageBytesUsed = Math.max(0, usage.storageBytesUsed - safeBytes);
-  } else if (action === "cloud_sync") {
-    usage.cloudSyncCount += safeCount;
+    if (isAuthenticated && dbClient) {
+      const { data: current } = await dbClient.from("user_usage").select("*").eq("user_id", userId).maybeSingle();
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const aiUsed = current?.period_start && new Date(current.period_start).getTime() < monthStart.getTime()
+        ? 0 : Number(current?.ai_analyses_used || 0);
+      const screenshotUsed = Number(current?.screenshots_indexed || 0);
+      const storageUsed = Number(current?.storage_bytes_used || 0);
+      if (action === "ai_scan" && aiUsed + safeCount > limits.maxAIScansPerMonth) {
+        return res.status(429).json({ success: false, error: "Your plan's monthly AI scan limit has been reached.", code: "AI_QUOTA_EXCEEDED" });
+      }
+      if (action === "index_screenshot" && screenshotUsed + safeCount > limits.maxIndexedScreenshots) {
+        return res.status(429).json({ success: false, error: "Your plan's indexed screenshot limit has been reached.", code: "SCREENSHOT_QUOTA_EXCEEDED" });
+      }
+      if (action === "index_screenshot" && storageUsed + safeBytes > limits.maxStorageMB * 1024 * 1024) {
+        return res.status(429).json({ success: false, error: "Your plan's storage limit has been reached.", code: "STORAGE_QUOTA_EXCEEDED" });
+      }
+      if (action === "cloud_sync" && !limits.cloudSync) {
+        return res.status(403).json({ success: false, error: "Cloud sync is not included in your current plan.", code: "FEATURE_NOT_INCLUDED" });
+      }
+
+      const { data: saved, error } = await dbClient.rpc("record_snapfind_usage", {
+        p_user_id: userId, p_action: action, p_count: safeCount, p_bytes: safeBytes,
+      });
+      if (error) {
+        console.error("[Usage] Persistent usage write failed:", error.message);
+        return res.status(503).json({ success: false, error: "Usage could not be saved securely. Please retry." });
+      }
+      const row = Array.isArray(saved) ? saved[0] : saved;
+      if (row) {
+        usage.screenshotsIndexed = Number(row.screenshots_indexed || 0);
+        usage.aiAnalysesUsed = Number(row.ai_analyses_used || 0);
+        usage.storageBytesUsed = Number(row.storage_bytes_used || 0);
+        usage.cloudSyncCount = Number(row.cloud_sync_count || 0);
+        usage.periodStart = row.period_start || usage.periodStart;
+        usage.monthlyResetDate = row.monthly_reset_date || usage.monthlyResetDate;
+        usage.lastUpdated = row.updated_at || new Date().toISOString();
+      }
+    } else {
+      if (action === "ai_scan" && usage.aiAnalysesUsed + safeCount > limits.maxAIScansPerMonth) {
+        return res.status(429).json({ success: false, error: "Your plan's monthly AI scan limit has been reached.", code: "AI_QUOTA_EXCEEDED" });
+      }
+      if (action === "index_screenshot" && usage.screenshotsIndexed + safeCount > limits.maxIndexedScreenshots) {
+        return res.status(429).json({ success: false, error: "Your plan's indexed screenshot limit has been reached.", code: "SCREENSHOT_QUOTA_EXCEEDED" });
+      }
+      if (action === "index_screenshot" && usage.storageBytesUsed + safeBytes > limits.maxStorageMB * 1024 * 1024) {
+        return res.status(429).json({ success: false, error: "Your plan's storage limit has been reached.", code: "STORAGE_QUOTA_EXCEEDED" });
+      }
+      if (action === "cloud_sync" && !limits.cloudSync) {
+        return res.status(403).json({ success: false, error: "Cloud sync is not included in your current plan.", code: "FEATURE_NOT_INCLUDED" });
+      }
+      if (action === "ai_scan") usage.aiAnalysesUsed += safeCount;
+      else if (action === "index_screenshot") {
+        usage.screenshotsIndexed += safeCount;
+        usage.storageBytesUsed += safeBytes;
+      } else if (action === "delete_screenshot") {
+        usage.screenshotsIndexed = Math.max(0, usage.screenshotsIndexed - safeCount);
+        usage.storageBytesUsed = Math.max(0, usage.storageBytesUsed - safeBytes);
+      } else if (action === "cloud_sync") usage.cloudSyncCount += safeCount;
+      usage.lastUpdated = new Date().toISOString();
+    }
+
+    serverUsageStore.set(userKey, usage);
+    return res.json({
+      success: true,
+      usage: {
+        screenshotsIndexed: usage.screenshotsIndexed,
+        aiAnalysesUsed: usage.aiAnalysesUsed,
+        storageBytesUsed: usage.storageBytesUsed,
+        cloudSyncCount: usage.cloudSyncCount,
+        monthlyResetDate: usage.monthlyResetDate,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Usage] Record failed:", error?.message || error);
+    return res.status(500).json({ success: false, error: "Unable to record usage right now." });
   }
-
-  usage.lastUpdated = new Date().toISOString();
-  serverUsageStore.set(userKey, usage);
-
-  return res.json({
-    success: true,
-    usage: {
-      screenshotsIndexed: usage.screenshotsIndexed,
-      aiAnalysesUsed: usage.aiAnalysesUsed,
-      storageBytesUsed: usage.storageBytesUsed,
-      cloudSyncCount: usage.cloudSyncCount,
-      monthlyResetDate: usage.monthlyResetDate,
-    },
-  });
 });
 
 // Endpoint: Reconcile & Synchronize Local Client State with Authoritative Server Ledger
