@@ -344,6 +344,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedProfile: UserProfile = {
       id: sbUser.id,
       name,
+      username,
       email: sbUser.email || "",
       avatarUrl,
       isLoggedIn: true,
