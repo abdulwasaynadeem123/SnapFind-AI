@@ -5553,9 +5553,37 @@ app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
       return res.status(401).json({ success: false, error: "The signed-in account could not be verified." });
     }
 
-    // Auth deletion is the single database transaction boundary; all current
-    // user-owned rows cascade automatically. Do not pre-delete data and leave
-    // a still-active account behind if the Auth Admin operation fails.
+    // Supabase Auth refuses to delete users who still own Storage objects.
+    // Discover ownership with a service-role-only RPC, then remove files through
+    // the Storage API (never by deleting storage.objects rows with SQL).
+    const { data: ownedObjects, error: storageLookupError } = await supabaseServer.rpc(
+      "list_user_storage_objects",
+      { p_user_id: uid }
+    );
+    if (storageLookupError) {
+      console.error("[AccountDelete] Storage ownership lookup failed:", storageLookupError.message);
+      return res.status(503).json({ success: false, error: "Could not verify cloud file ownership. No account data was deleted; please retry." });
+    }
+
+    const objectsByBucket = new Map<string, string[]>();
+    for (const item of (ownedObjects || []) as Array<{ bucket_id: string; object_name: string }>) {
+      if (!item?.bucket_id || !item?.object_name) continue;
+      const paths = objectsByBucket.get(item.bucket_id) || [];
+      paths.push(item.object_name);
+      objectsByBucket.set(item.bucket_id, paths);
+    }
+    for (const [bucketId, paths] of objectsByBucket.entries()) {
+      for (let offset = 0; offset < paths.length; offset += 1000) {
+        const batch = paths.slice(offset, offset + 1000);
+        const { error: storageDeleteError } = await supabaseServer.storage.from(bucketId).remove(batch);
+        if (storageDeleteError) {
+          console.error("[AccountDelete] Storage cleanup failed:", bucketId, storageDeleteError.message);
+          return res.status(503).json({ success: false, error: "Cloud files could not be fully deleted. Your login account is still active; retry account deletion." });
+        }
+      }
+    }
+
+    // Auth deletion cascades all current user-owned database rows.
     const { error: authDeleteError } = await supabaseServer.auth.admin.deleteUser(uid);
     if (authDeleteError) {
       console.error("[AccountDelete] Auth user deletion failed:", authDeleteError.message);
