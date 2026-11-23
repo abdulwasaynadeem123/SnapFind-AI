@@ -873,7 +873,17 @@ CRITICAL INSTRUCTIONS:
           p_bytes: imageBytes,
         });
         if (usageError) {
-          console.error("[Usage] Could not persist completed AI analysis:", usageError.message);
+          const message = String(usageError.message || "");
+          if (message.includes("AI_QUOTA_EXCEEDED")) {
+            return res.status(429).json({ success: false, error: "Your plan's monthly AI scan limit has been reached.", code: "AI_QUOTA_EXCEEDED", quotaExceeded: true });
+          }
+          if (message.includes("SCREENSHOT_QUOTA_EXCEEDED")) {
+            return res.status(429).json({ success: false, error: "Your plan's screenshot quota has been reached.", code: "SCREENSHOT_QUOTA_EXCEEDED", quotaExceeded: true });
+          }
+          if (message.includes("STORAGE_QUOTA_EXCEEDED")) {
+            return res.status(429).json({ success: false, error: "Your plan's storage limit has been reached.", code: "STORAGE_QUOTA_EXCEEDED", quotaExceeded: true });
+          }
+          console.error("[Usage] Could not persist completed AI analysis:", message);
           return res.status(503).json({ success: false, error: "Analysis completed but usage could not be saved. Please contact support before retrying." });
         }
         const row = Array.isArray(saved) ? saved[0] : saved;
@@ -1792,7 +1802,12 @@ async function syncEntitlementToSupabase(entitlement: any, explicitClient?: Supa
       is_pro: isPro,
       tier: entitlement.tier || (isFounder ? "Founder" : isPro ? "Pro" : "Free"),
       plan,
+      max_screenshots: entitlement.maxScreenshots || entitlement.features?.maxIndexedScreenshots || PLAN_FEATURES_MAP[plan].maxIndexedScreenshots,
+      can_cloud_sync: Boolean(entitlement.canCloudSync ?? entitlement.features?.cloudSync),
+      can_ai_multimodal_search: Boolean(entitlement.canAiMultimodalSearch ?? entitlement.features?.advancedSearch),
+      priority_processing: Boolean(entitlement.priorityProcessing ?? entitlement.features?.priorityProcessing),
       features: entitlement.features || PLAN_FEATURES_MAP[plan] || PLAN_FEATURES_MAP.free,
+      status: entitlement.status || "active",
       expires_at: entitlement.expiresAt || null,
       active_subscription_id: entitlement.activeSubscriptionId || null,
       updated_at: new Date().toISOString(),
@@ -1801,15 +1816,6 @@ async function syncEntitlementToSupabase(entitlement: any, explicitClient?: Supa
       console.warn("[Billing] Supabase user_entitlements upsert error:", entErr.message);
     }
 
-    const { error: profErr } = await client.from("profiles").update({
-      plan: entitlement.tier || (isFounder ? "Founder" : isPro ? "Pro" : "Free"),
-      is_founder: isFounder,
-      founder_rank: entitlement.founderNumber || null,
-      updated_at: new Date().toISOString(),
-    }).eq("id", entitlement.userId);
-    if (profErr) {
-      console.warn("[Billing] Supabase profiles update warning:", profErr.message);
-    }
   } catch (err) {
     console.warn("[Billing] Supabase sync error (non-fatal):", err);
   }
@@ -1823,8 +1829,11 @@ function getNextMonthlyResetDate(): { periodStart: string; nextResetDate: string
 }
 
 function resolvePlanFeatures(ent: any) {
-  if (ent?.isFounder || ent?.plan === "founder") return PLAN_FEATURES_MAP.founder;
   const p = String(ent?.plan || "").toLowerCase();
+  const expired = Boolean(ent?.expiresAt && new Date(ent.expiresAt).getTime() <= Date.now());
+  const inactive = Boolean(ent?.status && !["active", "trialing", "free"].includes(String(ent.status).toLowerCase()));
+  if (expired || inactive) return PLAN_FEATURES_MAP.free;
+  if (ent?.isFounder || p === "founder") return PLAN_FEATURES_MAP.founder;
   if (p === "monthly") return PLAN_FEATURES_MAP.monthly;
   if (p === "yearly") return PLAN_FEATURES_MAP.yearly;
   if (p === "lifetime") return PLAN_FEATURES_MAP.lifetime;
@@ -2473,63 +2482,6 @@ async function getAuthenticatedUser(req: express.Request): Promise<{ id: string;
   }
   return { id: "guest", isAuthenticated: false };
 }
-
-// Server helper: Extract verified caller user ID
-async function getAuthenticatedUserId(req: express.Request): Promise<string> {
-  const authUser = await getAuthenticatedUser(req);
-  return authUser.id;
-}
-
-/**
- * Permanently delete the authenticated user's Supabase Auth account.
- * All user-owned rows in the current schema reference auth.users with ON DELETE CASCADE.
- * Never trust a user ID from the request body or report success before Admin API success.
- */
-app.post("/api/account/delete", async (req, res) => {
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-  try {
-    const authUser = await getAuthenticatedUser(req);
-    if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
-      return res.status(401).json({ success: false, error: "A valid signed-in session is required." });
-    }
-
-    if (!supabaseServer || !hasSupabaseServiceRole) {
-      return res.status(503).json({
-        success: false,
-        error: "Account deletion is temporarily unavailable because the server admin connection is not configured.",
-      });
-    }
-
-    const { data: beforeDelete, error: lookupError } =
-      await supabaseServer.auth.admin.getUserById(authUser.id);
-    if (lookupError || !beforeDelete?.user) {
-      return res.status(401).json({ success: false, error: "The authenticated account could not be verified." });
-    }
-
-    const { error: deleteError } = await supabaseServer.auth.admin.deleteUser(authUser.id);
-    if (deleteError) {
-      console.error("[AccountDeletion] Supabase Auth deletion failed:", deleteError.message);
-      return res.status(500).json({ success: false, error: "Supabase could not permanently delete this account. Please retry." });
-    }
-
-    // Verify the Auth record is gone. A 404 / not-found response is the expected result.
-    const { data: afterDelete, error: verifyError } =
-      await supabaseServer.auth.admin.getUserById(authUser.id);
-    if (afterDelete?.user) {
-      return res.status(500).json({ success: false, error: "Deletion was not verified; the account still exists." });
-    }
-    if (verifyError && Number((verifyError as any).status) !== 404 &&
-        !String(verifyError.message || "").toLowerCase().includes("not found")) {
-      console.error("[AccountDeletion] Verification request failed:", verifyError.message);
-      return res.status(502).json({ success: false, error: "Account deletion was submitted but could not be independently verified. Contact support before retrying." });
-    }
-
-    return res.status(200).json({ success: true, deleted: true });
-  } catch (error: any) {
-    console.error("[AccountDeletion] Unexpected failure:", error?.message || error);
-    return res.status(500).json({ success: false, error: "An unexpected error prevented account deletion." });
-  }
-});
 
 // Server helper: Hardened Admin Authorization verification
 // ZERO TRUST: Never trusts client-supplied headers (x-admin-email, x-admin-role)
@@ -3283,16 +3235,18 @@ app.get("/api/billing/entitlements", async (req, res) => {
         }
 
         if (entData) {
-          const isPro = Boolean(entData.is_pro);
+          const expired = Boolean(entData.expires_at && new Date(entData.expires_at).getTime() <= Date.now());
+          const inactive = Boolean(entData.status && !["active", "trialing", "free"].includes(String(entData.status).toLowerCase()));
+          const isPro = Boolean(entData.is_pro && !expired && !inactive);
           const rawDbPlan = String(entData.plan || "").toLowerCase();
           const plan = isPro
             ? (["monthly", "yearly", "lifetime", "pro"].includes(rawDbPlan) ? rawDbPlan : "pro")
             : "free";
           const tier = isPro ? "Pro" : "Free";
-          const features =
-            (entData.features && Object.keys(entData.features).length > 0 ? entData.features : null) ||
-            PLAN_FEATURES_MAP[plan] ||
-            PLAN_FEATURES_MAP.free;
+          const features = isPro
+            ? ((entData.features && Object.keys(entData.features).length > 0 ? entData.features : null) ||
+              PLAN_FEATURES_MAP[plan] || PLAN_FEATURES_MAP.free)
+            : PLAN_FEATURES_MAP.free;
 
           existing = {
             userId: entData.user_id,
@@ -3308,7 +3262,7 @@ app.get("/api/billing/entitlements", async (req, res) => {
             canCloudSync: features.cloudSync,
             canAiMultimodalSearch: features.advancedSearch,
             priorityProcessing: features.priorityProcessing,
-            status: isPro ? "active" : undefined,
+            status: isPro ? "active" : "free",
             updatedAt: entData.updated_at || new Date().toISOString(),
           };
           serverEntitlements.set(userId, existing);
@@ -5301,20 +5255,24 @@ async function hydrateUsageEntitlement(
         dbClient.from("user_entitlements").select("*").eq("user_id", userId).maybeSingle(),
       ]);
       const rank = Number(claim?.founder_rank || row?.founder_number || 0);
-      if ((claim?.status === "claimed" || row?.is_founder) && rank >= 1 && rank <= 50) {
+      const rowExpired = Boolean(row?.expires_at && new Date(row.expires_at).getTime() <= Date.now());
+      const rowInactive = Boolean(row?.status && !["active", "trialing", "free"].includes(String(row.status).toLowerCase()));
+      if ((claim?.status === "claimed" || row?.is_founder) && rank >= 1 && rank <= 50 && !rowExpired && !rowInactive) {
         const founder = createFounderEntitlement(userId, rank);
         serverEntitlements.set(userId, founder);
         return { entitlement: founder, dbClient };
       }
       if (row) {
-        const isPro = Boolean(row.is_pro);
+        const expired = Boolean(row.expires_at && new Date(row.expires_at).getTime() <= Date.now());
+        const inactive = Boolean(row.status && !["active", "trialing", "free"].includes(String(row.status).toLowerCase()));
+        const isPro = Boolean(row.is_pro && !expired && !inactive);
         const rawPlan = String(row.plan || "").toLowerCase();
         const plan = isPro
           ? (["monthly", "yearly", "lifetime", "pro"].includes(rawPlan) ? rawPlan : "pro")
           : "free";
-        const features = row.features && Object.keys(row.features).length
+        const features = isPro && row.features && Object.keys(row.features).length
           ? row.features
-          : (PLAN_FEATURES_MAP as any)[plan] || PLAN_FEATURES_MAP.free;
+          : PLAN_FEATURES_MAP.free;
         const ent = {
           userId,
           plan,
@@ -5451,7 +5409,20 @@ app.post("/api/usage/record", async (req, res) => {
         p_user_id: userId, p_action: action, p_count: safeCount, p_bytes: safeBytes,
       });
       if (error) {
-        console.error("[Usage] Persistent usage write failed:", error.message);
+        const message = String(error.message || "");
+        if (message.includes("AI_QUOTA_EXCEEDED")) {
+          return res.status(429).json({ success: false, error: "Your plan's monthly AI scan limit has been reached.", code: "AI_QUOTA_EXCEEDED" });
+        }
+        if (message.includes("SCREENSHOT_QUOTA_EXCEEDED")) {
+          return res.status(429).json({ success: false, error: "Your plan's screenshot quota has been reached.", code: "SCREENSHOT_QUOTA_EXCEEDED" });
+        }
+        if (message.includes("STORAGE_QUOTA_EXCEEDED")) {
+          return res.status(429).json({ success: false, error: "Your plan's storage limit has been reached.", code: "STORAGE_QUOTA_EXCEEDED" });
+        }
+        if (message.includes("FEATURE_NOT_INCLUDED")) {
+          return res.status(403).json({ success: false, error: "Cloud sync is not included in your current plan.", code: "FEATURE_NOT_INCLUDED" });
+        }
+        console.error("[Usage] Persistent usage write failed:", message);
         return res.status(503).json({ success: false, error: "Usage could not be saved securely. Please retry." });
       }
       const row = Array.isArray(saved) ? saved[0] : saved;
@@ -5575,6 +5546,18 @@ app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
     if (authDeleteError) {
       console.error("[AccountDelete] Auth user deletion failed:", authDeleteError.message);
       return res.status(500).json({ success: false, error: "Database records were cleaned, but the login account could not be deleted. Please contact support before retrying." });
+    }
+
+    const { data: remainingAuthUser, error: verifyDeleteError } =
+      await supabaseServer.auth.admin.getUserById(uid);
+    if (remainingAuthUser?.user) {
+      return res.status(500).json({ success: false, error: "Deletion could not be verified; the account still exists." });
+    }
+    if (verifyDeleteError &&
+        Number((verifyDeleteError as any).status) !== 404 &&
+        !String(verifyDeleteError.message || "").toLowerCase().includes("not found")) {
+      console.error("[AccountDelete] Could not verify deletion:", verifyDeleteError.message);
+      return res.status(502).json({ success: false, error: "Deletion was submitted but could not be independently verified." });
     }
 
     serverEntitlements.delete(uid);
