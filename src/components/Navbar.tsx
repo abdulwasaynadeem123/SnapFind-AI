@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
   UploadCloud,
+  ArrowLeft,
   User,
   Bell,
   RefreshCw,
@@ -32,6 +33,7 @@ interface NavbarProps {
   onOpenNotifications?: () => void;
   onToggleMobileMenu?: () => void;
   onOpenFilters?: () => void;
+  onBack?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -47,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   onToggleMobileMenu,
   onOpenFilters,
+  onBack,
 }) => {
   const [avatarError, setAvatarError] = useState(false);
   const [syncState, setSyncState] = useState<SyncState>(() => SyncEngine.getState());
@@ -91,6 +94,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
         {/* Left: Hamburger (Mobile) + Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
+          {onBack && activeView !== "landing" && (
+            <button
+              id="screen-back-btn"
+              type="button"
+              onClick={onBack}
+              aria-label="Go back to home"
+              title="Back to home"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[#A5AAA1] hover:text-[#F7F8F5] hover:bg-[#141714] transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
           {onToggleMobileMenu && (
             <button
               id="mobile-nav-toggle-btn"
