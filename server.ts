@@ -2547,7 +2547,7 @@ async function checkAdminAuthorization(req: express.Request): Promise<{ authoriz
     }
 
     const callerEmail = (data.user.email || "").toLowerCase().trim();
-    const appRole = (data.user.app_metadata?.role as string) || (data.user.user_metadata?.role as string) || "";
+    const appRole = (data.user.app_metadata?.role as string) || ""; // app_metadata is admin-controlled; user_metadata is user-editable and must never grant privileges.
 
     const isAuthorized =
       callerEmail === "ash.mary.2006@gmail.com" ||
