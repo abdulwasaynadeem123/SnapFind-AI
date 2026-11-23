@@ -401,6 +401,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
     if (data?.session?.user) {
+      setSession(data.session);
+      setSupabaseUser(data.session.user);
       SyncEngine.setCurrentUserId(data.session.user.id);
       try {
         await syncProfile(data.session.user);
@@ -430,16 +432,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password: pass,
-      options: {
-        data: {
-          full_name: cleanName || cleanEmail.split("@")[0],
+    let data: any;
+    let error: any;
+    try {
+      const result = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: pass,
+        options: {
+          data: {
+            full_name: cleanName || cleanEmail.split("@")[0],
+          },
+          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : "https://snapfind.ai.studio/",
         },
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : "https://snapfind.ai.studio/",
-      },
-    });
+      });
+      data = result.data;
+      error = result.error;
+    } catch (err: any) {
+      return { error: err?.message || "Signup request failed. Check your internet connection and try again." };
+    }
 
     if (error) {
       const msg = error.message || "";
@@ -486,6 +496,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (data?.session?.user) {
+      setSession(data.session);
+      setSupabaseUser(data.session.user);
       await syncProfile(data.session.user);
       SyncEngine.setCurrentUserId(data.session.user.id);
       NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
