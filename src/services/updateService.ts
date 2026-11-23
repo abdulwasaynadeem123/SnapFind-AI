@@ -274,7 +274,7 @@ class UpdateServiceEngine {
   /**
    * Query GitHub Releases API for latest public release
    */
-  public async checkForUpdates(isManual: boolean = false): Promise<ReleaseInfo | null> {
+  public async checkForUpdates(isManual: boolean = false): Promise<ReleaseInfo | null> {\n    // APK release checks only apply to installed native apps, not browser previews.\n    if (!Capacitor.isNativePlatform()) {\n      this.state.status = "up_to_date";\n      this.state.errorMessage = null;\n      this.notify();\n      return null;\n    }
     if (this.isChecking) {
       return this.state.latestRelease;
     }
