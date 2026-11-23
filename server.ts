@@ -2480,6 +2480,57 @@ async function getAuthenticatedUserId(req: express.Request): Promise<string> {
   return authUser.id;
 }
 
+/**
+ * Permanently delete the authenticated user's Supabase Auth account.
+ * All user-owned rows in the current schema reference auth.users with ON DELETE CASCADE.
+ * Never trust a user ID from the request body or report success before Admin API success.
+ */
+app.post("/api/account/delete", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  try {
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
+      return res.status(401).json({ success: false, error: "A valid signed-in session is required." });
+    }
+
+    if (!supabaseServer || !hasSupabaseServiceRole) {
+      return res.status(503).json({
+        success: false,
+        error: "Account deletion is temporarily unavailable because the server admin connection is not configured.",
+      });
+    }
+
+    const { data: beforeDelete, error: lookupError } =
+      await supabaseServer.auth.admin.getUserById(authUser.id);
+    if (lookupError || !beforeDelete?.user) {
+      return res.status(401).json({ success: false, error: "The authenticated account could not be verified." });
+    }
+
+    const { error: deleteError } = await supabaseServer.auth.admin.deleteUser(authUser.id);
+    if (deleteError) {
+      console.error("[AccountDeletion] Supabase Auth deletion failed:", deleteError.message);
+      return res.status(500).json({ success: false, error: "Supabase could not permanently delete this account. Please retry." });
+    }
+
+    // Verify the Auth record is gone. A 404 / not-found response is the expected result.
+    const { data: afterDelete, error: verifyError } =
+      await supabaseServer.auth.admin.getUserById(authUser.id);
+    if (afterDelete?.user) {
+      return res.status(500).json({ success: false, error: "Deletion was not verified; the account still exists." });
+    }
+    if (verifyError && Number((verifyError as any).status) !== 404 &&
+        !String(verifyError.message || "").toLowerCase().includes("not found")) {
+      console.error("[AccountDeletion] Verification request failed:", verifyError.message);
+      return res.status(502).json({ success: false, error: "Account deletion was submitted but could not be independently verified. Contact support before retrying." });
+    }
+
+    return res.status(200).json({ success: true, deleted: true });
+  } catch (error: any) {
+    console.error("[AccountDeletion] Unexpected failure:", error?.message || error);
+    return res.status(500).json({ success: false, error: "An unexpected error prevented account deletion." });
+  }
+});
+
 // Server helper: Hardened Admin Authorization verification
 // ZERO TRUST: Never trusts client-supplied headers (x-admin-email, x-admin-role)
 // Strictly requires valid Bearer token from verified Supabase session matching ash.mary.2006@gmail.com or admin role
