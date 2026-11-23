@@ -529,8 +529,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
                 </button>
                 </div>
-              </details>
               </div>
+              </details>
             </div>
           </div>
         </div>
