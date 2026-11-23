@@ -218,10 +218,12 @@ class UsageServiceEngine {
 
     // 3. Calculated Usage
     const activeScreenshots = screenshots.filter((s) => !s.isDeleted && !s.is_deleted);
-    const screenshotsIndexed = Math.max(
-      activeScreenshots.length,
-      serverUsageData?.screenshotsIndexed || 0
-    );
+    // Once the server ledger has loaded, it is authoritative. Local library
+    // size is only a pre-sync fallback and must not override monthly/yearly quotas.
+    const screenshotsIndexed =
+      typeof serverUsageData?.screenshotsIndexed === "number"
+        ? serverUsageData.screenshotsIndexed
+        : activeScreenshots.length;
     const screenshotsRemaining = Math.max(0, screenshotsLimit - screenshotsIndexed);
     const screenshotsPercent = Math.min(
       100,
