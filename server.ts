@@ -5534,8 +5534,10 @@ app.post("/api/admin/test-reset", adminRateLimiter, async (req, res) => {
   return res.json({ success: true, message: "Testing state reset successfully." });
 });
 
-// Endpoint: Permanently Delete Authenticated Account & Associated Records
+// Endpoint: Permanently delete the authenticated user's account.
+// Every current user-owned application table has an ON DELETE CASCADE FK to auth.users.
 app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
   try {
     const authUser = await getAuthenticatedUser(req);
     if (!authUser.isAuthenticated || !authUser.id || authUser.id === "guest") {
@@ -5546,25 +5548,18 @@ app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
     }
 
     const uid = authUser.id;
-    // Remove every currently deployed user-owned database record. Check every result:
-    // never report success when a cleanup or Auth deletion failed.
-    const cleanup = [
-      await supabaseServer.from("founder_promo_eligibility").delete().eq("user_id", uid),
-      await supabaseServer.from("founder_claims").delete().eq("user_id", uid),
-      await supabaseServer.from("user_entitlements").delete().eq("user_id", uid),
-      await supabaseServer.from("user_usage").delete().eq("user_id", uid),
-      await supabaseServer.from("profiles").delete().eq("id", uid),
-    ];
-    const cleanupError = cleanup.find((result) => result.error)?.error;
-    if (cleanupError) {
-      console.error("[AccountDelete] Database cleanup failed:", cleanupError.message);
-      return res.status(500).json({ success: false, error: "Could not remove all account records. Account was not deleted; please retry." });
+    const { data: beforeDelete, error: lookupError } = await supabaseServer.auth.admin.getUserById(uid);
+    if (lookupError || !beforeDelete?.user) {
+      return res.status(401).json({ success: false, error: "The signed-in account could not be verified." });
     }
 
+    // Auth deletion is the single database transaction boundary; all current
+    // user-owned rows cascade automatically. Do not pre-delete data and leave
+    // a still-active account behind if the Auth Admin operation fails.
     const { error: authDeleteError } = await supabaseServer.auth.admin.deleteUser(uid);
     if (authDeleteError) {
       console.error("[AccountDelete] Auth user deletion failed:", authDeleteError.message);
-      return res.status(500).json({ success: false, error: "Database records were cleaned, but the login account could not be deleted. Please contact support before retrying." });
+      return res.status(500).json({ success: false, error: "Supabase could not permanently delete this account. Please retry." });
     }
 
     const { data: remainingAuthUser, error: verifyDeleteError } =
@@ -5588,11 +5583,13 @@ app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
     for (const [rid, reqRec] of serverPaymentRequests.entries()) {
       if (reqRec.user_id === uid || reqRec.userId === uid) serverPaymentRequests.delete(rid);
     }
-    saveBillingStateToDisk();
+    for (const [fid, feedback] of serverFeedback.entries()) {
+      if (feedback.user_id === uid || feedback.userId === uid) serverFeedback.delete(fid);
+    }
 
-    return res.json({ success: true, message: "Account and all deployed user records deleted permanently." });
+    return res.status(200).json({ success: true, deleted: true, message: "Account and all linked database records were permanently deleted." });
   } catch (err: any) {
-    console.error("[AccountDelete] Error:", err);
+    console.error("[AccountDelete] Error:", err?.message || err);
     return res.status(500).json({ success: false, error: "Unable to complete account deletion right now." });
   }
 });
