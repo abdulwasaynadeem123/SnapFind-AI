@@ -5583,8 +5583,9 @@ app.post("/api/account/delete", billingRateLimiter, async (req, res) => {
     for (const [rid, reqRec] of serverPaymentRequests.entries()) {
       if (reqRec.user_id === uid || reqRec.userId === uid) serverPaymentRequests.delete(rid);
     }
-    for (const [fid, feedback] of serverFeedback.entries()) {
-      if (feedback.user_id === uid || feedback.userId === uid) serverFeedback.delete(fid);
+    for (let i = serverFeedbackList.length - 1; i >= 0; i--) {
+      const feedback = serverFeedbackList[i] as any;
+      if (feedback.user_id === uid || feedback.userId === uid) serverFeedbackList.splice(i, 1);
     }
 
     return res.status(200).json({ success: true, deleted: true, message: "Account and all linked database records were permanently deleted." });
