@@ -76,6 +76,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     entitlement,
     refreshEntitlement,
     updateName,
+    updateUsername,
     updateProfilePicture,
     changeEmail,
     changePassword,
@@ -135,6 +136,10 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameLoading, setNameLoading] = useState(false);
   const [nameMsg, setNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [username, setUsername] = useState(user.username || "");
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [usernameLoading, setUsernameLoading] = useState(false);
+  const [usernameMsg, setUsernameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Profile Picture Upload State
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -212,6 +217,10 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     setName(user.name || "");
   }, [user.name]);
 
+  useEffect(() => {
+    setUsername(user.username || supabaseUser?.user_metadata?.username || "");
+  }, [user.username, supabaseUser?.id, supabaseUser?.user_metadata?.username]);
+
   // Derived Authoritative Entitlement Status
   const isFounder = Boolean(
     user.entitlement?.isFounder ||
@@ -278,6 +287,27 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           type: "success",
         });
       }
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    if (usernameLoading) return;
+    const clean = username.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,24}$/.test(clean)) {
+      setUsernameMsg({ type: "error", text: "Use 3–24 lowercase letters, numbers, or underscores." });
+      return;
+    }
+    setUsernameLoading(true);
+    setUsernameMsg(null);
+    const result = await updateUsername(clean);
+    setUsernameLoading(false);
+    if (result.error) {
+      setUsernameMsg({ type: "error", text: result.error });
+    } else {
+      setUsername(clean);
+      setUsernameMsg({ type: "success", text: "Username updated successfully." });
+      setIsEditingUsername(false);
+      addToast?.({ title: "Username Updated", description: `Your username is now @${clean}.`, type: "success" });
     }
   };
 
@@ -632,6 +662,38 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                       <CheckCircle2 className="w-3 h-3 text-[#B7F36B]" /> Verified
                     </span>
                   )}
+                </div>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs">
+                  <span className="text-[#A5AAA1]">Username</span>
+                  {isEditingUsername ? (
+                    <form onSubmit={(e) => { e.preventDefault(); void handleSaveUsername(); }} className="flex items-center gap-2">
+                      <span className="text-[#B7F36B]">@</span>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                        placeholder="your_username"
+                        minLength={3}
+                        maxLength={24}
+                        autoComplete="username"
+                        className="w-36 px-2.5 py-1 rounded-lg border border-[#30362E] bg-[#0D0F0D] text-[#F7F8F5] outline-none focus:border-[#B7F36B]"
+                      />
+                      <button type="submit" disabled={usernameLoading} className="text-[#B7F36B] font-semibold disabled:opacity-50">
+                        {usernameLoading ? "Saving..." : "Save"}
+                      </button>
+                      <button type="button" onClick={() => { setUsername(user.username || supabaseUser?.user_metadata?.username || ""); setUsernameMsg(null); setIsEditingUsername(false); }} className="text-[#A5AAA1]">
+                        Cancel
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="font-mono text-[#F7F8F5]">@{username || "not-set"}</span>
+                      <button type="button" onClick={() => { setUsernameMsg(null); setIsEditingUsername(true); }} className="text-[#B7F36B] font-semibold hover:underline">
+                        Edit Username
+                      </button>
+                    </>
+                  )}
+                  {usernameMsg && <span className={usernameMsg.type === "error" ? "text-rose-400" : "text-[#B7F36B]"}>{usernameMsg.text}</span>}
                 </div>
               </div>
 
