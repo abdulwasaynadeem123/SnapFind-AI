@@ -235,12 +235,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    processAuthCallback();
+    let isMounted = true;
+    let initialAuthSettled = false;
 
-    // 2. Fetch current active verified session
-    supabase.auth
-      .getSession()
-      .then(async ({ data: { session } }) => {
+    // Complete OAuth / recovery callback processing before reading the session.
+    // Otherwise getSession() can race the PKCE exchange and render the user as signed out.
+    const initializeAuth = async () => {
+      try {
+        await processAuthCallback();
+        if (!isMounted) return;
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!isMounted) return;
+
         setSession(session);
         setSupabaseUser(session?.user ?? null);
         if (session?.user) {
@@ -251,15 +259,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           SyncEngine.setCurrentUserId("guest");
           setUser(null);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.warn("[AuthContext] getSession warning:", err);
-        SubscriptionManager.resetToFree();
-        SyncEngine.setCurrentUserId("guest");
-        setUser(null);
-        setLoading(false);
-      });
+      } catch (err) {
+        console.warn("[AuthContext] Initial session check warning:", err);
+        if (isMounted) {
+          SubscriptionManager.resetToFree();
+          SyncEngine.setCurrentUserId("guest");
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          initialAuthSettled = true;
+          setLoading(false);
+        }
+      }
+    };
+
+    void initializeAuth();
 
     // 3. Listen to persistent Auth changes
     const {
@@ -286,10 +301,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         saveUserProfile(GUEST_USER);
       }
-      setLoading(false);
+      if (initialAuthSettled) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const syncProfile = async (sbUser: User) => {
