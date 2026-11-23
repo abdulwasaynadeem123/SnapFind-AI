@@ -1354,6 +1354,25 @@ function AppContent() {
 
   const isDark = settings.theme === "dark";
   const isLandingView = activeView === "landing";
+  const viewHistoryRef = useRef<NavViewType[]>([]);
+  const lastActiveViewRef = useRef<NavViewType>(activeView);
+  const skipHistoryPushRef = useRef(false);
+
+  useEffect(() => {
+    if (lastActiveViewRef.current !== activeView) {
+      if (!skipHistoryPushRef.current) {
+        viewHistoryRef.current.push(lastActiveViewRef.current);
+      }
+      skipHistoryPushRef.current = false;
+      lastActiveViewRef.current = activeView;
+    }
+  }, [activeView]);
+
+  const handleScreenBack = () => {
+    const previousView = viewHistoryRef.current.pop() || "landing";
+    skipHistoryPushRef.current = true;
+    setActiveView(previousView);
+  };
 
   return (
     <div
@@ -1406,7 +1425,7 @@ function AppContent() {
             unreadNotificationCount={notifications.filter((n) => !n.read && !n.isRead).length}
             onOpenNotifications={() => setIsNotificationOpen(true)}
             onToggleMobileMenu={() => setIsMobileNavOpen(true)}
-            onBack={() => setActiveView("landing")}
+            onBack={handleScreenBack}
           />
 
           {/* Main Workspace Area */}
