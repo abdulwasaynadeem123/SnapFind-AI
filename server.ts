@@ -624,15 +624,7 @@ app.post("/api/analyze-screenshot", aiRateLimiter, async (req, res) => {
     const usage = getOrInitServerUsage(userKey, userId, deviceId);
     if (isAuthenticated && dbClient) {
       const { data: row } = await dbClient.from("user_usage").select("*").eq("user_id", userId).maybeSingle();
-      if (row) {
-        usage.screenshotsIndexed = Number(row.screenshots_indexed || 0);
-        usage.aiAnalysesUsed = row.period_start && new Date(row.period_start).getTime() < new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
-          ? 0 : Number(row.ai_analyses_used || 0);
-        usage.storageBytesUsed = Number(row.storage_bytes_used || 0);
-        usage.cloudSyncCount = Number(row.cloud_sync_count || 0);
-        usage.periodStart = row.period_start || usage.periodStart;
-        usage.monthlyResetDate = row.monthly_reset_date || usage.monthlyResetDate;
-      }
+      if (row) applyPersistentUsageRow(usage, row, ent);
     }
     const planFeatures = resolvePlanFeatures(ent);
     const maxScreenshots = planFeatures.maxIndexedScreenshots;
@@ -1826,6 +1818,37 @@ function getNextMonthlyResetDate(): { periodStart: string; nextResetDate: string
   const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
   const nextResetDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
   return { periodStart, nextResetDate };
+}
+
+function getPlanUsagePeriod(entitlement: any): { periodStart: string; nextResetDate: string } {
+  const now = new Date();
+  const isYearly = String(entitlement?.plan || "").toLowerCase() === "yearly";
+  const start = isYearly
+    ? new Date(Date.UTC(now.getUTCFullYear(), 0, 1))
+    : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const next = isYearly
+    ? new Date(Date.UTC(now.getUTCFullYear() + 1, 0, 1))
+    : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return { periodStart: start.toISOString().slice(0, 10), nextResetDate: next.toISOString().slice(0, 10) };
+}
+
+function applyPersistentUsageRow(usage: ServerUsageRecord, row: any, entitlement: any): void {
+  const plan = String(entitlement?.plan || "free").toLowerCase();
+  const period = getPlanUsagePeriod(entitlement);
+  const samePlan = String(row.usage_plan || "free").toLowerCase() === plan;
+  const samePeriod = String(row.period_start || "").slice(0, 10) === period.periodStart;
+  const isPeriodScreenshotPlan = plan === "monthly" || plan === "yearly";
+  const usagePeriodIsCurrent = samePlan && samePeriod;
+
+  usage.screenshotsIndexed = isPeriodScreenshotPlan
+    ? (usagePeriodIsCurrent ? Number(row.screenshots_indexed || 0) : 0)
+    : Number(row.lifetime_screenshots_indexed ?? row.screenshots_indexed ?? 0);
+  usage.aiAnalysesUsed = usagePeriodIsCurrent ? Number(row.ai_analyses_used || 0) : 0;
+  usage.storageBytesUsed = Number(row.storage_bytes_used || 0);
+  usage.cloudSyncCount = Number(row.cloud_sync_count || 0);
+  usage.periodStart = period.periodStart;
+  usage.monthlyResetDate = period.nextResetDate;
+  usage.lastUpdated = row.updated_at || usage.lastUpdated;
 }
 
 function resolvePlanFeatures(ent: any) {
@@ -5314,15 +5337,7 @@ app.get("/api/usage", async (req, res) => {
     try {
       const { data: row, error } = await dbClient.from("user_usage").select("*").eq("user_id", userId).maybeSingle();
       if (!error && row) {
-        usage.screenshotsIndexed = Number(row.screenshots_indexed || 0);
-        usage.aiAnalysesUsed = row.period_start && new Date(row.period_start).getTime() < new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
-          ? 0
-          : Number(row.ai_analyses_used || 0);
-        usage.storageBytesUsed = Number(row.storage_bytes_used || 0);
-        usage.cloudSyncCount = Number(row.cloud_sync_count || 0);
-        usage.periodStart = row.period_start || usage.periodStart;
-        usage.monthlyResetDate = row.monthly_reset_date || usage.monthlyResetDate;
-        usage.lastUpdated = row.updated_at || usage.lastUpdated;
+        applyPersistentUsageRow(usage, row, ent);
         serverUsageStore.set(userKey, usage);
       } else if (error) {
         console.warn("[Usage] Persistent usage read warning:", error.message);
@@ -5387,10 +5402,14 @@ app.post("/api/usage/record", async (req, res) => {
 
     if (isAuthenticated && dbClient) {
       const { data: current } = await dbClient.from("user_usage").select("*").eq("user_id", userId).maybeSingle();
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const aiUsed = current?.period_start && new Date(current.period_start).getTime() < monthStart.getTime()
-        ? 0 : Number(current?.ai_analyses_used || 0);
-      const screenshotUsed = Number(current?.screenshots_indexed || 0);
+      const period = getPlanUsagePeriod(ent);
+      const samePlan = String(current?.usage_plan || "free").toLowerCase() === String(ent?.plan || "free").toLowerCase();
+      const samePeriod = String(current?.period_start || "").slice(0, 10) === period.periodStart;
+      const isPeriodScreenshotPlan = ["monthly", "yearly"].includes(String(ent?.plan || "free").toLowerCase());
+      const aiUsed = samePlan && samePeriod ? Number(current?.ai_analyses_used || 0) : 0;
+      const screenshotUsed = isPeriodScreenshotPlan
+        ? (samePlan && samePeriod ? Number(current?.screenshots_indexed || 0) : 0)
+        : Number(current?.lifetime_screenshots_indexed ?? current?.screenshots_indexed ?? 0);
       const storageUsed = Number(current?.storage_bytes_used || 0);
       if (action === "ai_scan" && aiUsed + safeCount > limits.maxAIScansPerMonth) {
         return res.status(429).json({ success: false, error: "Your plan's monthly AI scan limit has been reached.", code: "AI_QUOTA_EXCEEDED" });
