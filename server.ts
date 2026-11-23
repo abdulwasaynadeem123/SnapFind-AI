@@ -47,6 +47,8 @@ app.use((req, res, next) => {
     "frame-src 'self' https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",
+    "form-action 'self' https://accounts.google.com",
+    "frame-ancestors 'self'",
   ];
   res.setHeader("Content-Security-Policy", cspDirectives.join("; "));
 
