@@ -528,6 +528,7 @@ export interface PaymentAccountDetails {
 export interface UserProfile {
   id: string;
   name: string;
+  username?: string;
   email: string;
   avatarUrl?: string;
   isLoggedIn: boolean;
