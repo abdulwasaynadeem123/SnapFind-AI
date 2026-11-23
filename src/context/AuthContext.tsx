@@ -789,8 +789,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Security: Do not overwrite public.profiles.email until the user confirms the verification link.
     try {
+      const attributes: any = { email: cleanEmail };
+      if (provider === "email" && currentPassword) {
+        // Supabase validates the current password in the same Auth request;
+        // avoid signing in again and accidentally replacing the active session.
+        attributes.current_password = currentPassword;
+      }
       const { error } = await supabase.auth.updateUser(
-        { email: cleanEmail },
+        attributes,
         { emailRedirectTo: `${window.location.origin}/` }
       );
       if (error) return { error: error.message };
@@ -829,7 +835,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPass });
+      const attributes: any = { password: newPass };
+      if (!isRecoveryMode && provider === "email" && currentPassword) {
+        // Send current_password atomically with the password change.
+        // This works with Supabase's "require current password" Auth setting.
+        attributes.current_password = currentPassword;
+      }
+      const { error } = await supabase.auth.updateUser(attributes);
       if (error) return { error: error.message };
     } catch (err: any) {
       return { error: err?.message || "Password update failed. Please try again." };
