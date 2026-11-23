@@ -476,3 +476,21 @@ body { background: #080908 !important; color: #F7F8F5; }
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Accessible touch targets for phones and tablets (including iOS). */
+@media (pointer: coarse) {
+  button:not([data-touch-compact="true"]) {
+    min-height: 44px;
+  }
+  button[aria-label]:not([data-touch-compact="true"]),
+  button[title]:not([data-touch-compact="true"]) {
+    min-width: 44px;
+  }
+}
+
+/* Always keep keyboard focus visible for accessible navigation. */
+:where(button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid #B7F36B;
+  outline-offset: 3px;
+}
