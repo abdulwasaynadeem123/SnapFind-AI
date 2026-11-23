@@ -375,10 +375,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password: pass,
-    });
+    let data: any;
+    let error: any;
+    try {
+      const result = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: pass,
+      });
+      data = result.data;
+      error = result.error;
+    } catch (err: any) {
+      return { error: err?.message || "Sign-in request failed. Check your internet connection and try again." };
+    }
     if (error) {
       const lower = error.message.toLowerCase();
       const isUnconfirmed = lower.includes("email not confirmed");
@@ -394,7 +402,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     if (data?.session?.user) {
       SyncEngine.setCurrentUserId(data.session.user.id);
-      await syncProfile(data.session.user);
+      try {
+        await syncProfile(data.session.user);
+      } catch (profileError) {
+        console.warn("[AuthContext] Sign-in succeeded but profile sync will retry:", profileError);
+      }
       NotificationService.notifyNewLogin({ email: cleanEmail, platform: "Email / Web" });
     }
     return {};
@@ -599,14 +611,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!email) return { error: "No active user email found." };
     if (!password) return { error: "Current password is required for verification." };
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      return { error: "Current password is incorrect. Please try again." };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: "Current password is incorrect. Please try again." };
+      return {};
+    } catch (err: any) {
+      return { error: err?.message || "Could not verify your password. Check your connection and try again." };
     }
-    return {};
   };
 
   const updateName = async (newName: string): Promise<{ error?: string }> => {
@@ -710,7 +721,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: supabaseUser.id,
       name: user?.name || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
-      username: user?.name || supabaseUser.user_metadata?.username || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
+      username: supabaseUser.user_metadata?.username || user?.username || supabaseUser.user_metadata?.preferred_username || supabaseUser.email?.split("@")[0] || "User",
       email: supabaseUser.email,
       avatar_url: cleanAvatar,
       updated_at: new Date().toISOString(),
@@ -765,13 +776,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Security: Do not overwrite public.profiles.email until the user confirms the verification link.
-    const { error } = await supabase.auth.updateUser(
-      { email: cleanEmail },
-      { emailRedirectTo: `${window.location.origin}/` }
-    );
-    if (error) return { error: error.message };
-
-    return { requiresVerification: true };
+    try {
+      const { error } = await supabase.auth.updateUser(
+        { email: cleanEmail },
+        { emailRedirectTo: `${window.location.origin}/` }
+      );
+      if (error) return { error: error.message };
+      return { requiresVerification: true };
+    } catch (err: any) {
+      return { error: err?.message || "Email change request failed. Please try again." };
+    }
   };
 
   const changePassword = async (
@@ -802,8 +816,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (reauthRes.error) return reauthRes;
     }
 
-    const { error } = await supabase.auth.updateUser({ password: newPass });
-    if (error) return { error: error.message };
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPass });
+      if (error) return { error: error.message };
+    } catch (err: any) {
+      return { error: err?.message || "Password update failed. Please try again." };
+    }
 
     if (isRecoveryMode) {
       setIsRecoveryMode(false);
