@@ -193,11 +193,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (mode === "register") {
-      const cleanName = name.trim();
-      if (cleanName.length < 2) {
-        setErrorMsg("Please enter your full name (at least 2 characters).");
-        return;
-      }
       if (!password || password.length < 8) {
         setErrorMsg("Password must be at least 8 characters long.");
         return;
@@ -488,7 +483,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {mode === "register" && (
             <div className="space-y-1.5">
               <label htmlFor="auth-fullname" className="block text-xs font-semibold text-[#F7F8F5]">
-                Full Name
+                Name (optional)
               </label>
               <div className="relative">
                 <UserIcon
