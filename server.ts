@@ -11,6 +11,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+// Trust the single reverse proxy hop used by the hosted deployment so req.ip resolves to the client.
+app.set("trust proxy", 1);
 const PORT = 3000;
 
 // Increase payload limit for base64 screenshot uploads & retain raw buffer for webhook signature verification
@@ -30,13 +32,13 @@ app.use((req, res, next) => {
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=(self)");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 
   // Comprehensive Content Security Policy (CSP) compatible with React, Vite dev server, Tesseract Web Workers, Google OAuth, and Supabase
   const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net",
+    "script-src 'self' 'unsafe-inline' blob: https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net",
     "worker-src 'self' blob: data: https://cdn.jsdelivr.net",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
@@ -115,10 +117,13 @@ function createRateLimiter(options: {
     const tokenHash = authHeader?.startsWith("Bearer ")
       ? crypto.createHash("sha256").update(authHeader).digest("hex").slice(0, 16)
       : "";
-    const userIdentifier = tokenHash ? `tok_${tokenHash}` : clientIp;
-    const rateLimitKey = `${options.name}:${userIdentifier}`;
 
-    const allowed = checkRateLimit(rateLimitKey, options.max, options.windowMs);
+    // Enforce both a client-IP ceiling and a per-session ceiling. This makes token
+    // rotation less useful as a rate-limit bypass. These buckets are process-local;
+    // use an edge/shared store for strict cross-instance limits.
+    const ipAllowed = checkRateLimit(`${options.name}:ip:${clientIp}`, options.max * 4, options.windowMs);
+    const tokenAllowed = !tokenHash || checkRateLimit(`${options.name}:token:${tokenHash}`, options.max, options.windowMs);
+    const allowed = ipAllowed && tokenAllowed;
     if (!allowed) {
       const retryAfterSec = Math.ceil(options.windowMs / 1000);
       res.setHeader("Retry-After", retryAfterSec.toString());
