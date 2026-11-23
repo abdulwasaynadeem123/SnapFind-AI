@@ -10,6 +10,7 @@
  * - Preserves all user data (SQLite database, Vault, collections, VIP status).
  */
 
+import { Capacitor } from "@capacitor/core";
 import {
   APP_PACKAGE_ID,
   APP_VERSION,
