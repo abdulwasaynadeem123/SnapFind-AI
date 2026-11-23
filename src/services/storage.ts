@@ -655,6 +655,18 @@ export function addTombstonedNotificationIds(ids: string[]): void {
   }
 }
 
+export function removeTombstonedNotificationId(id: string): void {
+  if (!id) return;
+  try {
+    const set = getTombstonedNotificationIds();
+    if (set.delete(id)) {
+      localStorage.setItem(TOMBSTONE_KEY, JSON.stringify(Array.from(set)));
+    }
+  } catch (e) {
+    console.warn("[Storage] Error removing tombstone ID:", e);
+  }
+}
+
 export function getLastClearedAllTimestamp(): number {
   try {
     const raw = localStorage.getItem(CLEARED_ALL_KEY);

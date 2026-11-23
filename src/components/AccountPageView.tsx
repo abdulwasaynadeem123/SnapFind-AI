@@ -90,9 +90,41 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     totalSpots: vipTotalSpots,
     isLive: isVipStatsLive,
     isLoading: isVipStatsLoading,
+    eligibility: vipEligibility,
     claimFounderSpot,
     refreshFounderStats,
+    refreshEligibility,
   } = useFounder();
+
+  const [fallbackPromoStatus, setFallbackPromoStatus] = useState<
+    Awaited<ReturnType<typeof SubscriptionManager.getFounderPromoStatus>>
+  >(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const currentUserId = user?.id || supabaseUser?.id;
+    if (
+      vipEligibility ||
+      !currentUserId ||
+      currentUserId === "guest" ||
+      currentUserId.startsWith("local-guest")
+    ) {
+      return;
+    }
+    SubscriptionManager.getFounderPromoStatus()
+      .then((status) => {
+        if (!cancelled) setFallbackPromoStatus(status);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [vipEligibility, user?.id, supabaseUser?.id]);
+
+  const isVipOfferEligible = Boolean(
+    (vipEligibility?.vipEligible && vipEligibility.vipClaimStatus === "pending") ||
+      (!vipEligibility && fallbackPromoStatus?.eligible && !fallbackPromoStatus.claimed)
+  );
 
   const [isClaimingVip, setIsClaimingVip] = useState(false);
   const [vipClaimError, setVipClaimError] = useState<string | null>(null);
@@ -110,18 +142,26 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
     setIsClaimingVip(true);
     setVipClaimError(null);
     try {
-      const res = await claimFounderSpot(currentUserId);
+      const res = vipEligibility
+        ? await claimFounderSpot(currentUserId)
+        : await SubscriptionManager.claimFounder(currentUserId);
       if (res.success && typeof res.founderNumber === "number" && res.founderNumber >= 1) {
         setVipClaimedSuccessNum(res.founderNumber);
+        setFallbackPromoStatus((prev) =>
+          prev ? { ...prev, claimed: true, founderRank: res.founderNumber! } : prev
+        );
         await refreshEntitlement();
-        await refreshFounderStats();
+        if (vipEligibility) {
+          await refreshFounderStats();
+          await refreshEligibility?.();
+        }
         addToast?.({
-          title: `VIP Member #${res.founderNumber}`,
-          description: `Permanent VIP Seat #${res.founderNumber} of ${vipTotalSpots || 50} is now linked to your account.`,
+          title: "Lifetime Free VIP Activated!",
+          description: `VIP Member #${res.founderNumber} is now permanently linked to your account.`,
           type: "success",
         });
       } else {
-        setVipClaimError(res.error || "Unable to claim a VIP seat right now. Please try again.");
+        setVipClaimError(res.error || "Unable to activate Lifetime Free VIP right now. Please try again.");
       }
     } catch (err: any) {
       setVipClaimError(err?.message || "Unable to claim a VIP seat right now. Please try again.");
@@ -169,9 +209,16 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   // Payment Requests and Authoritative Entitlement State
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [isRefreshingEntitlement, setIsRefreshingEntitlement] = useState(false);
-  const [showProModal, setShowProModal] = useState(false);
   const [showManualPaymentModal, setShowManualPaymentModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+
+  const handleOpenPricing = () => {
+    if (onNavigate) {
+      onNavigate("pricing");
+    } else if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("snapfind_open_pro_modal"));
+    }
+  };
 
   // Fetch Authoritative Entitlement & Payment Requests
   const fetchAuthoritativeStatus = async () => {
@@ -729,7 +776,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 {isFree ? (
                   <button
                     type="button"
-                    onClick={() => setShowProModal(true)}
+                    onClick={handleOpenPricing}
                     className="px-3.5 py-1.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -746,7 +793,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setShowProModal(true)}
+                    onClick={handleOpenPricing}
                     className="px-3 py-1.5 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#A5AAA1] hover:text-[#F7F8F5] text-xs font-medium transition-colors cursor-pointer"
                   >
                     Manage Plan
@@ -1032,8 +1079,8 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
               </p>
             </div>
 
-            {/* Server-Authoritative Claim Free VIP Seat Callout (shown only while seats remain) */}
-            {isVipStatsLive && !isVipStatsLoading && vipRemaining !== null && vipRemaining > 0 && (
+            {/* Server-Authoritative First-50 Lifetime Free VIP Callout (shown ONLY to eligible accounts with pending claim) */}
+            {isVipOfferEligible && (
               <div className="p-4 rounded-2xl bg-[#0D0F0D] border border-[#B7F36B]/50 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
@@ -1041,9 +1088,12 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                       <Crown className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-[#F7F8F5]">Claim Your Free VIP Seat</h4>
+                      <h4 className="text-sm font-bold text-[#F7F8F5]">You&apos;re One of the First 50!</h4>
                       <p className="text-xs text-[#A5AAA1]">
-                        {vipRemaining} of {vipTotalSpots || 50} seats remaining. Unlock 150,000 screenshots &amp; Lifetime Pro free forever.
+                        Claim Lifetime Free SnapFind Pro access.
+                        {isVipStatsLive && !isVipStatsLoading && vipRemaining !== null
+                          ? ` (${vipRemaining} of ${vipTotalSpots || 50} claims remaining.)`
+                          : " Reserved exclusively for your account."}
                       </p>
                     </div>
                   </div>
@@ -1054,7 +1104,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
                     className="px-4 py-2.5 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 shrink-0"
                   >
                     <Crown className="w-3.5 h-3.5" />
-                    <span>{isClaimingVip ? "Claiming VIP Seat..." : vipClaimError ? "Retry Claim VIP Seat" : "Claim VIP Seat"}</span>
+                    <span>{isClaimingVip ? "Activating..." : vipClaimError ? "Retry Claim Lifetime Free" : "Claim Lifetime Free"}</span>
                   </button>
                 </div>
                 {vipClaimError && (
@@ -1071,7 +1121,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
 
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
               <button
-                onClick={() => setShowProModal(true)}
+                onClick={handleOpenPricing}
                 className="flex-1 py-3 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#080908] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <Zap className="w-4 h-4 text-[#080908]" />
@@ -1094,7 +1144,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
           <YourUsageCard
             user={user}
             isDark={isDark}
-            onOpenUpgrade={() => setShowProModal(true)}
+            onOpenUpgrade={handleOpenPricing}
             onSyncNow={() => SyncEngine.scheduleSync(0)}
           />
         </div>
@@ -1105,7 +1155,7 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
         <PaymentHistoryCard
           user={user}
           isDark={isDark}
-          onOpenUpgradeModal={() => setShowProModal(true)}
+          onOpenUpgradeModal={handleOpenPricing}
           addToast={addToast}
         />
       )}
@@ -1710,22 +1760,24 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
             </p>
 
             <div className="space-y-3 text-xs">
-              {/* Current Password Re-Auth */}
-              <div className="space-y-1">
-                <label htmlFor="account-delete-password" className="block font-semibold text-[#F7F8F5]">
-                  Confirm Current Password
-                </label>
-                <input
-                  id="account-delete-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder="Enter current password"
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-rose-500"
-                />
-              </div>
+              {/* Current Password Re-Auth (Email accounts only) */}
+              {(user.provider || supabaseUser?.app_metadata?.provider || "email") === "email" && (
+                <div className="space-y-1">
+                  <label htmlFor="account-delete-password" className="block font-semibold text-[#F7F8F5]">
+                    Confirm Current Password
+                  </label>
+                  <input
+                    id="account-delete-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter current password"
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] text-[#F7F8F5] placeholder-[#777E74] outline-none focus:border-rose-500"
+                  />
+                </div>
+              )}
 
               {/* Type DELETE */}
               <div className="space-y-1">

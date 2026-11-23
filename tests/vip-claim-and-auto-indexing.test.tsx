@@ -70,7 +70,25 @@ const mockFounderState = {
   isLive: true,
   isLoading: false,
   error: null as string | null,
+  eligibility: {
+    userId: "user-new-1",
+    signupNumber: 12 as number | null,
+    vipEligible: true,
+    vipClaimStatus: "pending" as "not_eligible" | "pending" | "claimed",
+    vipClaimedAt: null as string | null,
+    vipOfferDeferredAt: null as string | null,
+    founderNumber: null as number | null,
+    isFounder: false,
+    totalSlots: 50,
+    assignedSlots: 38,
+    claimedCount: 38,
+    remainingSlots: 12,
+    offerOpen: true,
+  } as any,
+  isEligibilityLoading: false,
   refreshFounderStats: vi.fn().mockResolvedValue(undefined),
+  refreshEligibility: vi.fn().mockResolvedValue(null),
+  deferVipOffer: vi.fn().mockResolvedValue({ success: true }),
   claimFounderSpot: vi.fn().mockResolvedValue({
     success: true,
     founderNumber: 12,
@@ -185,6 +203,22 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     mockFounderState.isLive = true;
     mockFounderState.isLoading = false;
     mockFounderState.error = null;
+    mockFounderState.eligibility = {
+      userId: "user-new-1",
+      signupNumber: 12,
+      vipEligible: true,
+      vipClaimStatus: "pending",
+      vipClaimedAt: null,
+      vipOfferDeferredAt: null,
+      founderNumber: null,
+      isFounder: false,
+      totalSlots: 50,
+      assignedSlots: 38,
+      claimedCount: 38,
+      remainingSlots: 12,
+      offerOpen: true,
+    };
+    mockFounderState.isEligibilityLoading = false;
     mockFounderState.claimFounderSpot = vi.fn().mockResolvedValue({
       success: true,
       founderNumber: 12,
@@ -238,17 +272,20 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    expect(screen.getByText("Claim Your Free VIP Seat")).toBeInTheDocument();
-    expect(screen.getByText("Get exclusive VIP benefits while seats are available.")).toBeInTheDocument();
-    expect(screen.getByText("12 of 50 seats remaining.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Claim VIP Seat" })).toBeInTheDocument();
+    expect(screen.getByText("You're One of the First 50!")).toBeInTheDocument();
+    expect(
+      screen.getByText("Claim Lifetime Free SnapFind Pro access. This exclusive offer is reserved for the first 50 accounts.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("38 / 50 claimed")).toBeInTheDocument();
+    expect(screen.getByText("12 remaining")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Claim Lifetime Free" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Maybe Later" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Maybe Later" }));
     expect(onMaybeLater).toHaveBeenCalledTimes(1);
     unmount();
 
-    // After clicking Maybe Later, user can still claim from Account page while seats remain
+    // After clicking Maybe Later, eligible user can still claim from Account page
     render(
       <AccountPageView
         user={mockAuthState.user!}
@@ -262,8 +299,8 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    expect(screen.getByText(/12 of 50 seats remaining\./i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Claim VIP Seat/i })).toBeInTheDocument();
+    expect(screen.getByText(/You're One of the First 50!/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Claim Lifetime Free/i })).toBeInTheDocument();
   });
 
   // =========================================================================
@@ -295,12 +332,12 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Claim VIP Seat" }));
+    fireEvent.click(screen.getByRole("button", { name: "Claim Lifetime Free" }));
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Database temporarily unreachable");
     });
     expect(screen.queryByText(/VIP Member #/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry Claim VIP Seat" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry Claim Lifetime Free" })).toBeInTheDocument();
 
     // Now test successful atomic claim with double-click guard
     rerender(
@@ -314,7 +351,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    const retryBtn = screen.getByRole("button", { name: "Retry Claim VIP Seat" });
+    const retryBtn = screen.getByRole("button", { name: "Retry Claim Lifetime Free" });
     fireEvent.click(retryBtn);
     fireEvent.click(retryBtn); // rapid duplicate click must be ignored
     expect(slowClaim).toHaveBeenCalledTimes(1);
@@ -322,6 +359,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     resolveClaim!({ success: true, founderNumber: 12 });
 
     await waitFor(() => {
+      expect(screen.getByText("Lifetime Free VIP Activated!")).toBeInTheDocument();
       expect(screen.getByText("VIP Member #12")).toBeInTheDocument();
     });
   });
@@ -351,6 +389,15 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       entitlement: mockAuthState.entitlement,
     };
 
+    mockFounderState.eligibility = {
+      ...mockFounderState.eligibility,
+      userId: "user-vip-12",
+      vipEligible: true,
+      vipClaimStatus: "claimed",
+      founderNumber: 12,
+      isFounder: true,
+    };
+
     render(
       <AccountPageView
         user={mockAuthState.user}
@@ -365,7 +412,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     );
 
     expect(screen.getByText("VIP Member #12")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Claim VIP Seat/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Claim Lifetime Free/i })).not.toBeInTheDocument();
   });
 
   // =========================================================================
@@ -406,11 +453,20 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
   // =========================================================================
   // SCENARIO 5: All 50 seats occupied -> stop showing VIP claim invitations
   // =========================================================================
-  it("Scenario 5: stops showing claim invitations when all 50 seats are occupied", () => {
+  it("Scenario 5: stops showing claim invitations when all 50 seats are occupied or account is ineligible", () => {
     mockFounderState.claimed = 50;
     mockFounderState.occupied = 50;
     mockFounderState.remaining = 0;
     mockFounderState.isAvailable = false;
+    mockFounderState.eligibility = {
+      ...mockFounderState.eligibility,
+      vipEligible: false,
+      vipClaimStatus: "not_eligible",
+      offerOpen: false,
+      assignedSlots: 50,
+      claimedCount: 50,
+      remainingSlots: 0,
+    };
 
     const { container } = render(
       <VipSeatInvitationModal
@@ -437,8 +493,8 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    expect(screen.queryByText("Claim Your Free VIP Seat")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Claim VIP Seat/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("You're One of the First 50!")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Claim Lifetime Free/i })).not.toBeInTheDocument();
   });
 
   // =========================================================================

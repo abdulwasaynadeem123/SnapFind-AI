@@ -197,7 +197,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setErrorMsg("Password must be at least 8 characters long.");
         return;
       }
-      if (confirmPassword && password !== confirmPassword) {
+      if (!confirmPassword) {
+        setErrorMsg("Please confirm your password.");
+        return;
+      }
+      if (password !== confirmPassword) {
         setErrorMsg("Passwords do not match.");
         return;
       }
@@ -605,7 +609,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  required={mode === "reset_password"}
+                  required={mode === "register" || mode === "reset_password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   aria-invalid={Boolean(errorMsg && /match/i.test(errorMsg))}

@@ -348,6 +348,24 @@ export type Product = GooglePlayProduct;
  * Domain: Entitlement
  * User capability and quota permissions granted by the system
  */
+export type VipClaimStatus = "not_eligible" | "pending" | "claimed";
+
+export interface VipEligibilityInfo {
+  userId: string;
+  signupNumber?: number | null;
+  vipEligible: boolean;
+  vipClaimStatus: VipClaimStatus;
+  vipClaimedAt?: string | null;
+  vipOfferDeferredAt?: string | null;
+  founderNumber?: number | null;
+  isFounder: boolean;
+  totalSlots: number;
+  assignedSlots: number;
+  claimedCount: number;
+  remainingSlots: number;
+  offerOpen: boolean;
+}
+
 export interface UserEntitlement {
   userId: string;
   tier: SubscriptionTier;
@@ -358,6 +376,11 @@ export interface UserEntitlement {
   founderRank?: number | null;
   founderGrantedAt?: string | null;
   founderExpiresAt?: string | null;
+  signupNumber?: number | null;
+  vipEligible?: boolean;
+  vipClaimStatus?: VipClaimStatus;
+  vipClaimedAt?: string | null;
+  vipOfferDeferredAt?: string | null;
   features: PlanFeatureLimits;
   maxScreenshots: number; // Backwards-compatible convenience accessor
   canCloudSync: boolean;
@@ -536,6 +559,7 @@ export interface UserProfile {
   storageLimitMB: number;
   createdAt?: string;
   emailConfirmedAt?: string;
+  emailVerified?: boolean;
   provider?: string;
   role?: string;
   entitlement?: UserEntitlement;

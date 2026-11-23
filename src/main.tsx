@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import { FounderProvider } from './context/FounderContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
@@ -10,9 +9,7 @@ if (rootEl) {
   createRoot(rootEl).render(
     <StrictMode>
       <ErrorBoundary>
-        <FounderProvider>
-          <App />
-        </FounderProvider>
+        <App />
       </ErrorBoundary>
     </StrictMode>,
   );

@@ -12,6 +12,7 @@ import {
   getTombstonedNotificationIds,
   addTombstonedNotificationId,
   addTombstonedNotificationIds,
+  removeTombstonedNotificationId,
   getLastClearedAllTimestamp,
   setLastClearedAllTimestamp,
 } from "./storage";
@@ -577,6 +578,185 @@ class NotificationServiceEngine {
   // Compatibility alias
   public notifyProActivated(planCycle?: string, isFounder?: boolean): AppNotification | null {
     return this.notifySubscriptionStarted(planCycle ? `Pro (${planCycle})` : "Pro", isFounder);
+  }
+
+  /**
+   * Create or restore the persistent idempotent Lifetime Free VIP waiting reminder notification.
+   * Never creates duplicates for the same userId.
+   */
+  public notifyVipOfferWaiting(
+    userId: string,
+    options?: { createdAt?: string; read?: boolean; forceRecreate?: boolean }
+  ): AppNotification | null {
+    if (!userId || userId === "guest" || userId.startsWith("local-guest")) {
+      return null;
+    }
+
+    const notifId = `vip_offer_waiting_${userId}`;
+    if (options?.forceRecreate) {
+      removeTombstonedNotificationId(notifId);
+    } else {
+      const tombstones = getTombstonedNotificationIds();
+      if (tombstones.has(notifId)) {
+        return null;
+      }
+    }
+
+    const existing = this.notifications.find((n) => n.id === notifId);
+    if (existing) {
+      return existing;
+    }
+
+    const createdAt = options?.createdAt || new Date().toISOString();
+    const isRead = Boolean(options?.read);
+    const notification: AppNotification = {
+      id: notifId,
+      user_id: userId,
+      userId,
+      type: "SUBSCRIPTION",
+      title: "Your Lifetime Free VIP Offer Is Waiting",
+      message: "Your Lifetime Free VIP offer is waiting! Claim it anytime while your account remains eligible.",
+      description: "Your Lifetime Free VIP offer is waiting! Claim it anytime while your account remains eligible.",
+      priority: "high",
+      read: isRead,
+      isRead,
+      created_at: createdAt,
+      timestamp: createdAt,
+      metadata: {
+        eventType: "vip_offer_waiting",
+        actionType: "open_vip_claim",
+      },
+    };
+
+    this.notifications = [notification, ...this.notifications.slice(0, 99)];
+    this.notifyListeners();
+    return notification;
+  }
+
+  /**
+   * Remove VIP waiting reminder once VIP entitlement has been claimed.
+   */
+  public clearVipOfferWaiting(userId?: string): void {
+    const targetPrefix = userId ? `vip_offer_waiting_${userId}` : "vip_offer_waiting_";
+    const before = this.notifications.length;
+    this.notifications = this.notifications.filter((n) => {
+      if (userId) {
+        return !(
+          n.id === targetPrefix ||
+          (n.metadata?.eventType === "vip_offer_waiting" && (n.userId === userId || n.user_id === userId))
+        );
+      }
+      return !(n.id.startsWith(targetPrefix) || n.metadata?.eventType === "vip_offer_waiting");
+    });
+    if (this.notifications.length !== before) {
+      this.notifyListeners();
+    }
+  }
+
+  /**
+   * Sync notifications from server for the signed-in user (restores persisted VIP reminders after logout/re-login).
+   */
+  public async syncFromServer(userId: string, options?: { isAlreadyVip?: boolean }): Promise<void> {
+    if (!userId || userId === "guest" || userId.startsWith("local-guest")) {
+      return;
+    }
+    try {
+      const authHeaders = await getAuthBearerHeader().catch(() => ({}));
+      const res = await fetch("/api/notifications", {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+          ...authHeaders,
+        },
+      });
+      if (!res.ok) return;
+      const contentType = res.headers?.get?.("content-type") || "";
+      if (contentType && !/application\/json|\+json/i.test(contentType)) return;
+      const data = await res.json();
+      if (!data?.success || !Array.isArray(data.notifications)) return;
+
+      const tombstones = getTombstonedNotificationIds();
+      let changed = false;
+
+      // Drop stale notifications belonging to other authenticated accounts
+      const filteredCurrent = this.notifications.filter((n) => {
+        const owner = n.userId || n.user_id || "guest";
+        if (owner !== "guest" && owner !== userId) {
+          changed = true;
+          return false;
+        }
+        if (options?.isAlreadyVip && (n.id === `vip_offer_waiting_${userId}` || n.metadata?.eventType === "vip_offer_waiting")) {
+          changed = true;
+          return false;
+        }
+        return true;
+      });
+
+      const mergedById = new Map<string, AppNotification>(filteredCurrent.map((n) => [n.id, n]));
+
+      for (const raw of data.notifications) {
+        const id = String(raw?.id || "");
+        if (!id || tombstones.has(id)) continue;
+        const isVipWaiting = id.startsWith("vip_offer_waiting_") || raw?.metadata?.eventType === "vip_offer_waiting";
+        if (options?.isAlreadyVip && isVipWaiting) continue;
+        if (!mergedById.has(id)) {
+          const createdAt = raw.created_at || raw.createdAt || raw.timestamp || new Date().toISOString();
+          const msg = raw.message || raw.description || "";
+          const isRead = Boolean(raw.read ?? raw.isRead);
+          mergedById.set(id, {
+            id,
+            user_id: raw.user_id || raw.userId || userId,
+            userId: raw.userId || raw.user_id || userId,
+            type: raw.type || "SUBSCRIPTION",
+            title: raw.title || "Notification",
+            message: msg,
+            description: msg,
+            priority: raw.priority || "medium",
+            read: isRead,
+            isRead,
+            created_at: createdAt,
+            timestamp: createdAt,
+            screenshotId: raw.screenshotId,
+            thumbnailUri: raw.thumbnailUri,
+            metadata:
+              raw.metadata && Object.keys(raw.metadata).length > 0
+                ? raw.metadata
+                : isVipWaiting
+                ? { eventType: "vip_offer_waiting", actionType: "open_vip_claim" }
+                : {},
+          });
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        this.notifications = Array.from(mergedById.values())
+          .sort((a, b) => new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime())
+          .slice(0, 100);
+        this.notifyListeners();
+      }
+    } catch (err: any) {
+      console.warn("[NotificationManager] syncFromServer warning:", err?.message || err);
+    }
+  }
+
+  /**
+   * Clear in-memory and local browser notification cache on sign-out without wiping server-side reminders.
+   */
+  public clearSessionNotificationsOnSignOut(): void {
+    if (this.indexDebounceTimer) {
+      clearTimeout(this.indexDebounceTimer);
+      this.indexDebounceTimer = null;
+    }
+    this.notifications = [];
+    this.pendingIndexedCount = 0;
+    this.pendingIndexedScreenshots = [];
+    this.recentNotifiedScreenshotIds.clear();
+    this.recentFingerprints.clear();
+    this.isInitialized = true;
+    saveNotifications([]);
+    this.notifyListeners();
   }
 
   /**

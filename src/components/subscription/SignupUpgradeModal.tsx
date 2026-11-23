@@ -34,9 +34,15 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
     remaining: rawRemaining,
     isLoading: isLoadingVip,
     error: vipError,
+    eligibility: vipEligibility,
     refreshFounderStats,
+    refreshEligibility,
     claimFounderSpot,
   } = useFounder();
+
+  const isVipOfferEligible = Boolean(
+    vipEligibility?.vipEligible && vipEligibility.vipClaimStatus === "pending"
+  );
 
   const hasValidVipStats =
     !vipError &&
@@ -59,8 +65,9 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       refreshFounderStats();
+      refreshEligibility?.();
     }
-  }, [isOpen, refreshFounderStats]);
+  }, [isOpen, refreshFounderStats, refreshEligibility]);
 
   const handleClaimFounder = async () => {
     if (!user || user.id === "guest" || user.id.startsWith("local-guest")) {
@@ -150,9 +157,9 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
               <h2 className="text-2xl sm:text-3xl font-bold text-[#F7F8F5] tracking-tight">
                 {isFounder ? (
                   "Welcome, VIP User!"
-                ) : hasValidVipStats && (remainingSpots as number) > 0 ? (
+                ) : isVipOfferEligible ? (
                   <>
-                    Claim Your Free <span className="text-[#B7F36B]">VIP Seat</span>
+                    You&apos;re One of the <span className="text-[#B7F36B]">First 50!</span>
                   </>
                 ) : (
                   "Choose Your SnapFind AI Plan"
@@ -160,9 +167,9 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
               </h2>
               <p className="text-xs sm:text-sm text-[#A5AAA1] max-w-md mx-auto">
                 {isFounder
-                  ? `Your account is permanently upgraded with Lifetime Pro and ${founderNumber ? `VIP Seat #${founderNumber} of 50` : "your VIP Seat"}.`
-                  : hasValidVipStats && (remainingSpots as number) > 0
-                  ? "Claim 1 of 50 VIP seats for 100% free Lifetime Pro access, 150,000 screenshots, and a permanent VIP Badge."
+                  ? `Your account is permanently upgraded with Lifetime Pro and ${founderNumber ? `VIP Member #${founderNumber}` : "your VIP membership"}.`
+                  : isVipOfferEligible
+                  ? "Claim Lifetime Free SnapFind Pro access. This exclusive offer is reserved for the first 50 accounts."
                   : "Supercharge your workflow with instant OCR, multimodal AI vision search, and cloud sync."}
               </p>
             </div>
@@ -171,22 +178,7 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
               <div className="rounded-2xl p-4 bg-[#1B1F1A] border border-[#30362E] text-center text-xs text-[#A5AAA1]">
                 Verifying your account entitlement...
               </div>
-            ) : !isFounder && !hasValidVipStats ? (
-              <div className="rounded-2xl p-4 bg-[#1B1F1A] border border-[#30362E] flex items-center justify-between gap-3">
-                <span className="text-xs text-[#A5AAA1]">
-                  {isLoadingVip ? "Loading live VIP seat availability..." : vipError || "VIP seat availability temporarily unavailable."}
-                </span>
-                {!isLoadingVip && (
-                  <button
-                    type="button"
-                    onClick={() => refreshFounderStats()}
-                    className="px-3 py-1.5 rounded-xl bg-[#B7F36B] text-[#10130D] text-xs font-bold cursor-pointer shrink-0"
-                  >
-                    Retry
-                  </button>
-                )}
-              </div>
-            ) : !isFounder && hasValidVipStats && (remainingSpots as number) > 0 ? (
+            ) : !isFounder && isVipOfferEligible && hasValidVipStats ? (
               <div className="rounded-2xl p-5 bg-[#141714] border border-[#30362E] space-y-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -251,7 +243,7 @@ export const SignupUpgradeModal: React.FC<SignupUpgradeModalProps> = ({
                   className="w-full py-3.5 px-4 rounded-xl bg-[#B7F36B] hover:bg-[#A5E65A] text-[#10130D] font-bold text-sm flex items-center justify-center gap-2 transition duration-200 cursor-pointer active:scale-[0.98]"
                 >
                   <Crown className="w-4 h-4" />
-                  <span>{isClaiming ? "Allocating VIP Seat..." : `Claim Free VIP Seat (${remainingSpots} Available)`}</span>
+                  <span>{isClaiming ? "Activating Lifetime Free VIP..." : "Claim Lifetime Free"}</span>
                 </button>
               </div>
             ) : isFounder ? (

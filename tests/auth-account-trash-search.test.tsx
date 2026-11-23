@@ -145,6 +145,18 @@ describe("Authentication, Reset Password, Account, Trash & Search Improvements",
         expect(mockAuthState.signInWithEmail).toHaveBeenCalledTimes(1);
       });
     });
+
+    it("requires confirm password during signup", () => {
+      render(<AuthModal onClose={vi.fn()} initialMode="register" />);
+
+      fireEvent.change(screen.getByLabelText("Full Name"), { target: { value: "Wasay" } });
+      fireEvent.change(screen.getByLabelText("Email Address"), { target: { value: "wasay@example.com" } });
+      fireEvent.change(screen.getByLabelText("Password"), { target: { value: "StrongPass123" } });
+
+      fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+      expect(screen.getByText("Please confirm your password.")).toBeInTheDocument();
+      expect(mockAuthState.signUpWithEmail).not.toHaveBeenCalled();
+    });
   });
 
   describe("2. Dedicated Reset Password Page (ResetPasswordView)", () => {
@@ -243,6 +255,40 @@ describe("Authentication, Reset Password, Account, Trash & Search Improvements",
       await waitFor(() => {
         expect(mockAuthState.changePassword).toHaveBeenCalledWith("UpdatedPass456!", "CurrentPass123");
       });
+    });
+
+    it("navigates to pricing from Upgrade to Pro and hides password prompt for OAuth account deletion", () => {
+      const onNavigate = vi.fn();
+      const googleUser: UserProfile = {
+        id: "google-user-1",
+        name: "Google User",
+        email: "googleuser@example.com",
+        isLoggedIn: true,
+        plan: "Free",
+        storageLimitMB: 1000,
+        provider: "google",
+      };
+      mockAuthState.user = googleUser;
+
+      render(
+        <AccountPageView
+          user={googleUser}
+          isDark={true}
+          indexedCount={5}
+          settings={baseSettings}
+          onUpdateSettings={vi.fn()}
+          onOpenAuth={vi.fn()}
+          onNavigate={onNavigate}
+        />
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
+      expect(onNavigate).toHaveBeenCalledWith("pricing");
+
+      fireEvent.click(screen.getByRole("button", { name: "Delete Account" }));
+      expect(screen.getByText("Delete Account Permanently")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Confirm Current Password")).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Type DELETE")).toBeInTheDocument();
     });
   });
 

@@ -42,7 +42,6 @@ import { searchScreenshotsAI, instantKeywordSearch } from "./services/api";
 
 import { collectionSecurity } from "./services/collectionSecurity";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { useFounder } from "./context/FounderContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navbar } from "./components/Navbar";
 import { SidebarNavigation } from "./components/SidebarNavigation";
@@ -102,7 +101,6 @@ function AppContent() {
     signOut,
     isRecoveryMode,
   } = useAuth();
-  const { claimFounderSpot, refreshFounderStats } = useFounder();
   const isOnline = useOnlineStatus();
   const [isVipInviteOpen, setIsVipInviteOpen] = useState(false);
   const [vipClaimedInModal, setVipClaimedInModal] = useState(false);
@@ -627,7 +625,6 @@ function AppContent() {
     if (!isStorageReady) return;
     if (authUser?.id && authUser.id !== "guest") {
       console.log(`[App] Auth user logged in (${authUser.id}), restoring remote & local screenshots...`);
-      refreshFounderStats().catch(() => {});
       SyncEngine.restoreUserDataOnLogin(authUser.id)
         .then((restored) => {
           if (restored.screenshots) {
@@ -2046,10 +2043,11 @@ function AppContent() {
           if (!authUser?.id || authUser.id === "guest") {
             return { success: false, error: "Please sign in to claim Lifetime Free." };
           }
-          const result = await claimFounderSpot(authUser.id);
+          const result = await SubscriptionManager.claimFounder(authUser.id);
           if (result.success && typeof result.founderNumber === "number") {
             setVipClaimedInModal(true);
             setFounderPromoStatus((prev) => prev ? { ...prev, claimed: true, founderRank: result.founderNumber! } : prev);
+            NotificationService.deleteNotification(`founder_offer_waiting_${authUser.id}`);
             await refreshEntitlement();
             addToast({
               title: "Lifetime Free activated",

@@ -51,6 +51,7 @@ export interface NotificationCenterProps {
   onTriggerSync?: () => void;
   onCopyText?: (text: string) => void;
   onOpenPricing?: () => void;
+  onOpenVipClaim?: () => void;
   onOpenAuth?: () => void;
   isLoading?: boolean;
   error?: string | null;
@@ -196,6 +197,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   onTriggerSync,
   onCopyText,
   onOpenPricing,
+  onOpenVipClaim,
   onOpenAuth,
   isLoading = false,
   error = null,
@@ -282,6 +284,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     });
   }, [notifications, activeTab, searchQuery]);
 
+  const isVipOfferNotification = (notification: AppNotification) =>
+    notification.metadata?.actionType === "open_vip_claim" ||
+    notification.metadata?.eventType === "vip_offer_waiting" ||
+    notification.id?.startsWith("vip_offer_waiting_");
+
   const handleCardClick = (notification: AppNotification) => {
     const isRead = Boolean(notification.read ?? notification.isRead);
     if (!isRead) {
@@ -300,6 +307,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         onClose();
         return;
       }
+    }
+    if (isVipOfferNotification(notification) && onOpenVipClaim) {
+      onOpenVipClaim();
+      onClose();
+      return;
     }
     if (notification.type === "SUBSCRIPTION" && onOpenPricing) {
       onOpenPricing();
@@ -745,6 +757,19 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                                   <span>Inspect Screenshot</span>
                                   <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                                 </span>
+                              ) : isVipOfferNotification(n) && onOpenVipClaim ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenVipClaim();
+                                    onClose();
+                                  }}
+                                  className="text-[11px] font-bold text-[#B7F36B] hover:text-[#A5E65A] flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Crown className="w-3 h-3" />
+                                  <span>Claim Lifetime Free</span>
+                                </button>
                               ) : n.type === "SUBSCRIPTION" && onOpenPricing ? (
                                 <button
                                   type="button"

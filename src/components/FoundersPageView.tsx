@@ -40,9 +40,19 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
     remaining: rawRemaining,
     isLoading: isLoadingStats,
     error: statsError,
+    eligibility: vipEligibility,
+    isEligibilityLoading,
     refreshFounderStats,
+    refreshEligibility,
     claimFounderSpot,
   } = useFounder();
+
+  const isLoggedInAccount = Boolean(
+    user && user.id && user.id !== "guest" && !user.id.startsWith("local-guest")
+  );
+  const isVipOfferEligible = Boolean(
+    vipEligibility?.vipEligible && vipEligibility.vipClaimStatus === "pending"
+  );
 
   const [isClaiming, setIsClaiming] = useState(false);
 
@@ -87,13 +97,12 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
       return;
     }
 
-    if (!hasValidStats) {
+    if (!isVipOfferEligible) {
       addToast?.({
-        title: "Availability Unavailable",
-        description: statsError || "Unable to verify VIP seat availability right now.",
+        title: "First 50 VIP Offer Ended",
+        description: "Lifetime Free VIP access is reserved for the first 50 eligible accounts. Lifetime Pro is available for PKR 5,999.",
         type: "info",
       });
-      refreshFounderStats();
       return;
     }
 
@@ -103,23 +112,24 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
       if (res.success && (res as any).founderNumber) {
         await refreshEntitlement();
         await refreshFounderStats();
+        await refreshEligibility?.();
         addToast?.({
-          title: "VIP Access Activated",
-          description: `Welcome, VIP User! You hold VIP Seat #${res.founderNumber} with Lifetime Pro access.`,
+          title: "Lifetime Free VIP Activated!",
+          description: `Welcome, VIP Member #${res.founderNumber}! Your Lifetime Pro access is now active.`,
           type: "success",
         });
       } else {
         await refreshFounderStats();
         addToast?.({
-          title: "VIP Allocation Notice",
-          description: res.error || "All 50 VIP seats have been occupied. Lifetime Pro is available for PKR 5,999.",
+          title: "VIP Notice",
+          description: res.error || "Unable to activate Lifetime Free VIP at this time.",
           type: "info",
         });
       }
     } catch (err: any) {
       addToast?.({
         title: "Claim Failed",
-        description: err.message || "Unable to claim VIP Seat.",
+        description: err.message || "Unable to activate Lifetime Free VIP.",
         type: "error",
       });
     } finally {
@@ -293,19 +303,20 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
                   </div>
 
                   {/* Action Buttons */}
-                  {authLoading ? (
+                  {authLoading || (isLoggedInAccount && isEligibilityLoading) ? (
                     <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex items-center justify-center gap-2 text-xs text-[#A5AAA1]">
                       <RefreshCw className="w-4 h-4 animate-spin text-[#B7F36B]" />
                       <span>Verifying your account entitlement...</span>
                     </div>
-                  ) : (remainingCount as number) > 0 ? (
+                  ) : (!isLoggedInAccount && (remainingCount as number) > 0) || isVipOfferEligible ? (
                     <div className="p-4 rounded-2xl bg-[#1B1F1A] border border-[#30362E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[3px_3px_10px_rgba(0,0,0,0.4)]">
                       <div className="space-y-0.5 text-center sm:text-left">
                         <h3 className="text-sm font-bold text-[#F7F8F5] flex items-center justify-center sm:justify-start gap-1.5">
-                          <Crown className="w-4 h-4 text-[#B7F36B]" /> Claim Free Lifetime VIP Access
+                          <Crown className="w-4 h-4 text-[#B7F36B]" />
+                          <span>{isVipOfferEligible ? "You're One of the First 50!" : "Claim Free Lifetime VIP Access"}</span>
                         </h3>
                         <p className="text-xs text-[#A5AAA1]">
-                          Claiming assigns your permanent VIP Seat (#1–#50) and unlocks 150,000 AI-indexed screenshots.
+                          Claim Lifetime Free SnapFind Pro access and unlock 150,000 AI-indexed screenshots.
                         </p>
                       </div>
 
@@ -318,12 +329,12 @@ export const FoundersPageView: React.FC<FoundersPageViewProps> = ({
                         {isClaiming ? (
                           <>
                             <RefreshCw className="w-4 h-4 animate-spin text-[#10130D]" />
-                            <span>Allocating VIP Seat...</span>
+                            <span>Activating Lifetime Free VIP...</span>
                           </>
                         ) : (
                           <>
                             <Crown className="w-4 h-4 fill-current text-[#10130D]" />
-                            <span>Claim Free VIP Seat</span>
+                            <span>{isVipOfferEligible ? "Claim Lifetime Free" : "Claim Free VIP Seat"}</span>
                             <ArrowRight className="w-4 h-4 text-[#10130D]" />
                           </>
                         )}
