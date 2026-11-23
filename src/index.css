@@ -480,11 +480,11 @@ body { background: #080908 !important; color: #F7F8F5; }
 
 /* Accessible touch targets for phones and tablets (including iOS). */
 @media (pointer: coarse) {
-  button:not([data-touch-compact="true"]) {
+  button:not([data-touch-compact="true"]):not([class*="h-6"]) {
     min-height: 44px;
   }
-  button[aria-label]:not([data-touch-compact="true"]),
-  button[title]:not([data-touch-compact="true"]) {
+  button[aria-label]:not([data-touch-compact="true"]):not([class*="h-6"]),
+  button[title]:not([data-touch-compact="true"]):not([class*="h-6"]) {
     min-width: 44px;
   }
 }
