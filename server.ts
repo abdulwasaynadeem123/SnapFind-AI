@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+app.disable("x-powered-by");
 // Trust the single reverse proxy hop used by the hosted deployment so req.ip resolves to the client.
 app.set("trust proxy", 1);
 const PORT = 3000;
@@ -176,6 +177,8 @@ const generalApiLimiter = createRateLimiter({
   message: "API request rate limit exceeded.",
 });
 app.use("/api", (req, res, next) => {
+  // API responses can contain private account, billing, or screenshot metadata.
+  res.setHeader("Cache-Control", "no-store");
   if (req.path === "/payments/paddle/webhook" || req.path === "/health") {
     return next();
   }
