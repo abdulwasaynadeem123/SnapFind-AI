@@ -223,6 +223,11 @@ export const SearchHistoryView: React.FC<SearchHistoryViewProps> = ({
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
             Try searching for screenshots like "Show passport" or "Electricity bill" in the AI Search page.
           </p>
+          {onStartSearch && (
+            <button type="button" onClick={onStartSearch} className="mt-5 min-h-[44px] px-5 py-3 rounded-xl bg-[#B7F36B] text-[#10130D] text-xs font-bold hover:bg-[#A5E65A] transition-colors">
+              Start a search
+            </button>
+          )}
         </div>
       )}
     </div>
