@@ -71,7 +71,6 @@ export const PricingPageView: React.FC<PricingPageViewProps> = ({
   const isAdmin =
     user?.email?.toLowerCase().trim() === "ash.mary.2006@gmail.com" ||
     user?.role === "admin" ||
-    (user as any)?.user_metadata?.role === "admin" ||
     (user as any)?.app_metadata?.role === "admin";
 
   // Canonical pricing definitions
