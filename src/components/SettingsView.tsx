@@ -479,6 +479,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </button>
               </div>
 
+              <details className="rounded-xl border border-[#30362E] bg-[#0D0F0D]/60 p-4">
+                <summary className="cursor-pointer min-h-[44px] flex items-center text-xs font-semibold text-[#F7F8F5]">Advanced preferences</summary>
+                <div className="space-y-4 pt-3">
               {/* Audio feedback toggle */}
               <div className="flex items-center justify-between gap-4 py-2 border-b border-[#30362E]/60">
                 <div>
@@ -525,6 +528,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     }`}
                   />
                 </button>
+                </div>
+              </details>
               </div>
             </div>
           </div>
