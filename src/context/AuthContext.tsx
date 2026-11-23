@@ -29,6 +29,7 @@ interface AuthContextType {
   signOutAllDevices: () => Promise<{ error?: string }>;
   reauthenticate: (password: string) => Promise<{ error?: string }>;
   updateName: (newName: string) => Promise<{ error?: string }>;
+  updateUsername: (newUsername: string) => Promise<{ error?: string }>;
   updateProfilePicture: (avatarUrl: string) => Promise<{ error?: string }>;
   changeEmail: (newEmail: string, currentPassword?: string) => Promise<{ error?: string; requiresVerification?: boolean }>;
   changePassword: (newPass: string, currentPassword?: string) => Promise<{ error?: string }>;
@@ -312,11 +313,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const syncProfile = async (sbUser: User) => {
     const name =
-      sbUser.user_metadata?.username ||
       sbUser.user_metadata?.full_name ||
       sbUser.user_metadata?.name ||
+      sbUser.user_metadata?.username ||
       sbUser.email?.split("@")[0] ||
       "User";
+    const username =
+      sbUser.user_metadata?.username ||
+      sbUser.user_metadata?.preferred_username ||
+      name;
     const avatarUrl =
       sbUser.user_metadata?.avatar_url ||
       sbUser.user_metadata?.picture ||
@@ -328,7 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { error: profileSyncError } = await supabase.from("profiles").upsert({
       id: sbUser.id,
-      username: name,
+      username,
       name,
       email: sbUser.email || "",
       avatar_url: avatarUrl || null,
@@ -616,14 +621,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const { data, error } = await supabase.auth.updateUser({
-      data: { full_name: cleanName, name: cleanName, username: cleanName },
+      data: { full_name: cleanName, name: cleanName },
     });
     if (error) return { error: error.message };
 
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: supabaseUser.id,
       name: cleanName,
-      username: cleanName,
       email: supabaseUser.email,
       updated_at: new Date().toISOString(),
     });
@@ -641,6 +645,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     NotificationService.notifyProfileUpdated("Updated account display name");
+    return {};
+  };
+
+  const updateUsername = async (newUsername: string): Promise<{ error?: string }> => {
+    const cleanUsername = newUsername.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,24}$/.test(cleanUsername)) {
+      return { error: "Username must be 3–24 characters and use only lowercase letters, numbers, or underscores." };
+    }
+    if (!isSupabaseConfigured) return { error: AUTH_UNCONFIGURED_ERROR };
+    if (!supabaseUser || !session) return { error: "You must be signed in to update your username." };
+
+    const previousUsername = String(supabaseUser.user_metadata?.username || "");
+    const { data, error } = await supabase.auth.updateUser({
+      data: { username: cleanUsername },
+    });
+    if (error) {
+      const message = error.message || "";
+      if (message.toLowerCase().includes("duplicate") || message.toLowerCase().includes("unique")) {
+        return { error: "That username is already taken. Please choose another one." };
+      }
+      return { error: message };
+    }
+
+    const { error: usernameError } = await supabase.rpc("set_my_username", {
+      p_username: cleanUsername,
+    });
+    if (usernameError) {
+      // The auth metadata update may have fired the profile sync trigger already.
+      // Restore metadata if the database rejected the username.
+      if (previousUsername) {
+        await supabase.auth.updateUser({ data: { username: previousUsername } }).catch(() => undefined);
+      }
+      const message = usernameError.message || "";
+      if (message.toLowerCase().includes("duplicate") || message.toLowerCase().includes("unique")) {
+        return { error: "That username is already taken. Please choose another one." };
+      }
+      return { error: message };
+    }
+
+    if (data?.user) {
+      setSupabaseUser(data.user);
+      await syncProfile(data.user);
+    }
+    NotificationService.notifyProfileUpdated("Updated account username");
     return {};
   };
 
@@ -880,6 +928,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOutAllDevices,
         reauthenticate,
         updateName,
+        updateUsername,
         updateProfilePicture,
         changeEmail,
         changePassword,
