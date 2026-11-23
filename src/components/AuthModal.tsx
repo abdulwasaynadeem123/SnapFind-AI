@@ -499,7 +499,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={isLoading}
-                  placeholder="Enter your name"
+                  placeholder="Enter your name (optional)"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
                 />
               </div>
@@ -525,11 +525,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={Boolean(errorMsg && /email|registered/i.test(errorMsg))}
+                  aria-describedby={errorMsg && /email|registered/i.test(errorMsg) ? "auth-email-error" : undefined}
                   disabled={isLoading}
                   placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
                 />
               </div>
+              {errorMsg && /email|registered/i.test(errorMsg) && <p id="auth-email-error" className="text-[11px] text-rose-300" role="alert">{errorMsg}</p>}
             </div>
           )}
 
@@ -565,6 +568,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   minLength={mode === "login" ? 1 : 8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={Boolean(errorMsg && /password/i.test(errorMsg) && !/match/i.test(errorMsg))}
+                  aria-describedby={errorMsg && /password/i.test(errorMsg) && !/match/i.test(errorMsg) ? "auth-password-error" : undefined}
                   disabled={isLoading}
                   placeholder={mode === "login" ? "Enter your password" : "Minimum 8 characters"}
                   className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
@@ -581,6 +586,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {(mode === "register" || mode === "reset_password") && (
                 <p className="text-[11px] text-[#777E74]">Use at least 8 characters for strong account security.</p>
               )}
+              {errorMsg && /password/i.test(errorMsg) && !/match/i.test(errorMsg) && <p id="auth-password-error" className="text-[11px] text-rose-300" role="alert">{errorMsg}</p>}
             </div>
           )}
 
@@ -602,6 +608,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required={mode === "reset_password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  aria-invalid={Boolean(errorMsg && /match/i.test(errorMsg))}
+                  aria-describedby={errorMsg && /match/i.test(errorMsg) ? "auth-confirm-password-error" : undefined}
                   disabled={isLoading}
                   placeholder="Re-enter your password"
                   className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
