@@ -1406,6 +1406,7 @@ function AppContent() {
             unreadNotificationCount={notifications.filter((n) => !n.read && !n.isRead).length}
             onOpenNotifications={() => setIsNotificationOpen(true)}
             onToggleMobileMenu={() => setIsMobileNavOpen(true)}
+            onBack={() => setActiveView("landing")}
           />
 
           {/* Main Workspace Area */}
