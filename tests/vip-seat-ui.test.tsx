@@ -17,6 +17,6 @@ describe("Pricing page — standard plans without legacy VIP seats", () => {
   });
   it("does not render a fabricated VIP availability number", () => {
     const { container } = render(<PricingPageView isDark={true} />);
-    expect(container.textContent).not.toMatch(/\\b\\d+\\s*\\/\\s*50\\s*occupied/i);
+    expect(container.textContent).not.toContain("/ 50 occupied");
   });
 });
