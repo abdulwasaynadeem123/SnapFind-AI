@@ -98,7 +98,7 @@ describe("Authentication, Reset Password, Account, Trash & Search Improvements",
       // Switch Login -> Signup without reload
       fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
       expect(screen.getByText("Create your SnapFind AI account")).toBeInTheDocument();
-      expect(screen.getByLabelText("Full Name")).toBeInTheDocument();
+      expect(screen.getByLabelText("Name (optional)")).toBeInTheDocument();
       expect(screen.getByLabelText("Confirm Password")).toBeInTheDocument();
 
       // Switch Signup -> Login without reload
@@ -149,7 +149,7 @@ describe("Authentication, Reset Password, Account, Trash & Search Improvements",
     it("requires confirm password during signup", () => {
       render(<AuthModal onClose={vi.fn()} initialMode="register" />);
 
-      fireEvent.change(screen.getByLabelText("Full Name"), { target: { value: "Wasay" } });
+      fireEvent.change(screen.getByLabelText("Name (optional)"), { target: { value: "Wasay" } });
       fireEvent.change(screen.getByLabelText("Email Address"), { target: { value: "wasay@example.com" } });
       fireEvent.change(screen.getByLabelText("Password"), { target: { value: "StrongPass123" } });
 
