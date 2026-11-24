@@ -1815,6 +1815,7 @@ function AppContent() {
                     }}
                     onClearHistory={handleClearHistory}
                     onDeleteHistoryItem={handleDeleteHistoryItem}
+                    onStartSearch={() => setActiveView("search")}
                     isDark={isDark}
                   />
                 </ProtectedRoute>
