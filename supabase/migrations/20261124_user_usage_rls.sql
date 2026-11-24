@@ -14,3 +14,4 @@ CREATE POLICY "Users can view own usage"
 REVOKE ALL ON TABLE public.user_usage FROM anon;
 REVOKE INSERT, UPDATE, DELETE ON TABLE public.user_usage FROM authenticated;
 GRANT SELECT ON TABLE public.user_usage TO authenticated;
+GRANT ALL ON TABLE public.user_usage TO service_role;
