@@ -22,6 +22,7 @@ interface SearchHistoryViewProps {
   onExecuteSearch: (query: string) => void;
   onClearHistory: () => void;
   onDeleteHistoryItem?: (id: string) => void;
+  onStartSearch?: () => void;
   isDark: boolean;
 }
 
@@ -30,6 +31,7 @@ export const SearchHistoryView: React.FC<SearchHistoryViewProps> = ({
   onExecuteSearch,
   onClearHistory,
   onDeleteHistoryItem,
+  onStartSearch,
   isDark,
 }) => {
   const [filterCategory, setFilterCategory] = useState<string>("All");
