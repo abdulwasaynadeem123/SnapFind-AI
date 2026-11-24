@@ -436,7 +436,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Status Messages */}
-        {errorMsg && (
+        {errorMsg && !/(email|registered|password)/i.test(errorMsg) && (
           <div
             role="alert"
             aria-live="polite"
