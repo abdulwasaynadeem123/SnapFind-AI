@@ -274,8 +274,8 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     );
 
     expect(screen.getByRole("heading", { name: "Claim Lifetime Free" })).toBeInTheDocument();
-    expect(screen.getByText("38 / 50 claimed")).toBeInTheDocument();
-    expect(screen.getByText("12 remaining")).toBeInTheDocument();
+    expect(screen.getByText("150,000 AI-indexed screenshots, lifetime")).toBeInTheDocument();
+    expect(screen.getByText("Private cloud sync & priority OCR processing queue")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Claim Lifetime Free" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Maybe Later" })).toBeInTheDocument();
 
