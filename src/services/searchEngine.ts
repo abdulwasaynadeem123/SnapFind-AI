@@ -680,6 +680,24 @@ export class SnapFindSearchEngine {
     }
 
     const intent = parseQueryIntent(query);
+    // Run the same FlexSearch query once per user search, not once for every screenshot scored.
+    const flexMatchedIds = new Set<string>();
+    if (this.flexIndex) {
+      try {
+        const flexHits = this.flexIndex.search(intent.rawQuery, { limit: 50 });
+        if (Array.isArray(flexHits)) {
+          flexHits.forEach((hit: any) => {
+            if (hit?.result && Array.isArray(hit.result)) {
+              hit.result.forEach((id: any) => flexMatchedIds.add(String(id)));
+            } else if (typeof hit === "string" || typeof hit === "number") {
+              flexMatchedIds.add(String(hit));
+            }
+          });
+        }
+      } catch (error) {
+        console.warn("[SearchEngine] FlexSearch query fallback:", error);
+      }
+    }
     const filters = options.filters || {};
 
     const startTime = typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -738,7 +756,7 @@ export class SnapFindSearchEngine {
 
     // 2. Score and Rank candidates using weighted ranking
     const results: SearchResultMatch[] = candidates
-      .map((item) => this.scoreItem(item, intent))
+      .map((item) => this.scoreItem(item, intent, flexMatchedIds))
       .filter((res) => res.score >= (options.minScore ?? 0.10))
       .sort((a, b) => b.score - a.score);
 
@@ -763,7 +781,7 @@ export class SnapFindSearchEngine {
    * Title (3.5), Category (3.0), Objects (2.8), Keywords (2.5), Tags (2.5),
    * Summary (2.0), Description (1.8), OCR (1.5), Filename (1.2)
    */
-  private scoreItem(item: ScreenshotItem, intent: QueryIntent): SearchResultMatch {
+  private scoreItem(item: ScreenshotItem, intent: QueryIntent, flexMatchedIds: Set<string>): SearchResultMatch {
     let accumulatedWeightedScore = 0;
     const matchReasons: string[] = [];
 
@@ -1168,25 +1186,10 @@ export class SnapFindSearchEngine {
       }
     }
 
-    // FlexSearch Boost
-    if (this.flexIndex) {
-      try {
-        const flexHits = this.flexIndex.search(intent.rawQuery, { limit: 50 });
-        const flexMatchedIds = new Set<string>();
-        if (Array.isArray(flexHits)) {
-          flexHits.forEach((h: any) => {
-            if (h.result && Array.isArray(h.result)) {
-              h.result.forEach((id: any) => flexMatchedIds.add(String(id)));
-            } else if (typeof h === "string" || typeof h === "number") {
-              flexMatchedIds.add(String(h));
-            }
-          });
-        }
-        if (flexMatchedIds.has(item.id)) {
-          accumulatedWeightedScore += 1.5;
-          matchReasons.push("FlexSearch Index Match");
-        }
-      } catch (e) {}
+    // FlexSearch candidate signal was computed once in search(), above.
+    if (flexMatchedIds.has(item.id)) {
+      accumulatedWeightedScore += 1.5;
+      matchReasons.push("FlexSearch Index Match");
     }
 
     // Token Coverage Ratio
