@@ -264,6 +264,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     const { unmount } = render(
       <VipSeatInvitationModal
         isOpen={true}
+        signupNumber={12}
         remainingSpots={12}
         totalSpots={50}
         onClaim={mockFounderState.claimFounderSpot}
