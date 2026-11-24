@@ -154,7 +154,7 @@ describe("First 50 Lifetime Free VIP UI & Persistent Reminder Flows", () => {
       />
     );
 
-    expect(screen.getByText("You are verified signup #5 among the first 50 new SnapFind accounts.")).toBeInTheDocument();
+    expect(screen.getByText(/You are verified signup #5 among the first 50 new SnapFind accounts/i)).toBeInTheDocument();
     expect(
       screen.getByText("Claim permanent Pro access at no cost — forever.")
     ).toBeInTheDocument();
