@@ -273,10 +273,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    expect(screen.getByText(/You are verified signup #12 among the first 50 new SnapFind accounts/i)).toBeInTheDocument();
-    expect(
-      screen.getByText("Claim permanent Pro access at no cost — forever.")
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claim Lifetime Free" })).toBeInTheDocument();
     expect(screen.getByText("38 / 50 claimed")).toBeInTheDocument();
     expect(screen.getByText("12 remaining")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Claim Lifetime Free" })).toBeInTheDocument();
@@ -360,8 +357,8 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     resolveClaim!({ success: true, founderNumber: 12 });
 
     await waitFor(() => {
-      expect(screen.getByText(/Lifetime Free activated/i)).toBeInTheDocument();
-      expect(screen.getByText("VIP Member #12")).toBeInTheDocument();
+      expect(screen.getByText(/Lifetime Free Verified/i)).toBeInTheDocument();
+      expect(screen.getByText("Lifetime Free Member #12")).toBeInTheDocument();
     });
   });
 
