@@ -50,6 +50,14 @@ describe("Server API Security, Authorization & Canonical Billing", () => {
     expect(deleteRes.status).toBe(401);
   });
 
+  it("rejects client attempts to decrement screenshot quota without a verified deletion", async () => {
+    const res = await request(app)
+      .post("/api/usage/record")
+      .send({ action: "delete_screenshot", count: 1000 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/unsupported usage action/i);
+  });
+
   it("rejects multipart uploads whose bytes are not a supported image or PDF", async () => {
     const res = await request(app)
       .post("/api/ocr")
