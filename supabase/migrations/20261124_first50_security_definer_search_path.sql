@@ -8,6 +8,7 @@ ALTER FUNCTION public.get_my_vip_eligibility() SET search_path = '';
 ALTER FUNCTION public.defer_vip_offer_for_user() SET search_path = '';
 ALTER FUNCTION public.claim_founder_seat_atomic(TEXT, TEXT) SET search_path = '';
 ALTER FUNCTION public.claim_vip_seat_for_user(TEXT) SET search_path = '';
+ALTER FUNCTION public.record_snapfind_usage(UUID, TEXT, INTEGER, BIGINT) SET search_path = '';
 
 -- Trigger-only: execute via auth.users trigger, not as a client-callable RPC.
 REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC;
