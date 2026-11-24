@@ -105,3 +105,13 @@ Run: https://github.com/abdulwasaynadeem123/SnapFind-AI/actions/runs/45405483094
 - Full test suite: failed, with 6 of 12 test files failing. Most remaining failures are legacy VIP tests calling removed `/api/vip/*` endpoints and expecting the former VIP-seat API/UI behavior. The current implementation uses the migration-backed Supabase RPC flow. One AuthModal assertion also needs rechecking after the latest validation-message fix.
 
 The full suite remains a merge blocker until the legacy tests are updated to verify the current implementation rather than the removed endpoints. The report does not mark the overall test suite green.
+
+
+### F-15 — Missing base migration for `public.user_usage` (fixed on branch)
+No checked-in migration created `public.user_usage`, although later migrations alter it and the API/usage RPCs depend on it. Added `20261122_user_usage_table.sql` before the existing `20261123_*` migrations. It creates the required per-user counters and a unique user key. The later RLS migration restricts reads to the owner and grants trusted service-role access.
+
+### F-16 — User usage rows were not owner-protected (fixed on branch)
+Added `20261124_user_usage_rls.sql`: authenticated users can select only their own usage row; direct authenticated insert/update/delete are revoked. Server quota updates remain routed through the security-definer RPC.
+
+### F-17 — Client-controlled screenshot quota decrement (fixed on branch)
+Removed `delete_screenshot` from the public usage API and SQL usage RPC. The API had accepted a caller-supplied count and decremented usage without validating a corresponding deletion. A regression test now verifies the action is rejected.
