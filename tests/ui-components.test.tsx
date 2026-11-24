@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { SidebarNavigation } from "../src/components/SidebarNavigation";
 import { ScreenshotGrid } from "../src/components/ScreenshotGrid";
 import { PricingPageView } from "../src/components/PricingPageView";
+import { SearchHistoryView } from "../src/components/SearchHistoryView";
 import { ScreenshotItem } from "../src/types";
 
 vi.mock("../src/context/AuthContext", () => ({
@@ -32,6 +33,22 @@ vi.mock("../src/context/FounderContext", () => ({
 }));
 
 describe("UI Components Integrity, Navigation, Pagination & Branding", () => {
+  it("connects the empty search-history action to the search view", () => {
+    const onStartSearch = vi.fn();
+    render(
+      <SearchHistoryView
+        history={[]}
+        onExecuteSearch={vi.fn()}
+        onClearHistory={vi.fn()}
+        onStartSearch={onStartSearch}
+        isDark={true}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /start a search/i }));
+    expect(onStartSearch).toHaveBeenCalledTimes(1);
+  });
+
   it("renders all 10 required sidebar navigation items and unread notifications badge", () => {
     const setActiveView = vi.fn();
     const { container } = render(
