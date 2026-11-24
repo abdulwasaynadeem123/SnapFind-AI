@@ -67,3 +67,41 @@ The old dependency workflow could modify and push the lockfile directly to `main
 ## Merge gate
 
 Do not merge until the audit CI is green and the remaining deployment-specific checks are completed. Review the diff and CI run first; this branch does not modify `main` or deploy to production.
+
+
+## Additional findings and fixes
+
+### F-08 — First-50 offer RPC name mismatch (fixed on branch)
+The frontend called `get_founder_promo_status` and `dismiss_founder_promo`, but the checked-in migrations define `get_my_vip_eligibility` and `defer_vip_offer_for_user`. Updated the frontend to call the migration-backed RPCs and map their actual result columns. Added regression tests for both calls.
+
+### F-09 — `user_usage` lacked owner-scoped RLS (migration added)
+The older security migration grants authenticated users table DML broadly. The checked-in migrations did not enable RLS or define an owner policy for `public.user_usage`. Added a migration that enables RLS, permits authenticated users to select only their own row, and revokes direct insert/update/delete privileges. Server-side quota writes continue through the security-definer usage RPC.
+
+### F-10 — Client-controlled quota decrement (fixed on branch)
+The public usage-recording route and database RPC accepted `delete_screenshot`, allowing a caller to decrement their recorded quota without a verified deletion. Removed that action from the API allowlist and usage RPC, with a regression test.
+
+### F-11 — SECURITY DEFINER search paths (migration added)
+Several First-50 functions used `search_path = public, auth`. Added a migration to set empty search paths on the relevant trigger/RPC functions and revoke direct execution of the trigger-only signup function. Also hardened the usage-recording RPC search path.
+
+### F-12 — Search/indexing hot paths (optimized on branch)
+- FlexSearch was queried inside the per-screenshot scoring function, repeating the same query for each candidate. The search result IDs are now computed once per user query.
+- Modified candidates were identified with repeated array scans. Replaced this with a `Set` lookup.
+- Added a regression assertion that FlexSearch runs once per query.
+
+### F-13 — Profile update overwrote usernames (fixed on branch)
+Profile sync and avatar updates included a derived username in profile upserts. Removed those username writes so ordinary profile changes do not overwrite a manually selected unique username.
+
+### F-14 — Duplicate password validation message (fixed on branch)
+Signup confirmation errors were shown in both the general error banner and inline field message. Updated field-level error routing so the same validation message is shown once.
+
+## Latest CI evidence (run 13)
+
+Run: https://github.com/abdulwasaynadeem123/SnapFind-AI/actions/runs/45405483094
+
+- TypeScript check: passed.
+- Targeted security + indexing regression tests: passed.
+- Production build: passed.
+- npm audit: passed; reported **0 vulnerabilities**.
+- Full test suite: failed, with 6 of 12 test files failing. Most remaining failures are legacy VIP tests calling removed `/api/vip/*` endpoints and expecting the former VIP-seat API/UI behavior. The current implementation uses the migration-backed Supabase RPC flow. One AuthModal assertion also needs rechecking after the latest validation-message fix.
+
+The full suite remains a merge blocker until the legacy tests are updated to verify the current implementation rather than the removed endpoints. The report does not mark the overall test suite green.
