@@ -5403,7 +5403,7 @@ app.post("/api/usage/record", async (req, res) => {
     const context = await resolveEffectiveUserContext(req);
     const { userKey, userId, deviceId, isAuthenticated } = context;
     const { action, byteSize = 0, count = 1 } = req.body || {};
-    if (!["ai_scan", "index_screenshot", "delete_screenshot", "cloud_sync"].includes(action)) {
+    if (!["ai_scan", "index_screenshot", "cloud_sync"].includes(action)) {
       return res.status(400).json({ success: false, error: "Unsupported usage action." });
     }
     const safeCount = Math.max(0, Math.min(1000, Math.floor(Number(count) || 0)));
