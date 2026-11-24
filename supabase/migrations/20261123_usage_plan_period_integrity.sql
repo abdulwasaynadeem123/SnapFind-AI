@@ -115,7 +115,7 @@ BEGIN
   IF auth.role() <> 'service_role' AND auth.uid() IS DISTINCT FROM p_user_id THEN
     RAISE EXCEPTION 'You may only update your own usage' USING ERRCODE = '42501';
   END IF;
-  IF p_action NOT IN ('ai_scan', 'index_screenshot', 'delete_screenshot', 'cloud_sync', 'analyze_screenshot') THEN
+  IF p_action NOT IN ('ai_scan', 'index_screenshot', 'cloud_sync', 'analyze_screenshot') THEN
     RAISE EXCEPTION 'Unsupported usage action';
   END IF;
 
@@ -213,11 +213,9 @@ BEGIN
         ELSE ai_analyses_used END,
       screenshots_indexed = CASE
         WHEN p_action IN ('index_screenshot', 'analyze_screenshot') THEN screenshots_indexed + v_count
-        WHEN p_action = 'delete_screenshot' THEN greatest(0, screenshots_indexed - v_count)
         ELSE screenshots_indexed END,
       lifetime_screenshots_indexed = CASE
         WHEN p_action IN ('index_screenshot', 'analyze_screenshot') THEN lifetime_screenshots_indexed + v_count
-        WHEN p_action = 'delete_screenshot' THEN greatest(0, lifetime_screenshots_indexed - v_count)
         ELSE lifetime_screenshots_indexed END,
       cloud_sync_count = CASE WHEN p_action = 'cloud_sync' THEN cloud_sync_count + v_count ELSE cloud_sync_count END,
       period_start = v_period_start,
