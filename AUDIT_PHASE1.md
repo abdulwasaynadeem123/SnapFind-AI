@@ -115,3 +115,23 @@ Added `20261124_user_usage_rls.sql`: authenticated users can select only their o
 
 ### F-17 — Client-controlled screenshot quota decrement (fixed on branch)
 Removed `delete_screenshot` from the public usage API and SQL usage RPC. The API had accepted a caller-supplied count and decremented usage without validating a corresponding deletion. A regression test now verifies the action is rejected.
+
+
+## Final Phase 1 CI status — run 27
+
+Run: https://github.com/abdulwasaynadeem123/SnapFind-AI/actions/runs/45407364974
+
+- TypeScript check: **passed**
+- Targeted security, indexing, and First-50 RPC regression tests: **passed**
+- Production build: **passed**
+- npm audit: **passed; 0 vulnerabilities**
+- Full suite: **failed — 5 of 13 test files failed, 8 passed**
+
+The five failing files are legacy VIP suites that call removed `/api/vip/*` routes and/or assert the former VIP-seat API/UI flow:
+- `tests/first50-vip-signup-api.test.ts`
+- `tests/first50-vip-signup.test.tsx`
+- `tests/vip-claim-and-auto-indexing.test.tsx`
+- `tests/vip-seat-counter-api.test.ts`
+- `tests/vip-seat-ui.test.tsx`
+
+The AuthContext and AuthModal regressions found during the earlier runs are now passing. The targeted First-50 RPC test verifies the actual migration-backed RPC names. The remaining VIP tests must be rewritten to exercise the current RPC-based flow; they have not been deleted or skipped.
