@@ -86,7 +86,10 @@ describe("UI Components Integrity, Navigation, Pagination & Branding", () => {
   it("paginates large screenshot galleries cleanly at 12 items per page", () => {
     const items: ScreenshotItem[] = Array.from({ length: 30 }, (_, idx) => ({
       id: `gallery-${idx + 1}`,
-      imageUri: "data:image/png;base64,iVBORw0KGgo=",
+      imageUrl: "data:image/png;base64,iVBORw0KGgo=",
+      summary: "",
+      fullText: "",
+      tags: [],
       createdAt: new Date().toISOString(),
       category: "Other",
       title: `Screenshot Item ${idx + 1}`,
