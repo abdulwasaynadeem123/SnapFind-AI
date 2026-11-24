@@ -508,7 +508,7 @@ app.post(
         }
         // Use the verified signature, not req.file.mimetype, which is supplied by the client.
         mimeType = detectedMime;
-        fileName = String(req.file.originalname || "screenshot").replace(/[\\/\\\\\\0-\\x1f]/g, "_").slice(0, 120);
+        fileName = String(req.file.originalname || "screenshot").replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 120);
         cleanBase64 = req.file.buffer.toString("base64");
       } else if (req.body && (req.body.base64Data || req.body.image || req.body.file)) {
         const rawBase = req.body.base64Data || req.body.image || req.body.file;
