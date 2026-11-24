@@ -398,6 +398,7 @@ class IncrementalIndexingEngine {
       }
     }
 
+    const modifiedCandidateIds = new Set(modifiedCandidates.map((item) => item.id));
     const toProcess = [...newCandidates, ...modifiedCandidates];
     const totalToProcess = toProcess.length;
 
@@ -494,7 +495,7 @@ class IncrementalIndexingEngine {
 
       const candidate = toProcess[i];
       const fileName = candidate.file_name || candidate.fileName || candidate.file?.name || `image_${candidate.id}.png`;
-      const isModified = modifiedCandidates.some((m) => m.id === candidate.id);
+      const isModified = modifiedCandidateIds.has(candidate.id);
 
       // STEP 2: Scanning...
       const basePercent = Math.round(10 + (i / totalToProcess) * 80);
