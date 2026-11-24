@@ -145,6 +145,7 @@ describe("First 50 Lifetime Free VIP UI & Persistent Reminder Flows", () => {
     const { unmount } = render(
       <VipSeatInvitationModal
         isOpen={true}
+        signupNumber={5}
         remainingSpots={40}
         totalSpots={50}
         isStatsLive={true}
