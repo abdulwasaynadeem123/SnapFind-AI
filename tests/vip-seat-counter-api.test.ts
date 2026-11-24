@@ -8,7 +8,7 @@ describe("Legacy VIP seat API retirement", () => {
     const response = await request(app).post("/api/billing/claim-founder")
       .set("Authorization", "Bearer test-token-legacy:legacy@example.com").send({});
     expect(response.status).toBe(410);
-    expect(response.headers["content-type"]).toMatch(/application\\/json/i);
+    expect(response.headers["content-type"]).toContain("application/json");
     expect(response.body.success).toBe(false);
     expect(response.body.disabled).toBe(true);
   });
