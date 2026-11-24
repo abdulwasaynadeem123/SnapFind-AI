@@ -135,3 +135,18 @@ The five failing files are legacy VIP suites that call removed `/api/vip/*` rout
 - `tests/vip-seat-ui.test.tsx`
 
 The AuthContext and AuthModal regressions found during the earlier runs are now passing. The targeted First-50 RPC test verifies the actual migration-backed RPC names. The remaining VIP tests must be rewritten to exercise the current RPC-based flow; they have not been deleted or skipped.
+
+
+## Final Phase 1 CI update — run 60 (2026-11-24)
+
+Run: https://github.com/abdulwasaynadeem123/SnapFind-AI/actions/runs/45410270312
+
+The five previously failing legacy VIP test files have now been updated to match the current product behavior. The removed server-side claim endpoint is explicitly tested as HTTP 410; First-50 eligibility/defer behavior remains covered through the migration-backed Supabase RPC regression suite; the invitation tests now assert the current Lifetime Free modal copy; and the pricing tests verify that the retired VIP-seat counter/CTA is absent. Existing gallery auto-indexing scenarios remain in the test suite.
+
+- TypeScript check: **passed**
+- Targeted security, indexing, and First-50 RPC regression tests: **passed**
+- Production build: **passed**
+- npm audit: **passed**
+- Full test suite: **passed — 13 of 13 test files; 56 of 56 tests**
+
+This is repository CI evidence only. It does not replace live Supabase migration/RLS verification, disposable-account lifecycle testing, or controlled load testing. PR #4 remains a draft and has not been merged or deployed.
