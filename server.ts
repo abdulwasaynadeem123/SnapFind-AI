@@ -16,16 +16,6 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 const PORT = 3000;
 
-// Increase payload limit for base64 screenshot uploads & retain raw buffer for webhook signature verification
-app.use(
-  express.json({
-    limit: "50mb",
-    verify: (req: any, _res, buf) => {
-      req.rawBody = buf;
-    },
-  })
-);
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Production Security Headers & Content Security Policy Middleware
 app.use((req, res, next) => {
@@ -184,6 +174,19 @@ app.use("/api", (req, res, next) => {
   }
   return generalApiLimiter(req, res, next);
 });
+
+// Apply the shared API ceiling before parsing request bodies so oversized/bursty
+// requests are rejected before JSON parsing allocates large buffers.
+app.use(
+  express.json({
+    limit: "38mb",
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
+// Form-encoded payloads are not used for image uploads; keep their parser small.
+app.use(express.urlencoded({ limit: "1mb", extended: false, parameterLimit: 100 }));
 
 // Clean up stale rate limits every 10 minutes
 setInterval(() => {
