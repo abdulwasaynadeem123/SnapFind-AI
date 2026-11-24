@@ -512,7 +512,7 @@ app.post(
         cleanBase64 = req.file.buffer.toString("base64");
       } else if (req.body && (req.body.base64Data || req.body.image || req.body.file)) {
         const rawBase = req.body.base64Data || req.body.image || req.body.file;
-        fileName = req.body.fileName || "screenshot.png";
+        fileName = String(req.body.fileName || "screenshot.png").replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 120);
         const parsed = parseBase64Image(rawBase, "image/png");
         if (!parsed.isValid) {
           return res.status(400).json({ error: parsed.error || "Invalid image payload or unsupported format." });
