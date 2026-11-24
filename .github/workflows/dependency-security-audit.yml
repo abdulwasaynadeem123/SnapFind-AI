@@ -7,8 +7,9 @@ on:
   schedule:
     - cron: "17 5 * * 1"
 
+# Auditing dependencies must never grant this workflow permission to push changes to main.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   npm-audit:
@@ -16,27 +17,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Refresh and patch compatible dependency versions
-        run: |
-          npm install --ignore-scripts
-          npm audit fix --package-lock-only --ignore-scripts
-      - name: Verify clean lockfile install
+
+      - name: Install exact lockfile dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
-      - name: Commit safe lockfile remediation
-        run: |
-          if ! git diff --quiet -- package-lock.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: remediate npm audit vulnerabilities"
-            git push
-          fi
-      - name: Report dependency vulnerabilities
+
+      - name: Generate dependency vulnerability report
         shell: bash
         run: |
           npm audit --json > npm-audit.json || true
@@ -57,4 +48,17 @@ jobs:
               })
             }));
           }
+          if ((meta.critical || 0) > 0 || (meta.high || 0) > 0) {
+            console.error('High or critical dependency vulnerabilities require a reviewed remediation.');
+            process.exitCode = 1;
+          }
           NODE
+
+      - name: Upload machine-readable audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapfind-npm-audit
+          path: npm-audit.json
+          if-no-files-found: warn
+          retention-days: 14
