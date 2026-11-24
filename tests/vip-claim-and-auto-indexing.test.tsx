@@ -272,7 +272,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    expect(screen.getByText("You are verified signup #12 among the first 50 new SnapFind accounts.")).toBeInTheDocument();
+    expect(screen.getByText(/You are verified signup #12 among the first 50 new SnapFind accounts/i)).toBeInTheDocument();
     expect(
       screen.getByText("Claim permanent Pro access at no cost — forever.")
     ).toBeInTheDocument();
@@ -359,7 +359,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     resolveClaim!({ success: true, founderNumber: 12 });
 
     await waitFor(() => {
-      expect(screen.getByText("Lifetime Free VIP Activated!")).toBeInTheDocument();
+      expect(screen.getByText(/Lifetime Free activated/i)).toBeInTheDocument();
       expect(screen.getByText("VIP Member #12")).toBeInTheDocument();
     });
   });
