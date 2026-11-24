@@ -37,7 +37,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Security and indexing performance regressions
-        run: npm test -- tests/security-api.test.ts tests/indexing-search-stress.test.ts --reporter=dot
+        run: npm test -- tests/security-api.test.ts tests/indexing-search-stress.test.ts tests/founder-promo-rpc.test.ts --reporter=dot
 
   full-test-suite:
     runs-on: ubuntu-latest
