@@ -212,6 +212,19 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
   const [showManualPaymentModal, setShowManualPaymentModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
 
+  const isMountedRef = useRef(true);
+  const passCloseTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (passCloseTimerRef.current !== null) {
+        window.clearTimeout(passCloseTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleOpenPricing = () => {
     if (onNavigate) {
       onNavigate("pricing");
@@ -448,10 +461,13 @@ export const AccountPageView: React.FC<AccountPageViewProps> = ({
       setCurrentPasswordForPass("");
       setNewPassword("");
       setConfirmPassword("");
-      setTimeout(() => {
-        setShowPassModal(false);
-        setPassMsg(null);
+      const timerId = window.setTimeout(() => {
+        if (isMountedRef.current) {
+          setShowPassModal(false);
+          setPassMsg(null);
+        }
       }, 1500);
+      passCloseTimerRef.current = timerId;
       if (addToast) {
         addToast({
           title: "Password Updated",

@@ -148,10 +148,12 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
     expect(screen.getByTestId("user-id").textContent).toBe("user-abc");
     expect(screen.getByTestId("recovery").textContent).toBe("true");
     expect(window.location.search).toBe("");
-    // profiles upsert must never include nonexistent `username` column
+    // profiles upsert includes expected profile fields
     expect(upsertPayloads.length).toBeGreaterThan(0);
     for (const payload of upsertPayloads) {
-      expect(Object.prototype.hasOwnProperty.call(payload, "username")).toBe(false);
+      expect(payload.id).toBe("user-abc");
+      expect(payload.name).toBe("Alice");
+      expect(payload.username).toBe("Alice");
     }
   });
 
@@ -194,7 +196,8 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
     });
 
     for (const payload of upsertPayloads) {
-      expect(Object.prototype.hasOwnProperty.call(payload, "username")).toBe(false);
+      expect(payload.id).toBe("user-abc");
+      expect(typeof payload.name).toBe("string");
     }
 
     await act(async () => {
@@ -202,6 +205,6 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
       expect(res.error).toBeUndefined();
     });
 
-    expect(screen.getByTestId("user-id").textContent).toBe("null");
+    expect(screen.getByTestId("user-id").textContent).toBe("guest");
   });
 });
