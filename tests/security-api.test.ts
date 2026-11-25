@@ -89,4 +89,10 @@ describe("Server API Security, Authorization & Canonical Billing", () => {
       .set("Origin", "https://evil-attacker.example.com");
     expect(blocked.headers["access-control-allow-origin"]).toBeUndefined();
   });
+
+  it("allows AI Studio iframe embedding in preview mode instead of blocking with X-Frame-Options: SAMEORIGIN", async () => {
+    const res = await request(app).get("/api/health");
+    expect(res.headers["x-frame-options"]).toBeUndefined();
+    expect(res.headers["content-security-policy"]).toContain("frame-ancestors 'self' https://aistudio.google.com https://*.google.com");
+  });
 });

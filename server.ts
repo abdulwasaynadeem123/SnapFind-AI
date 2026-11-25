@@ -14,19 +14,29 @@ const app = express();
 app.disable("x-powered-by");
 // Trust the single reverse proxy hop used by the hosted deployment so req.ip resolves to the client.
 app.set("trust proxy", 1);
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 
 // Production Security Headers & Content Security Policy Middleware
 app.use((req, res, next) => {
+  const isStandaloneVercelProd = Boolean(
+    process.env.VERCEL && !process.env.APPLET_ID && !process.env.CSP_HEADER_VALUE
+  );
+
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  if (isStandaloneVercelProd) {
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  }
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=(self)");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 
-  // Comprehensive Content Security Policy (CSP) compatible with React, Vite dev server, Tesseract Web Workers, Google OAuth, and Supabase
+  // Comprehensive Content Security Policy (CSP) compatible with React, Vite dev server, Tesseract Web Workers, Google OAuth, Supabase, and AI Studio preview iframe
+  const frameAncestorsDirective = isStandaloneVercelProd
+    ? "frame-ancestors 'self'"
+    : "frame-ancestors 'self' https://aistudio.google.com https://*.google.com https://ai.studio https://*.ai.studio https://localhost.corp.google.com:26001";
+
   const cspDirectives = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' blob: https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net",
@@ -39,7 +49,7 @@ app.use((req, res, next) => {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self' https://accounts.google.com",
-    "frame-ancestors 'self'",
+    frameAncestorsDirective,
   ];
   res.setHeader("Content-Security-Policy", cspDirectives.join("; "));
 
@@ -5668,8 +5678,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 async function startServer() {
-  await loadAuthoritativeFounderStateFromSupabase().catch(() => {});
-
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -5685,8 +5693,12 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`[SnapFind AI] Server active at http://0.0.0.0:${PORT}`);
+    loadAuthoritativeFounderStateFromSupabase().catch(() => {});
+  });
+  server.on("error", (err) => {
+    console.error("[SnapFind AI] HTTP server listen error:", err);
   });
 }
 
