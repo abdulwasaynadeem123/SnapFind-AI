@@ -739,27 +739,28 @@ class SubscriptionManagerService {
   /** Read the authenticated user's first-50-signup offer status. */
   public async getFounderPromoStatus(): Promise<FounderPromoStatus | null> {
     if (!isSupabaseConfigured || !supabase) return null;
-    const { data, error } = await supabase.rpc("get_founder_promo_status");
+    const { data, error } = await supabase.rpc("get_my_vip_eligibility");
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
     if (!row) return null;
     return {
-      eligible: Boolean(row.eligible),
+      eligible: Boolean(row.vip_eligible),
       signupNumber: typeof row.signup_number === "number" ? row.signup_number : null,
-      dismissed: Boolean(row.dismissed),
-      claimed: Boolean(row.claimed),
-      founderRank: typeof row.founder_rank === "number" ? row.founder_rank : null,
-      signupCount: Number(row.signup_count || 0),
-      remainingSignups: Number(row.remaining_signups || 0),
+      dismissed: Boolean(row.vip_offer_deferred_at),
+      claimed: row.vip_claim_status === "claimed" || Boolean(row.is_founder),
+      founderRank: typeof row.founder_number === "number" ? row.founder_number : null,
+      signupCount: Number(row.assigned_slots || 0),
+      remainingSignups: Number(row.remaining_spots || 0),
     };
   }
 
   /** Persist that an eligible user skipped the automatic offer popup. */
   public async dismissFounderPromo(): Promise<boolean> {
     if (!isSupabaseConfigured || !supabase) return false;
-    const { data, error } = await supabase.rpc("dismiss_founder_promo");
+    const { data, error } = await supabase.rpc("defer_vip_offer_for_user");
     if (error) throw error;
-    return Boolean(data);
+    const row = Array.isArray(data) ? data[0] : data;
+    return typeof row === "boolean" ? row : Boolean(row?.success);
   }
 
   /**

@@ -50,6 +50,33 @@ describe("Server API Security, Authorization & Canonical Billing", () => {
     expect(deleteRes.status).toBe(401);
   });
 
+  it("rejects client attempts to decrement screenshot quota without a verified deletion", async () => {
+    const res = await request(app)
+      .post("/api/usage/record")
+      .send({ action: "delete_screenshot", count: 1000 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/unsupported usage action/i);
+  });
+
+  it("rejects multipart uploads whose bytes are not a supported image or PDF", async () => {
+    const res = await request(app)
+      .post("/api/ocr")
+      .attach("file", Buffer.from("this is not an image"), {
+        filename: "photo.png",
+        contentType: "image/png",
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalid file content|unsupported/i);
+  });
+
+  it("rejects base64 payloads that only claim to be an image by MIME type", async () => {
+    const res = await request(app)
+      .post("/api/ocr")
+      .send({ base64Data: "A".repeat(120), fileName: "fake.png" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalid base64|invalid file content|unsupported/i);
+  });
+
   it("validates CORS and rejects arbitrary foreign origins while allowing same-origin", async () => {
     const allowed = await request(app)
       .get("/api/health")

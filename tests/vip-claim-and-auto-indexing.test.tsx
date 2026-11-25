@@ -264,6 +264,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     const { unmount } = render(
       <VipSeatInvitationModal
         isOpen={true}
+        signupNumber={12}
         remainingSpots={12}
         totalSpots={50}
         onClaim={mockFounderState.claimFounderSpot}
@@ -272,12 +273,9 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    expect(screen.getByText("You're One of the First 50!")).toBeInTheDocument();
-    expect(
-      screen.getByText("Claim Lifetime Free SnapFind Pro access. This exclusive offer is reserved for the first 50 accounts.")
-    ).toBeInTheDocument();
-    expect(screen.getByText("38 / 50 claimed")).toBeInTheDocument();
-    expect(screen.getByText("12 remaining")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claim Lifetime Free" })).toBeInTheDocument();
+    expect(screen.getByText("150,000 AI-indexed screenshots, lifetime")).toBeInTheDocument();
+    expect(screen.getByText("Private cloud sync & priority OCR processing queue")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Claim Lifetime Free" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Maybe Later" })).toBeInTheDocument();
 
@@ -337,7 +335,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       expect(screen.getByRole("alert")).toHaveTextContent("Database temporarily unreachable");
     });
     expect(screen.queryByText(/VIP Member #/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry Claim Lifetime Free" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry Claim" })).toBeInTheDocument();
 
     // Now test successful atomic claim with double-click guard
     rerender(
@@ -351,7 +349,7 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
       />
     );
 
-    const retryBtn = screen.getByRole("button", { name: "Retry Claim Lifetime Free" });
+    const retryBtn = screen.getByRole("button", { name: "Retry Claim" });
     fireEvent.click(retryBtn);
     fireEvent.click(retryBtn); // rapid duplicate click must be ignored
     expect(slowClaim).toHaveBeenCalledTimes(1);
@@ -359,8 +357,8 @@ describe("SnapFind AI — VIP Seat Claiming & Automatic Gallery Indexing (10 Sce
     resolveClaim!({ success: true, founderNumber: 12 });
 
     await waitFor(() => {
-      expect(screen.getByText("Lifetime Free VIP Activated!")).toBeInTheDocument();
-      expect(screen.getByText("VIP Member #12")).toBeInTheDocument();
+      expect(screen.getByText(/Lifetime Free Verified/i)).toBeInTheDocument();
+      expect(screen.getByText("Lifetime Free Member #12")).toBeInTheDocument();
     });
   });
 

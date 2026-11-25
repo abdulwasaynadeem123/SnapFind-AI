@@ -145,6 +145,7 @@ describe("First 50 Lifetime Free VIP UI & Persistent Reminder Flows", () => {
     const { unmount } = render(
       <VipSeatInvitationModal
         isOpen={true}
+        signupNumber={5}
         remainingSpots={40}
         totalSpots={50}
         isStatsLive={true}
@@ -154,10 +155,7 @@ describe("First 50 Lifetime Free VIP UI & Persistent Reminder Flows", () => {
       />
     );
 
-    expect(screen.getByText("You're One of the First 50!")).toBeInTheDocument();
-    expect(
-      screen.getByText("Claim Lifetime Free SnapFind Pro access. This exclusive offer is reserved for the first 50 accounts.")
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claim Lifetime Free" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Claim Lifetime Free" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Maybe Later" }));

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { processingQueue } from "../src/services/processingQueue";
 import { searchEngine } from "../src/services/searchEngine";
 import { SubscriptionManager } from "../src/services/billing/SubscriptionManager";
@@ -86,6 +86,27 @@ describe("Automatic Indexing Queue, Quota Resume & Large-Library Search Stress",
     expect(updated).toBeDefined();
     expect(updated?.status).not.toBe("waiting_for_verification");
     expect(updated?.errorMessage).toBeUndefined();
+  });
+
+  it("runs FlexSearch once per query instead of once per screenshot", () => {
+    const items: ScreenshotItem[] = Array.from({ length: 25 }, (_, i) => ({
+      id: `flex-once-${i}`,
+      imageUri: `file:///screenshots/flex-${i}.png`,
+      createdAt: new Date().toISOString(),
+      category: "Notes",
+      title: i === 12 ? "K-Electric Bill" : `Unrelated capture ${i}`,
+      ocrText: i === 12 ? "electricity bill payment due" : "generic capture",
+      fullText: i === 12 ? "electricity bill payment due" : "generic capture",
+    }));
+
+    searchEngine.updateIndex(items);
+    const flexIndex = (searchEngine as any).flexIndex;
+    const searchSpy = vi.spyOn(flexIndex, "search");
+    const results = searchEngine.search("electricity bill", items);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(searchSpy).toHaveBeenCalledTimes(1);
+    searchSpy.mockRestore();
   });
 
   it("indexes and searches 1,200 screenshots cleanly with high relevance and sub-second speed", () => {

@@ -333,7 +333,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { error: profileSyncError } = await supabase.from("profiles").upsert({
       id: sbUser.id,
-      username,
       name,
       email: sbUser.email || "",
       avatar_url: avatarUrl || null,
@@ -733,7 +732,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: supabaseUser.id,
       name: user?.name || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
-      username: supabaseUser.user_metadata?.username || user?.username || supabaseUser.user_metadata?.preferred_username || supabaseUser.email?.split("@")[0] || "User",
       email: supabaseUser.email,
       avatar_url: cleanAvatar,
       updated_at: new Date().toISOString(),
@@ -928,18 +926,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       SubscriptionManager.resetToFree();
       clearUserCache();
-      const loggedOutUser: UserProfile = {
-        id: "guest",
-        name: "Guest User",
-        email: "guest@snapfind.ai",
-        isLoggedIn: false,
-        plan: "Free",
-        storageLimitMB: 1000,
-      };
       setSession(null);
       setSupabaseUser(null);
-      setUser(loggedOutUser);
-      saveUserProfile(loggedOutUser);
+      setUser(null);
       SyncEngine.setCurrentUserId("guest");
       return {};
     } catch (err: any) {

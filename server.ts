@@ -16,16 +16,6 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 const PORT = 3000;
 
-// Increase payload limit for base64 screenshot uploads & retain raw buffer for webhook signature verification
-app.use(
-  express.json({
-    limit: "50mb",
-    verify: (req: any, _res, buf) => {
-      req.rawBody = buf;
-    },
-  })
-);
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Production Security Headers & Content Security Policy Middleware
 app.use((req, res, next) => {
@@ -185,6 +175,19 @@ app.use("/api", (req, res, next) => {
   return generalApiLimiter(req, res, next);
 });
 
+// Apply the shared API ceiling before parsing request bodies so oversized/bursty
+// requests are rejected before JSON parsing allocates large buffers.
+app.use(
+  express.json({
+    limit: "38mb",
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
+// Form-encoded payloads are not used for image uploads; keep their parser small.
+app.use(express.urlencoded({ limit: "1mb", extended: false, parameterLimit: 100 }));
+
 // Clean up stale rate limits every 10 minutes
 setInterval(() => {
   const now = Date.now();
@@ -306,47 +309,41 @@ app.get("/robots.txt", (_req, res) => {
   res.send(PRODUCTION_ROBOTS_TXT.trim());
 });
 
-// Helper: Parse base64 string, clean data URI prefix, and validate image payload via magic bytes
+// Detect the payload type from its binary signature. Never trust a browser-supplied MIME type.
+function detectSupportedPayloadMime(buffer: Buffer): string | null {
+  if (buffer.length >= 8 &&
+      buffer[0] === 0x89 && buffer.subarray(1, 4).toString("ascii") === "PNG" &&
+      buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a) return "image/png";
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
+  if (buffer.length >= 12 && buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP") return "image/webp";
+  if (buffer.length >= 6) {
+    const signature = buffer.subarray(0, 6).toString("ascii");
+    if (signature === "GIF87a" || signature === "GIF89a") return "image/gif";
+  }
+  if (buffer.length >= 5 && buffer.subarray(0, 5).toString("ascii") === "%PDF-") return "application/pdf";
+  return null;
+}
+
+// Validate decoded bytes against an explicit format allowlist. Declared MIME types are untrusted.
 function parseBase64Image(base64Data: string, providedMime: string = "image/png"): { cleanBase64: string; mimeType: string; isValid: boolean; error?: string } {
   if (!base64Data || typeof base64Data !== "string") {
     return { cleanBase64: "", mimeType: providedMime, isValid: false, error: "Empty image payload." };
   }
-
-  // 1. Extract from data URI prefix if present
-  let mimeType = providedMime;
   const dataUriMatch = base64Data.match(/^data:([^;]+);base64,/i);
-  if (dataUriMatch && dataUriMatch[1]) {
-    mimeType = dataUriMatch[1].toLowerCase().trim();
-  }
-
-  // 2. Clean base64 string completely
-  let cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/i, "").trim();
-  cleanBase64 = cleanBase64.replace(/\s+/g, "");
-
-  // Payload size limit check (35MB base64 ~ 26MB binary)
+  const declaredMime = dataUriMatch?.[1]?.toLowerCase().trim() || providedMime;
+  const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/i, "").replace(/\s+/g, "");
   if (cleanBase64.length > 35 * 1024 * 1024) {
-    return { cleanBase64: "", mimeType, isValid: false, error: "Image file exceeds maximum upload size (25MB)." };
+    return { cleanBase64: "", mimeType: declaredMime, isValid: false, error: "Image file exceeds maximum upload size (25MB)." };
   }
-
-  // 3. Detect true MIME type from base64 magic bytes
-  let isValid = false;
-  if (cleanBase64.startsWith("iVBOR")) {
-    mimeType = "image/png";
-    isValid = true;
-  } else if (cleanBase64.startsWith("/9j/")) {
-    mimeType = "image/jpeg";
-    isValid = true;
-  } else if (cleanBase64.startsWith("UklGR")) {
-    mimeType = "image/webp";
-    isValid = true;
-  } else if (cleanBase64.startsWith("R0lGOD")) {
-    mimeType = "image/gif";
-    isValid = true;
-  } else if (cleanBase64.length > 50 && (mimeType.startsWith("image/") || mimeType === "application/pdf")) {
-    isValid = true;
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(cleanBase64)) {
+    return { cleanBase64: "", mimeType: declaredMime, isValid: false, error: "Invalid base64 image payload." };
   }
-
-  return { cleanBase64, mimeType, isValid };
+  const actualMime = detectSupportedPayloadMime(Buffer.from(cleanBase64, "base64"));
+  if (!actualMime) {
+    return { cleanBase64: "", mimeType: declaredMime, isValid: false, error: "Unsupported or invalid file content. Upload a valid PNG, JPEG, WebP, GIF, or PDF." };
+  }
+  return { cleanBase64, mimeType: actualMime, isValid: true };
 }
 
 // Persistent Server Tesseract.js Worker Singleton (Reused across requests)
@@ -505,12 +502,17 @@ app.post(
 
       if (req.file) {
         fileBuffer = req.file.buffer;
-        mimeType = req.file.mimetype || "image/png";
-        fileName = req.file.originalname || "screenshot.png";
+        const detectedMime = detectSupportedPayloadMime(fileBuffer);
+        if (!detectedMime) {
+          return res.status(400).json({ error: "Unsupported or invalid file content. Upload a valid PNG, JPEG, WebP, GIF, or PDF." });
+        }
+        // Use the verified signature, not req.file.mimetype, which is supplied by the client.
+        mimeType = detectedMime;
+        fileName = String(req.file.originalname || "screenshot").replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 120);
         cleanBase64 = req.file.buffer.toString("base64");
       } else if (req.body && (req.body.base64Data || req.body.image || req.body.file)) {
         const rawBase = req.body.base64Data || req.body.image || req.body.file;
-        fileName = req.body.fileName || "screenshot.png";
+        fileName = String(req.body.fileName || "screenshot.png").replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 120);
         const parsed = parseBase64Image(rawBase, "image/png");
         if (!parsed.isValid) {
           return res.status(400).json({ error: parsed.error || "Invalid image payload or unsupported format." });
@@ -5401,7 +5403,7 @@ app.post("/api/usage/record", async (req, res) => {
     const context = await resolveEffectiveUserContext(req);
     const { userKey, userId, deviceId, isAuthenticated } = context;
     const { action, byteSize = 0, count = 1 } = req.body || {};
-    if (!["ai_scan", "index_screenshot", "delete_screenshot", "cloud_sync"].includes(action)) {
+    if (!["ai_scan", "index_screenshot", "cloud_sync"].includes(action)) {
       return res.status(400).json({ success: false, error: "Unsupported usage action." });
     }
     const safeCount = Math.max(0, Math.min(1000, Math.floor(Number(count) || 0)));
