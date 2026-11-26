@@ -93,7 +93,11 @@ describe("UI Components Integrity, Navigation, Pagination & Branding", () => {
       createdAt: new Date().toISOString(),
       category: "Other",
       title: `Screenshot Item ${idx + 1}`,
-      ocrText: `Body text ${idx + 1}`,
+      keyEntities: [],
+      isFavorite: false,
+      fileSizeKB: 1,
+      indexedAt: new Date().toISOString(),
+      ocr_text: `Body text ${idx + 1}`,
     }));
 
     const { container } = render(
