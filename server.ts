@@ -29,6 +29,7 @@ app.use((req, res, next) => {
   }
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=(self)");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 
@@ -45,7 +46,7 @@ app.use((req, res, next) => {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' blob: data: https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com",
-    "frame-src 'self' https://accounts.google.com",
+    "frame-src 'self' https://accounts.google.com https://*.supabase.co",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self' https://accounts.google.com",
@@ -5678,6 +5679,17 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 async function startServer() {
+  app.get("/auth/callback", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const distCallback = path.join(process.cwd(), "dist", "auth-callback.html");
+    const publicCallback = path.join(process.cwd(), "public", "auth-callback.html");
+    const targetFile =
+      process.env.NODE_ENV === "production" && fs.existsSync(distCallback)
+        ? distCallback
+        : publicCallback;
+    return res.sendFile(targetFile);
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({

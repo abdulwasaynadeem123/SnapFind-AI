@@ -60,6 +60,10 @@
   ],
   "rewrites": [
     {
+      "source": "/auth/callback",
+      "destination": "/auth-callback.html"
+    },
+    {
       "source": "/((?!api(?:/|$)|sitemap\\.xml|robots\\.txt|favicon\\.ico|logo\\.png|logo\\.svg|.*\\..*).*)",
       "destination": "/index.html"
     }

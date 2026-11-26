@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured, getAuthBearerHeader } from "../services/supabase";
 import { UserProfile, UserEntitlement } from "../types";
@@ -7,6 +7,11 @@ import { StorageManager } from "../services/storage/StorageManager";
 import { SyncEngine } from "../services/syncEngine";
 import { SubscriptionManager } from "../services/billing/SubscriptionManager";
 import { NotificationService } from "../services/notificationService";
+
+export interface GoogleSignInResult {
+  error?: string;
+  cancelled?: boolean;
+}
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -24,7 +29,7 @@ interface AuthContextType {
   signInWithEmail: (email: string, pass: string) => Promise<{ error?: string; isUnconfirmedEmail?: boolean }>;
   signUpWithEmail: (email: string, pass: string, name?: string) => Promise<{ error?: string; requiresVerification?: boolean; message?: string }>;
   resendVerificationEmail: (email: string) => Promise<{ error?: string; success?: boolean }>;
-  signInWithGoogle: () => Promise<{ error?: string }>;
+  signInWithGoogle: () => Promise<GoogleSignInResult>;
   signOut: () => Promise<void>;
   signOutAllDevices: () => Promise<{ error?: string }>;
   reauthenticate: (password: string) => Promise<{ error?: string }>;
@@ -52,6 +57,18 @@ const GUEST_USER: UserProfile = {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const AUTH_UNCONFIGURED_ERROR =
   "Authentication service is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable sign-in and account management.";
+const OAUTH_POPUP_NAME = "snapfind_google_oauth";
+const OAUTH_CHANNEL_NAME = "snapfind_oauth_channel";
+const OAUTH_POPUP_TIMEOUT_MS = 5 * 60 * 1000;
+
+let activeCallbackKey: string | null = null;
+let activeCallbackPromise: Promise<{ session?: Session | null; error?: string; isRecoveryCallback?: boolean; closedPopup?: boolean }> | null = null;
+
+function isSessionExpired(targetSession: Session | null | undefined): boolean {
+  if (!targetSession) return false;
+  if (typeof targetSession.expires_at !== "number") return false;
+  return targetSession.expires_at * 1000 <= Date.now();
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
@@ -70,6 +87,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   });
   const [oauthErrorMessage, setOauthErrorMessage] = useState<string | null>(null);
+  const oauthPopupRef = useRef<Window | null>(null);
+  const pendingOAuthPromiseRef = useRef<Promise<GoogleSignInResult> | null>(null);
+  const settlePendingOAuthRef = useRef<((result: GoogleSignInResult) => void) | null>(null);
+  const markOAuthCallbackReceivedRef = useRef<(() => void) | null>(null);
+  const processedCallbackIdsRef = useRef<Set<string>>(new Set());
+  const completedOAuthCodesRef = useRef<Set<string>>(new Set());
+  const inFlightCodeExchangesRef = useRef<Map<string, Promise<Session | null>>>(new Map());
 
   const clearOauthError = () => setOauthErrorMessage(null);
 
@@ -107,133 +131,350 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // 1. Callback Handler: Exchange OAuth / Recovery code or hash token for session
+    const formatOAuthErrorMessage = (rawErr: string, isRecovery: boolean): string => {
+      if (isRecovery) {
+        return "Your password reset link is invalid or has expired. Please request a new reset link.";
+      }
+      const lower = rawErr.toLowerCase();
+      if (lower.includes("access_denied") || lower.includes("access denied") || lower.includes("403")) {
+        return "Google Sign-In returned Access Denied (403). If your Google OAuth consent screen is in Testing mode, add your Google account under Test Users or publish the app to Production in Google Cloud Console.";
+      }
+      if (lower.includes("redirect_uri_mismatch")) {
+        return "Google Sign-In redirect URI mismatch. Ensure the Supabase /auth/v1/callback URL is registered in Google Cloud Authorized Redirect URIs.";
+      }
+      if (lower.includes("expired") || lower.includes("code verifier") || lower.includes("invalid flow")) {
+        return "Your Google Sign-In session expired or could not be verified. Please try signing in again.";
+      }
+      return `Google sign-in could not be completed (${rawErr}). Please try again.`;
+    };
+
+    const postToBroadcastChannel = (message: Record<string, any>) => {
+      if (typeof BroadcastChannel === "undefined") return;
+      try {
+        const channel = new BroadcastChannel(OAUTH_CHANNEL_NAME);
+        channel.postMessage(message);
+        channel.close();
+      } catch {
+        // Ignore BroadcastChannel errors in restricted contexts
+      }
+    };
+
+    const applyAuthenticatedSession = async (
+      nextSession: Session,
+      isRecoveryCallback: boolean
+    ) => {
+      setSession(nextSession);
+      setSupabaseUser(nextSession.user);
+      await syncProfile(nextSession.user);
+      SyncEngine.setCurrentUserId(nextSession.user.id);
+      setOauthErrorMessage(null);
+      if (isRecoveryCallback) {
+        setIsRecoveryMode(true);
+      }
+    };
+
+    const completeCodeExchange = async (
+      code: string,
+      isRecoveryCallback: boolean,
+      flowId?: string
+    ): Promise<Session | null> => {
+      const existingInFlight = inFlightCodeExchangesRef.current.get(code);
+      if (existingInFlight) {
+        return existingInFlight;
+      }
+
+      const exchangePromise = (async () => {
+        const exchangeFn = supabase.auth.exchangeCodeForSession as unknown as (
+          authCode: string,
+          options?: { flowId?: string }
+        ) => Promise<{ data: { session: Session | null } | null; error: any }>;
+
+        const { data, error } = flowId
+          ? await exchangeFn.call(supabase.auth, code, { flowId })
+          : await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          const existing = await supabase.auth.getSession().catch(() => null);
+          if (existing?.data?.session && !isSessionExpired(existing.data.session)) {
+            const existingSession = existing.data.session;
+            await applyAuthenticatedSession(existingSession, isRecoveryCallback);
+            completedOAuthCodesRef.current.add(code);
+            return existingSession;
+          }
+          throw error;
+        }
+
+        if (data?.session) {
+          if (isSessionExpired(data.session)) {
+            throw new Error("OAuth session expired. Please sign in again.");
+          }
+          await applyAuthenticatedSession(data.session, isRecoveryCallback);
+          completedOAuthCodesRef.current.add(code);
+          return data.session;
+        }
+        return null;
+      })().finally(() => {
+        inFlightCodeExchangesRef.current.delete(code);
+      });
+
+      inFlightCodeExchangesRef.current.set(code, exchangePromise);
+      return exchangePromise;
+    };
+
+    // 1. Callback Handler: Exchange OAuth / Recovery code or hash token for session (StrictMode-safe)
     const processAuthCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
+      const searchStr = window.location.search || "";
+      const hashStr = window.location.hash || "";
+      const urlParams = new URLSearchParams(searchStr);
       const oauthError = urlParams.get("error");
       const oauthErrorDescription = urlParams.get("error_description");
+      const oauthErrorCode = urlParams.get("error_code");
       const code = urlParams.get("code");
+      const tokenHash = urlParams.get("token_hash");
       const queryType = urlParams.get("type");
-      const hash = window.location.hash;
 
       const hashParams =
-        hash && (hash.includes("=") || hash.includes("access_token") || hash.includes("error"))
-          ? new URLSearchParams(hash.replace(/^#\/?/, ""))
+        hashStr && (hashStr.includes("=") || hashStr.includes("access_token") || hashStr.includes("error"))
+          ? new URLSearchParams(hashStr.replace(/^#\/?/, ""))
           : null;
       const hashError = hashParams?.get("error") || null;
       const hashErrorDescription = hashParams?.get("error_description") || null;
+      const hashErrorCode = hashParams?.get("error_code") || null;
       const hashType = hashParams?.get("type") || null;
+      const hashAccessToken = hashParams?.get("access_token") || null;
+      const hashRefreshToken = hashParams?.get("refresh_token") || null;
 
-      const isRecoveryCallback =
-        queryType === "recovery" ||
-        hashType === "recovery" ||
-        window.location.pathname === "/reset-password";
+      const hasCallbackParams = Boolean(
+        oauthError || hashError || code || tokenHash || (hashStr && hashStr.includes("access_token"))
+      );
+      if (!hasCallbackParams) return;
 
-      if (queryType === "recovery" || hashType === "recovery") {
-        setIsRecoveryMode(true);
-      }
-
-      if (oauthError || hashError) {
-        const reportedErr = oauthErrorDescription || hashErrorDescription || oauthError || hashError || "Authentication error";
-        console.error(`[AuthContext] Auth callback returned error: ${reportedErr}`);
-        if (isRecoveryCallback) {
-          setOauthErrorMessage("Your password reset link is invalid or has expired. Please request a new reset email.");
-        } else {
-          setOauthErrorMessage(
-            "Google sign-in could not be completed. Please sign in using your email and password."
-          );
+      const callbackKey = `${window.location.pathname}|${searchStr}|${hashStr}`;
+      if (activeCallbackKey === callbackKey && activeCallbackPromise) {
+        const sharedResult = await activeCallbackPromise;
+        if (sharedResult.isRecoveryCallback) setIsRecoveryMode(true);
+        if (sharedResult.session) {
+          await applyAuthenticatedSession(sharedResult.session, Boolean(sharedResult.isRecoveryCallback));
+        } else if (sharedResult.error) {
+          setOauthErrorMessage(sharedResult.error);
         }
-        // Strip error parameters from URL
-        const cleanPath = window.location.pathname === "/auth/callback" ? "/" : window.location.pathname;
-        window.history.replaceState({}, document.title, cleanPath);
         return;
       }
 
-      if (code) {
-        try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.error("[AuthContext] Code exchange failed:", error.message);
-            setOauthErrorMessage(
-              isRecoveryCallback
-                ? "Your password reset link is invalid or has expired. Please request a new link."
-                : "Sign-in verification failed: " + error.message
-            );
-          } else if (data?.session) {
-            setSession(data.session);
-            setSupabaseUser(data.session.user);
-            await syncProfile(data.session.user);
-            SyncEngine.setCurrentUserId(data.session.user.id);
-            setOauthErrorMessage(null);
-            if (isRecoveryCallback) {
-              setIsRecoveryMode(true);
-            }
+      const runCallback = async () => {
+        const isRecoveryCallback =
+          queryType === "recovery" ||
+          hashType === "recovery" ||
+          window.location.pathname === "/reset-password";
 
-            if (window.opener && window.opener !== window) {
-              try {
-                window.opener.postMessage(
-                  { type: "OAUTH_AUTH_SUCCESS", session: data.session },
-                  window.location.origin
-                );
-              } catch (e) {
-                console.warn("[AuthContext] Failed to postMessage to popup opener:", e);
-              }
-              window.close();
-              return;
-            }
-          }
-        } catch (err) {
-          console.error("[AuthContext] Exception during code exchange");
-          setOauthErrorMessage(
-            isRecoveryCallback
-              ? "Your password reset link could not be verified. Please request a new one."
-              : "Sign-in verification failed. Please sign in with email."
-          );
-        } finally {
-          // Security: Strip code and sensitive tokens from URL immediately
-          const cleanPath =
-            isRecoveryCallback
-              ? "/reset-password"
-              : window.location.pathname === "/auth/callback"
-              ? "/"
-              : window.location.pathname;
-          window.history.replaceState({}, document.title, cleanPath);
+        if (queryType === "recovery" || hashType === "recovery") {
+          setIsRecoveryMode(true);
         }
-      } else if (hash && hash.includes("access_token")) {
-        // Handle hash fragment authentication / recovery
-        const { data } = await supabase.auth.getSession();
-        if (data?.session) {
-          setSession(data.session);
-          setSupabaseUser(data.session.user);
-          await syncProfile(data.session.user);
-          SyncEngine.setCurrentUserId(data.session.user.id);
-          setOauthErrorMessage(null);
-          if (isRecoveryCallback) {
-            setIsRecoveryMode(true);
+
+        const hasPopupOpener = Boolean(window.opener && window.opener !== window);
+        const isOAuthPopupWindow = hasPopupOpener || window.name === OAUTH_POPUP_NAME;
+
+        const deliverErrorToOpenerAndClose = (rawError: string) => {
+          const payload = {
+            type: "OAUTH_AUTH_ERROR",
+            error: oauthError || hashError || rawError,
+            errorDescription: rawError,
+            isRecoveryCallback,
+          };
+          if (hasPopupOpener) {
+            try {
+              window.opener.postMessage(payload, window.location.origin);
+            } catch (e) {
+              console.warn("[AuthContext] Failed to post OAuth error to popup opener:", e);
+              postToBroadcastChannel(payload);
+            }
+          } else {
+            postToBroadcastChannel(payload);
+          }
+          try {
+            window.close();
+          } catch {}
+        };
+
+        if (oauthError || hashError) {
+          const reportedErr =
+            oauthErrorDescription ||
+            hashErrorDescription ||
+            oauthError ||
+            hashError ||
+            oauthErrorCode ||
+            hashErrorCode ||
+            "Authentication error";
+          console.error(`[AuthContext] Auth callback returned error: ${reportedErr}`);
+
+          if (isOAuthPopupWindow) {
+            deliverErrorToOpenerAndClose(reportedErr);
+            return { error: null as any, isRecoveryCallback, closedPopup: true };
           }
 
-          if (window.opener && window.opener !== window) {
+          const cleanPath = window.location.pathname === "/auth/callback" ? "/" : window.location.pathname;
+          window.history.replaceState({}, document.title, cleanPath);
+          const formatted = formatOAuthErrorMessage(reportedErr, isRecoveryCallback);
+          setOauthErrorMessage(formatted);
+          return { error: formatted, isRecoveryCallback };
+        }
+
+        if (code) {
+          if (hasPopupOpener) {
+            // Forward the PKCE authorization code to the original window, which owns the PKCE code_verifier.
             try {
               window.opener.postMessage(
-                { type: "OAUTH_AUTH_SUCCESS", session: data.session },
+                { type: "OAUTH_AUTH_CALLBACK", code, isRecoveryCallback },
                 window.location.origin
               );
+              window.close();
+              return { isRecoveryCallback, closedPopup: true };
             } catch (e) {
-              console.warn("[AuthContext] Failed to postMessage to popup opener:", e);
+              console.warn("[AuthContext] Failed to post PKCE callback code to opener:", e);
             }
-            window.close();
-            return;
+          }
+
+          try {
+            const exchangedSession = await completeCodeExchange(code, isRecoveryCallback);
+            if (exchangedSession && isOAuthPopupWindow) {
+              const payload = { type: "OAUTH_AUTH_SUCCESS", session: exchangedSession };
+              if (hasPopupOpener) {
+                try {
+                  window.opener.postMessage(payload, window.location.origin);
+                } catch {
+                  postToBroadcastChannel(payload);
+                }
+              } else {
+                postToBroadcastChannel(payload);
+              }
+              try {
+                window.close();
+              } catch {}
+              return { session: exchangedSession, isRecoveryCallback, closedPopup: true };
+            }
+            return { session: exchangedSession, isRecoveryCallback };
+          } catch (err: any) {
+            console.error("[AuthContext] Code exchange failed:", err?.message || err);
+            const msg = isRecoveryCallback
+              ? "Your password reset link is invalid or has expired. Please request a new link."
+              : formatOAuthErrorMessage(err?.message || "Sign-in verification failed", false);
+            if (isOAuthPopupWindow) {
+              deliverErrorToOpenerAndClose(err?.message || "Sign-in verification failed");
+              return { error: msg, isRecoveryCallback, closedPopup: true };
+            }
+            setOauthErrorMessage(msg);
+            return { error: msg, isRecoveryCallback };
+          } finally {
+            const cleanPath =
+              isRecoveryCallback
+                ? "/reset-password"
+                : window.location.pathname === "/auth/callback"
+                ? "/"
+                : window.location.pathname;
+            window.history.replaceState({}, document.title, cleanPath);
           }
         }
-        // Security: Never leave access_token or recovery tokens in URL hash
-        const cleanPath =
-          isRecoveryCallback
-            ? "/reset-password"
-            : window.location.pathname === "/auth/callback"
-            ? "/"
-            : window.location.pathname;
-        window.history.replaceState({}, document.title, cleanPath);
-      }
+
+        if (tokenHash && queryType && typeof supabase.auth.verifyOtp === "function") {
+          try {
+            const { data, error } = await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: queryType as any,
+            });
+            if (error) throw error;
+            if (data?.session) {
+              await applyAuthenticatedSession(data.session, isRecoveryCallback);
+              return { session: data.session, isRecoveryCallback };
+            }
+          } catch (err: any) {
+            const msg = isRecoveryCallback
+              ? "Your password reset link is invalid or has expired. Please request a new link."
+              : formatOAuthErrorMessage(err?.message || "Verification link expired", false);
+            setOauthErrorMessage(msg);
+            return { error: msg, isRecoveryCallback };
+          } finally {
+            const cleanPath =
+              isRecoveryCallback
+                ? "/reset-password"
+                : window.location.pathname === "/auth/callback"
+                ? "/"
+                : window.location.pathname;
+            window.history.replaceState({}, document.title, cleanPath);
+          }
+        }
+
+        if (hashStr && hashStr.includes("access_token")) {
+          try {
+            let resolvedSession: Session | null = null;
+            if (hashAccessToken && hashRefreshToken && typeof supabase.auth.setSession === "function") {
+              const { data, error } = await supabase.auth.setSession({
+                access_token: hashAccessToken,
+                refresh_token: hashRefreshToken,
+              });
+              if (error) throw error;
+              resolvedSession = data?.session ?? null;
+            } else {
+              const { data } = await supabase.auth.getSession();
+              resolvedSession = data?.session ?? null;
+            }
+
+            if (resolvedSession) {
+              if (isSessionExpired(resolvedSession)) {
+                throw new Error("Session has expired. Please sign in again.");
+              }
+              await applyAuthenticatedSession(resolvedSession, isRecoveryCallback);
+
+              if (isOAuthPopupWindow) {
+                const payload = { type: "OAUTH_AUTH_SUCCESS", session: resolvedSession };
+                if (hasPopupOpener) {
+                  try {
+                    window.opener.postMessage(payload, window.location.origin);
+                  } catch {
+                    postToBroadcastChannel(payload);
+                  }
+                } else {
+                  postToBroadcastChannel(payload);
+                }
+                try {
+                  window.close();
+                } catch {}
+                return { session: resolvedSession, isRecoveryCallback, closedPopup: true };
+              }
+              return { session: resolvedSession, isRecoveryCallback };
+            }
+          } catch (err: any) {
+            const msg = isRecoveryCallback
+              ? "Your password reset link is invalid or has expired. Please request a new link."
+              : formatOAuthErrorMessage(err?.message || "Session expired", false);
+            if (isOAuthPopupWindow) {
+              deliverErrorToOpenerAndClose(err?.message || "Session expired");
+            } else {
+              setOauthErrorMessage(msg);
+            }
+            return { error: msg, isRecoveryCallback };
+          } finally {
+            const cleanPath =
+              isRecoveryCallback
+                ? "/reset-password"
+                : window.location.pathname === "/auth/callback"
+                ? "/"
+                : window.location.pathname;
+            window.history.replaceState({}, document.title, cleanPath);
+          }
+        }
+
+        return {};
+      };
+
+      activeCallbackKey = callbackKey;
+      const promise = runCallback().finally(() => {
+        if (activeCallbackKey === callbackKey) {
+          activeCallbackKey = null;
+          activeCallbackPromise = null;
+        }
+      });
+      activeCallbackPromise = promise;
+      await promise;
     };
 
     let isMounted = true;
@@ -246,15 +487,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await processAuthCallback();
         if (!isMounted) return;
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         if (error) throw error;
         if (!isMounted) return;
 
-        setSession(session);
-        setSupabaseUser(session?.user ?? null);
-        if (session?.user) {
-          SyncEngine.setCurrentUserId(session.user.id);
-          await syncProfile(session.user);
+        let activeSession = initialSession;
+        if (activeSession && isSessionExpired(activeSession)) {
+          if (typeof supabase.auth.refreshSession === "function") {
+            const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+            if (!refreshErr && refreshed?.session && !isSessionExpired(refreshed.session)) {
+              activeSession = refreshed.session;
+            } else {
+              await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+              activeSession = null;
+            }
+          } else {
+            await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+            activeSession = null;
+          }
+        }
+        if (!isMounted) return;
+
+        setSession(activeSession);
+        setSupabaseUser(activeSession?.user ?? null);
+        if (activeSession?.user) {
+          SyncEngine.setCurrentUserId(activeSession.user.id);
+          await syncProfile(activeSession.user);
         } else {
           SubscriptionManager.resetToFree();
           SyncEngine.setCurrentUserId("guest");
@@ -305,8 +563,187 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (initialAuthSettled) setLoading(false);
     });
 
+    const handleOAuthPayload = async (payload: any) => {
+      if (!payload || typeof payload !== "object") return;
+      const validTypes = new Set([
+        "OAUTH_AUTH_ERROR",
+        "OAUTH_AUTH_CALLBACK",
+        "OAUTH_AUTH_HASH_TOKENS",
+        "OAUTH_AUTH_SUCCESS",
+      ]);
+      if (!validTypes.has(payload.type)) return;
+
+      if (typeof payload.callbackId === "string" && payload.callbackId) {
+        if (processedCallbackIdsRef.current.has(payload.callbackId)) {
+          return;
+        }
+        processedCallbackIdsRef.current.add(payload.callbackId);
+      }
+
+      if (payload.type === "OAUTH_AUTH_ERROR") {
+        markOAuthCallbackReceivedRef.current?.();
+        const reportedErr = String(payload.errorDescription || payload.error || "Authentication error");
+        const formatted = formatOAuthErrorMessage(reportedErr, Boolean(payload.isRecoveryCallback));
+        setOauthErrorMessage(formatted);
+        settlePendingOAuthRef.current?.({ error: formatted });
+        return;
+      }
+
+      if (payload.type === "OAUTH_AUTH_CALLBACK" && typeof payload.code === "string" && payload.code) {
+        if (completedOAuthCodesRef.current.has(payload.code)) {
+          return;
+        }
+        markOAuthCallbackReceivedRef.current?.();
+        try {
+          const exchangedSession = await completeCodeExchange(
+            payload.code,
+            Boolean(payload.isRecoveryCallback),
+            typeof payload.flowId === "string" ? payload.flowId : undefined
+          );
+          if (exchangedSession?.user) {
+            NotificationService.notifyNewLogin({
+              email: exchangedSession.user.email || "",
+              platform: "Google / Web",
+            });
+            settlePendingOAuthRef.current?.({});
+          } else {
+            const msg = "Google sign-in completed without an active session. Please try again.";
+            setOauthErrorMessage(msg);
+            settlePendingOAuthRef.current?.({ error: msg });
+          }
+        } catch (err: any) {
+          console.error("[AuthContext] Popup code exchange failed:", err?.message || err);
+          const msg = formatOAuthErrorMessage(err?.message || "Verification failed", false);
+          setOauthErrorMessage(msg);
+          settlePendingOAuthRef.current?.({ error: msg });
+        }
+        return;
+      }
+
+      if (
+        payload.type === "OAUTH_AUTH_HASH_TOKENS" &&
+        typeof payload.accessToken === "string" &&
+        payload.accessToken
+      ) {
+        markOAuthCallbackReceivedRef.current?.();
+        try {
+          if (
+            typeof payload.expiresAt === "number" &&
+            payload.expiresAt * 1000 <= Date.now()
+          ) {
+            const msg = "Your Google authentication session expired. Please try signing in again.";
+            setOauthErrorMessage(msg);
+            settlePendingOAuthRef.current?.({ error: msg });
+            return;
+          }
+
+          if (typeof supabase.auth.setSession !== "function") {
+            throw new Error("Session initialization is unavailable.");
+          }
+          const { data, error } = await supabase.auth.setSession({
+            access_token: payload.accessToken,
+            refresh_token: typeof payload.refreshToken === "string" ? payload.refreshToken : "",
+          });
+          if (error) throw error;
+
+          const resolvedSession = data?.session;
+          if (!resolvedSession || isSessionExpired(resolvedSession)) {
+            const msg = "Your Google authentication session expired. Please try signing in again.";
+            setOauthErrorMessage(msg);
+            settlePendingOAuthRef.current?.({ error: msg });
+            return;
+          }
+
+          await applyAuthenticatedSession(resolvedSession, Boolean(payload.isRecoveryCallback));
+          NotificationService.notifyNewLogin({
+            email: resolvedSession.user?.email || "",
+            platform: "Google / Web",
+          });
+          settlePendingOAuthRef.current?.({});
+        } catch (err: any) {
+          console.warn("[AuthContext] Failed to apply popup hash tokens:", err?.message || err);
+          const msg = formatOAuthErrorMessage(err?.message || "Failed to finalize session", false);
+          setOauthErrorMessage(msg);
+          settlePendingOAuthRef.current?.({ error: msg });
+        }
+        return;
+      }
+
+      if (payload.type === "OAUTH_AUTH_SUCCESS" && payload.session?.access_token) {
+        markOAuthCallbackReceivedRef.current?.();
+        try {
+          const popupSession = payload.session as Session;
+          if (isSessionExpired(popupSession)) {
+            const msg = "Your Google authentication session expired. Please try signing in again.";
+            setOauthErrorMessage(msg);
+            settlePendingOAuthRef.current?.({ error: msg });
+            return;
+          }
+
+          let resolvedSession = popupSession;
+          if (popupSession.refresh_token && typeof supabase.auth.setSession === "function") {
+            const { data } = await supabase.auth.setSession({
+              access_token: popupSession.access_token,
+              refresh_token: popupSession.refresh_token,
+            });
+            if (data?.session) {
+              resolvedSession = data.session;
+            }
+          }
+          await applyAuthenticatedSession(resolvedSession, false);
+          NotificationService.notifyNewLogin({
+            email: resolvedSession.user?.email || "",
+            platform: "Google / Web",
+          });
+          settlePendingOAuthRef.current?.({});
+        } catch (err: any) {
+          console.warn("[AuthContext] Failed to apply popup session:", err?.message || err);
+          const msg = formatOAuthErrorMessage(err?.message || "Failed to finalize session", false);
+          setOauthErrorMessage(msg);
+          settlePendingOAuthRef.current?.({ error: msg });
+        }
+      }
+    };
+
+    const handlePopupMessage = (event: MessageEvent) => {
+      if (typeof window === "undefined" || event.origin !== window.location.origin) {
+        return;
+      }
+      if (event.source === window) {
+        return;
+      }
+      if (!pendingOAuthPromiseRef.current && !oauthPopupRef.current) {
+        return;
+      }
+      if (oauthPopupRef.current && event.source && event.source !== oauthPopupRef.current) {
+        return;
+      }
+      void handleOAuthPayload(event.data);
+    };
+
+    window.addEventListener("message", handlePopupMessage);
+
+    let broadcastChannel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        broadcastChannel = new BroadcastChannel(OAUTH_CHANNEL_NAME);
+        broadcastChannel.onmessage = (event) => {
+          if (!pendingOAuthPromiseRef.current && !oauthPopupRef.current) {
+            return;
+          }
+          void handleOAuthPayload(event.data);
+        };
+      } catch {
+        broadcastChannel = null;
+      }
+    }
+
     return () => {
       isMounted = false;
+      window.removeEventListener("message", handlePopupMessage);
+      try {
+        broadcastChannel?.close();
+      } catch {}
       subscription.unsubscribe();
     };
   }, []);
@@ -536,46 +973,155 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const signInWithGoogle = async (): Promise<{ error?: string }> => {
+  const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
     if (!isSupabaseConfigured) {
       return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
-    try {
-      // Determine canonical redirect URL (guarantee production domain in production)
-      const isProduction =
-        typeof window !== "undefined" &&
-        (window.location.hostname === "snapfind.ai.studio" ||
-          window.location.origin.includes("snapfind.ai.studio"));
-
-      const canonicalOrigin = isProduction
-        ? "https://snapfind.ai.studio"
-        : (typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "https://snapfind.ai.studio");
-
-      const redirectTo = `${canonicalOrigin}/`;
-
-      console.log(`[AuthContext] Initiating Google Sign-In with redirectTo: ${redirectTo}`);
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          queryParams: {
-            prompt: "select_account",
-            access_type: "offline",
-          },
-        },
-      });
-
-      if (error) {
-        console.error("[AuthContext] Supabase Google OAuth error:", error.message);
-        return { error: error.message };
+    // Prevent duplicate concurrent OAuth flows (which would overwrite the PKCE code_verifier)
+    if (pendingOAuthPromiseRef.current) {
+      if (oauthPopupRef.current && !oauthPopupRef.current.closed) {
+        try {
+          oauthPopupRef.current.focus();
+        } catch {}
       }
+      return pendingOAuthPromiseRef.current;
+    }
 
-      return {};
-    } catch (err: any) {
-      console.error("[AuthContext] Supabase Google Auth exception:", err);
-      return { error: err?.message || "Google authentication failed" };
+    const flowPromise = (async (): Promise<GoogleSignInResult> => {
+      try {
+        const canonicalOrigin =
+          typeof window !== "undefined"
+            ? window.location.origin.replace(/\/+$/, "")
+            : "https://snapfind.ai.studio";
+
+        const redirectTo = `${canonicalOrigin}/auth/callback`;
+
+        // Always obtain the OAuth URL without redirecting the current window so we can open a popup.
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo,
+            skipBrowserRedirect: true,
+            queryParams: {
+              prompt: "select_account",
+              access_type: "offline",
+            },
+          },
+        });
+
+        if (error) {
+          console.error("[AuthContext] Supabase Google OAuth error:", error.message);
+          return { error: error.message };
+        }
+
+        if (!data?.url) {
+          return { error: "Could not initialize Google Sign-In URL. Check Supabase Google provider settings." };
+        }
+
+        if (typeof window === "undefined") {
+          return { error: "Google Sign-In requires a browser window." };
+        }
+
+        const width = 520;
+        const height = 660;
+        const left = Math.max(0, Math.round((window.screen?.width || 1280) / 2 - width / 2));
+        const top = Math.max(0, Math.round((window.screen?.height || 800) / 2 - height / 2));
+        const popup = window.open(
+          data.url,
+          OAUTH_POPUP_NAME,
+          `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,status=no,resizable=yes,scrollbars=yes`
+        );
+
+        if (!popup || popup.closed || typeof popup.closed === "undefined") {
+          return {
+            error: "Pop-up window was blocked by your browser. Please allow pop-ups for this site and click Continue with Google again.",
+          };
+        }
+
+        oauthPopupRef.current = popup;
+        try {
+          popup.focus();
+        } catch {}
+
+        return await new Promise<GoogleSignInResult>((resolve) => {
+          let settled = false;
+          let callbackReceived = false;
+          let closeGraceTimer: ReturnType<typeof setTimeout> | null = null;
+
+          const markCallbackReceived = () => {
+            callbackReceived = true;
+            if (closeGraceTimer) {
+              clearTimeout(closeGraceTimer);
+              closeGraceTimer = null;
+            }
+          };
+
+          const cleanup = () => {
+            if (pollTimer) clearInterval(pollTimer);
+            if (timeoutTimer) clearTimeout(timeoutTimer);
+            if (closeGraceTimer) clearTimeout(closeGraceTimer);
+            if (settlePendingOAuthRef.current === settle) {
+              settlePendingOAuthRef.current = null;
+            }
+            if (markOAuthCallbackReceivedRef.current === markCallbackReceived) {
+              markOAuthCallbackReceivedRef.current = null;
+            }
+            if (oauthPopupRef.current === popup) {
+              oauthPopupRef.current = null;
+            }
+          };
+
+          const settle = (result: GoogleSignInResult) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            try {
+              if (!popup.closed) popup.close();
+            } catch {}
+            resolve(result);
+          };
+
+          settlePendingOAuthRef.current = settle;
+          markOAuthCallbackReceivedRef.current = markCallbackReceived;
+
+          const pollTimer = setInterval(() => {
+            try {
+              if (popup.closed && !callbackReceived && !closeGraceTimer) {
+                // Allow any postMessage/BroadcastChannel message queued right before window.close() to deliver first.
+                closeGraceTimer = setTimeout(() => {
+                  if (!callbackReceived) {
+                    settle({
+                      cancelled: true,
+                      error: "Google Sign-In was cancelled before completion.",
+                    });
+                  }
+                }, 450);
+              }
+            } catch {
+              // Cross-origin popup access error ignored until closed
+            }
+          }, 300);
+
+          const timeoutTimer = setTimeout(() => {
+            settle({
+              error: "Google Sign-In timed out. Please try again.",
+            });
+          }, OAUTH_POPUP_TIMEOUT_MS);
+        });
+      } catch (err: any) {
+        console.error("[AuthContext] Supabase Google Auth exception:", err);
+        return { error: err?.message || "Google authentication failed" };
+      }
+    })();
+
+    pendingOAuthPromiseRef.current = flowPromise;
+    try {
+      return await flowPromise;
+    } finally {
+      if (pendingOAuthPromiseRef.current === flowPromise) {
+        pendingOAuthPromiseRef.current = null;
+      }
     }
   };
 

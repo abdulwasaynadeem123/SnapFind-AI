@@ -60,11 +60,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [showResendOption, setShowResendOption] = useState(false);
 
   const isSubmittingRef = useRef(false);
+  const isMountedRef = useRef(true);
   const primaryInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isRecoveryMode) {
@@ -95,7 +104,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   }, [mode]);
 
   const switchMode = (nextMode: AuthModalMode) => {
-    if (isLoading) return;
+    if (isLoading || isGoogleLoading) return;
     setMode(nextMode);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -108,7 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleClose = () => {
-    if (isLoading) return;
+    if (isLoading || isGoogleLoading) return;
     if (oauthErrorMessage) clearOauthError();
     onClose();
   };
@@ -283,18 +292,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleGoogleSignIn = async () => {
-    if (isSubmittingRef.current || isLoading) return;
+    if (isSubmittingRef.current || isLoading || isGoogleLoading) return;
     isSubmittingRef.current = true;
-    setIsLoading(true);
+    setIsGoogleLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
+    if (oauthErrorMessage) clearOauthError();
     try {
       const res = await signInWithGoogle();
-      if (res.error) {
+      if (!isMountedRef.current) return;
+      if (res?.error) {
         setErrorMsg(res.error);
+      } else if (!res?.cancelled) {
+        addToast?.({
+          title: "Signed In",
+          description: "Welcome to SnapFind AI.",
+          type: "success",
+        });
+        onClose();
+      }
+    } catch (err: any) {
+      if (isMountedRef.current) {
+        setErrorMsg(err?.message || "Google sign-in failed. Please try again.");
       }
     } finally {
       isSubmittingRef.current = false;
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsGoogleLoading(false);
+      }
     }
   };
 
@@ -401,6 +426,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       ? "Enter your registered email and we will send you a secure reset link."
       : "Choose a strong new password for your account.";
 
+  const isOAuthAlert = Boolean(
+    errorMsg &&
+      (errorMsg === oauthErrorMessage ||
+        /google|oauth|access denied|403|pop-up|redirect uri|cancelled|expired/i.test(errorMsg))
+  );
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080908]/85 overflow-y-auto"
@@ -436,7 +467,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Status Messages */}
-        {errorMsg && !/(email|registered|password)/i.test(errorMsg) && (
+        {errorMsg && (isOAuthAlert || !/(email|registered|password)/i.test(errorMsg)) && (
           <div
             role="alert"
             aria-live="polite"
@@ -529,14 +560,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={Boolean(errorMsg && /email|registered/i.test(errorMsg))}
-                  aria-describedby={errorMsg && /email|registered/i.test(errorMsg) ? "auth-email-error" : undefined}
+                  aria-invalid={Boolean(errorMsg && !isOAuthAlert && /email|registered/i.test(errorMsg))}
+                  aria-describedby={errorMsg && !isOAuthAlert && /email|registered/i.test(errorMsg) ? "auth-email-error" : undefined}
                   disabled={isLoading}
                   placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
                 />
               </div>
-              {errorMsg && /email|registered/i.test(errorMsg) && <p id="auth-email-error" className="text-[11px] text-rose-300" role="alert">{errorMsg}</p>}
+              {errorMsg && !isOAuthAlert && /email|registered/i.test(errorMsg) && <p id="auth-email-error" className="text-[11px] text-rose-300" role="alert">{errorMsg}</p>}
             </div>
           )}
 
@@ -572,8 +603,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   minLength={mode === "login" ? 1 : 8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  aria-invalid={Boolean(errorMsg && /password/i.test(errorMsg) && !/(match|confirm)/i.test(errorMsg))}
-                  aria-describedby={errorMsg && /password/i.test(errorMsg) && !/(match|confirm)/i.test(errorMsg) ? "auth-password-error" : undefined}
+                  aria-invalid={Boolean(errorMsg && !isOAuthAlert && /password/i.test(errorMsg) && !/(match|confirm)/i.test(errorMsg))}
+                  aria-describedby={errorMsg && !isOAuthAlert && /password/i.test(errorMsg) && !/(match|confirm)/i.test(errorMsg) ? "auth-password-error" : undefined}
                   disabled={isLoading}
                   placeholder={mode === "login" ? "Enter your password" : "Minimum 8 characters"}
                   className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-[#0D0F0D] border border-[#30362E] focus:border-[#B7F36B] focus:outline-none text-sm text-[#F7F8F5] placeholder-[#777E74] disabled:opacity-60"
@@ -590,7 +621,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {(mode === "register" || mode === "reset_password") && (
                 <p className="text-[11px] text-[#777E74]">Use at least 8 characters for strong account security.</p>
               )}
-              {errorMsg && /password/i.test(errorMsg) && !/(match|confirm)/i.test(errorMsg) && <p id="auth-password-error" className="text-[11px] text-rose-300" role="alert">{errorMsg}</p>}
+              {errorMsg && !isOAuthAlert && /password/i.test(errorMsg) && !/(match|confirm)/i.test(errorMsg) && <p id="auth-password-error" className="text-[11px] text-rose-300" role="alert">{errorMsg}</p>}
             </div>
           )}
 
@@ -664,28 +695,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="button"
               onClick={handleGoogleSignIn}
-              disabled={isLoading}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-sm font-semibold flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-60"
+              disabled={isLoading || isGoogleLoading}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#1B1F1A] hover:bg-[#222720] border border-[#30362E] text-[#F7F8F5] text-sm font-semibold flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  fill="#F7F8F5"
-                  d="M21.35 11.1h-9.18v2.92h5.27c-.23 1.24-.92 2.29-1.97 3l3.18 2.47c1.86-1.71 2.93-4.23 2.93-7.24 0-.7-.06-1.38-.23-2.15z"
-                />
-                <path
-                  fill="#A5AAA1"
-                  d="M12.17 22c2.65 0 4.88-.88 6.5-2.38l-3.18-2.47c-.88.59-2 .94-3.32.94-2.55 0-4.71-1.72-5.48-4.04H3.38v2.54C5 19.81 8.33 22 12.17 22z"
-                />
-                <path
-                  fill="#B7F36B"
-                  d="M6.69 14.05A5.86 5.86 0 0 1 6.38 12c0-.71.12-1.4.31-2.05V7.41H3.38A9.96 9.96 0 0 0 2.17 12c0 1.61.39 3.13 1.21 4.59l3.31-2.54z"
-                />
-                <path
-                  fill="#F7F8F5"
-                  d="M12.17 5.91c1.44 0 2.74.5 3.76 1.47l2.82-2.82C17.04 2.96 14.81 2 12.17 2 8.33 2 5 4.19 3.38 7.41l3.31 2.54c.77-2.32 2.93-4.04 5.48-4.04z"
-                />
-              </svg>
-              <span>Continue with Google</span>
+              {isGoogleLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="#F7F8F5"
+                    d="M21.35 11.1h-9.18v2.92h5.27c-.23 1.24-.92 2.29-1.97 3l3.18 2.47c1.86-1.71 2.93-4.23 2.93-7.24 0-.7-.06-1.38-.23-2.15z"
+                  />
+                  <path
+                    fill="#A5AAA1"
+                    d="M12.17 22c2.65 0 4.88-.88 6.5-2.38l-3.18-2.47c-.88.59-2 .94-3.32.94-2.55 0-4.71-1.72-5.48-4.04H3.38v2.54C5 19.81 8.33 22 12.17 22z"
+                  />
+                  <path
+                    fill="#B7F36B"
+                    d="M6.69 14.05A5.86 5.86 0 0 1 6.38 12c0-.71.12-1.4.31-2.05V7.41H3.38A9.96 9.96 0 0 0 2.17 12c0 1.61.39 3.13 1.21 4.59l3.31-2.54z"
+                  />
+                  <path
+                    fill="#F7F8F5"
+                    d="M12.17 5.91c1.44 0 2.74.5 3.76 1.47l2.82-2.82C17.04 2.96 14.81 2 12.17 2 8.33 2 5 4.19 3.38 7.41l3.31 2.54c.77-2.32 2.93-4.04 5.48-4.04z"
+                  />
+                </svg>
+              )}
+              <span>{isGoogleLoading ? "Waiting for Google Sign-In..." : "Continue with Google"}</span>
             </button>
           </>
         )}

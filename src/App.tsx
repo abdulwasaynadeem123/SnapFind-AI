@@ -100,6 +100,7 @@ function AppContent() {
     refreshEntitlement,
     signOut,
     isRecoveryMode,
+    oauthErrorMessage,
   } = useAuth();
   const isOnline = useOnlineStatus();
   const [isVipInviteOpen, setIsVipInviteOpen] = useState(false);
@@ -208,11 +209,14 @@ function AppContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const rawLocationHash = window.location.hash || "";
-    // Never overwrite OAuth or password-recovery callback hash tokens before AuthContext consumes them
+    const rawLocationSearch = window.location.search || "";
+    // Never overwrite OAuth or password-recovery callback params before AuthContext consumes them
     if (
       rawLocationHash.includes("access_token=") ||
       rawLocationHash.includes("type=recovery") ||
-      rawLocationHash.includes("error=")
+      rawLocationHash.includes("error=") ||
+      rawLocationSearch.includes("code=") ||
+      rawLocationSearch.includes("error=")
     ) {
       return;
     }
@@ -290,6 +294,28 @@ function AppContent() {
       setActiveView("reset-password");
     }
   }, [isRecoveryMode]);
+
+  // Surface OAuth callback errors directly in the sign-in modal after redirects
+  useEffect(() => {
+    if (oauthErrorMessage && !isRecoveryMode && activeView !== "reset-password") {
+      setAuthModalMode("login");
+      setIsAuthOpen(true);
+    }
+  }, [oauthErrorMessage, isRecoveryMode, activeView]);
+
+  // Automatically navigate from landing page to logged-in dashboard upon authentication
+  const prevAuthenticatedRef = useRef(isAuthenticatedAccount);
+  useEffect(() => {
+    if (!authLoading && isAuthenticatedAccount && !prevAuthenticatedRef.current) {
+      if (activeView === "landing" && !isRecoveryMode) {
+        setActiveView("dashboard");
+      }
+      setIsAuthOpen(false);
+    }
+    if (!authLoading) {
+      prevAuthenticatedRef.current = isAuthenticatedAccount;
+    }
+  }, [authLoading, isAuthenticatedAccount, activeView, isRecoveryMode]);
 
   // Check server-recorded first-50-signup eligibility after authentication.
   useEffect(() => {
