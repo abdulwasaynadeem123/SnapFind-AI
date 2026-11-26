@@ -327,18 +327,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sbUser.user_metadata?.picture ||
       undefined;
 
-    // Fetch authoritative server-verified entitlement
-    const userEntitlement = await SubscriptionManager.syncEntitlementsFromServer(sbUser.id);
-    setEntitlement(userEntitlement);
+    // Authentication must not fail because a secondary profile/entitlement sync is temporarily unavailable.
+    let userEntitlement = SubscriptionManager.getEntitlement();
+    try {
+      userEntitlement = await SubscriptionManager.syncEntitlementsFromServer(sbUser.id);
+      setEntitlement(userEntitlement);
+    } catch (entitlementError: any) {
+      console.warn("[AuthContext] Entitlement sync deferred:", entitlementError?.message || entitlementError);
+      setEntitlement(userEntitlement);
+    }
 
-    const { error: profileSyncError } = await supabase.from("profiles").upsert({
-      id: sbUser.id,
-      name,
-      email: sbUser.email || "",
-      avatar_url: avatarUrl || null,
-      updated_at: new Date().toISOString(),
-    });
-    if (profileSyncError) console.warn("[AuthContext] Profile sync warning:", profileSyncError.message);
+    try {
+      const { error: profileSyncError } = await supabase.from("profiles").upsert({
+        id: sbUser.id,
+        name,
+        email: sbUser.email || "",
+        avatar_url: avatarUrl || null,
+        updated_at: new Date().toISOString(),
+      });
+      if (profileSyncError) console.warn("[AuthContext] Profile sync warning:", profileSyncError.message);
+    } catch (profileError: any) {
+      console.warn("[AuthContext] Profile sync deferred:", profileError?.message || profileError);
+    }
 
     const updatedProfile: UserProfile = {
       id: sbUser.id,
@@ -541,25 +551,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: AUTH_UNCONFIGURED_ERROR };
     }
 
+    // Open the window synchronously while still inside the user's click gesture.
+    // Opening it after awaiting the OAuth request is commonly blocked by browsers.
+    let popup: Window | null = null;
     try {
-      // Determine canonical redirect URL (guarantee production domain in production)
-      const isProduction =
-        typeof window !== "undefined" &&
-        (window.location.hostname === "snapfind.ai.studio" ||
-          window.location.origin.includes("snapfind.ai.studio"));
+      popup = window.open(
+        "about:blank",
+        "snapfind-google-signin",
+        "popup=yes,width=520,height=680,resizable=yes,scrollbars=yes"
+      );
+      if (!popup) {
+        return { error: "Google sign-in popup was blocked. Allow pop-ups for snapfind.ai.studio and try again." };
+      }
 
+      const isProduction =
+        window.location.hostname === "snapfind.ai.studio" ||
+        window.location.origin.includes("snapfind.ai.studio");
       const canonicalOrigin = isProduction
         ? "https://snapfind.ai.studio"
-        : (typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "https://snapfind.ai.studio");
-
+        : window.location.origin.replace(/\\/+$/, "");
       const redirectTo = `${canonicalOrigin}/`;
 
-      console.log(`[AuthContext] Initiating Google Sign-In with redirectTo: ${redirectTo}`);
-
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo,
+          skipBrowserRedirect: true,
           queryParams: {
             prompt: "select_account",
             access_type: "offline",
@@ -567,15 +584,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
       });
 
-      if (error) {
-        console.error("[AuthContext] Supabase Google OAuth error:", error.message);
-        return { error: error.message };
+      if (error || !data?.url) {
+        popup.close();
+        return { error: error?.message || "Could not start Google sign-in. Please try again." };
       }
 
+      popup.location.href = data.url;
+      popup.focus();
       return {};
     } catch (err: any) {
-      console.error("[AuthContext] Supabase Google Auth exception:", err);
-      return { error: err?.message || "Google authentication failed" };
+      try { popup?.close(); } catch { /* ignore popup cleanup errors */ }
+      console.error("[AuthContext] Google popup sign-in exception:", err);
+      return { error: err?.message || "Google authentication failed. Please try again." };
     }
   };
 
