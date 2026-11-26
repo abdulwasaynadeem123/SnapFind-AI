@@ -8,6 +8,9 @@ const mockGetSession = vi.fn();
 const mockOnAuthStateChange = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockSignOut = vi.fn();
+const mockSignInWithOAuth = vi.fn();
+const mockSignInWithPassword = vi.fn();
+const mockSignUp = vi.fn();
 
 vi.mock("../src/services/supabase", () => ({
   isSupabaseConfigured: true,
@@ -19,7 +22,9 @@ vi.mock("../src/services/supabase", () => ({
       onAuthStateChange: (...args: any[]) => mockOnAuthStateChange(...args),
       updateUser: (...args: any[]) => mockUpdateUser(...args),
       signOut: (...args: any[]) => mockSignOut(...args),
-      signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
+      signInWithOAuth: (...args: any[]) => mockSignInWithOAuth(...args),
+      signInWithPassword: (...args: any[]) => mockSignInWithPassword(...args),
+      signUp: (...args: any[]) => mockSignUp(...args),
     },
     from: (table: string) => ({
       upsert: async (payload: Record<string, any>) => {
@@ -91,6 +96,9 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     upsertPayloads.length = 0;
+    mockSignInWithPassword.mockResolvedValue({ data: { session: null }, error: null });
+    mockSignUp.mockResolvedValue({ data: { user: null, session: null }, error: null });
+    mockSignInWithOAuth.mockResolvedValue({ data: { url: "https://accounts.google.com/o/oauth2/auth" }, error: null });
     window.history.replaceState({}, "", "/");
     mockOnAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
@@ -101,6 +109,73 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
   afterEach(() => {
     global.fetch = originalFetch;
     window.history.replaceState({}, "", "/");
+  });
+
+  it("opens Google OAuth in a separate popup without redirecting the current tab", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const popup = {
+      location: { href: "about:blank" },
+      focus: vi.fn(),
+      close: vi.fn(),
+    };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(popup as any);
+
+    let latestCtx!: ReturnType<typeof useAuth>;
+    render(
+      <AuthProvider>
+        <Probe onReady={(ctx) => { latestCtx = ctx; }} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(latestCtx.loading).toBe(false));
+    await act(async () => {
+      const result = await latestCtx.signInWithGoogle();
+      expect(result.error).toBeUndefined();
+    });
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "about:blank",
+      "snapfind-google-signin",
+      expect.stringContaining("popup=yes")
+    );
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith(expect.objectContaining({
+      provider: "google",
+      options: expect.objectContaining({
+        skipBrowserRedirect: true,
+        queryParams: expect.objectContaining({ prompt: "select_account" }),
+      }),
+    }));
+    expect(popup.location.href).toBe("https://accounts.google.com/o/oauth2/auth");
+    expect(popup.focus).toHaveBeenCalled();
+  });
+
+  it("keeps email login and signup successful when profile or entitlement sync is temporarily unavailable", async () => {
+    const activeUser = {
+      id: "user-auth-ok",
+      email: "auth-ok@example.com",
+      created_at: "2026-01-01T00:00:00Z",
+      app_metadata: { provider: "email" },
+      user_metadata: { full_name: "Auth OK" },
+    };
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockSignInWithPassword.mockResolvedValue({
+      data: { session: { access_token: "token", user: activeUser } },
+      error: null,
+    });
+
+    let latestCtx!: ReturnType<typeof useAuth>;
+    render(
+      <AuthProvider>
+        <Probe onReady={(ctx) => { latestCtx = ctx; }} />
+      </AuthProvider>
+    );
+    await waitFor(() => expect(latestCtx.loading).toBe(false));
+
+    await act(async () => {
+      const result = await latestCtx.signInWithEmail("auth-ok@example.com", "correct-password");
+      expect(result.error).toBeUndefined();
+    });
+    expect(screen.getByTestId("user-id").textContent).toBe("user-auth-ok");
   });
 
   it("awaits PKCE code exchange before settling loading state and enters recovery mode cleanly", async () => {
