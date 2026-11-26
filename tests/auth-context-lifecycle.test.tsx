@@ -11,6 +11,7 @@ const mockSignOut = vi.fn();
 const mockSignInWithOAuth = vi.fn();
 const mockSignInWithPassword = vi.fn();
 const mockSignUp = vi.fn();
+const mockSyncEntitlementsFromServer = vi.fn();
 
 vi.mock("../src/services/supabase", () => ({
   isSupabaseConfigured: true,
@@ -48,7 +49,7 @@ vi.mock("../src/services/billing/SubscriptionManager", () => ({
       features: { maxIndexedScreenshots: 250, maxAIScansPerMonth: 250, maxStorageMB: 1000 },
     }),
     subscribe: () => () => {},
-    syncEntitlementsFromServer: vi.fn().mockResolvedValue({
+    syncEntitlementsFromServer: (...args: any[]) => mockSyncEntitlementsFromServer(...args),
       userId: "user-abc",
       plan: "free",
       tier: "Free",
@@ -98,6 +99,14 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
     upsertPayloads.length = 0;
     mockSignInWithPassword.mockResolvedValue({ data: { session: null }, error: null });
     mockSignUp.mockResolvedValue({ data: { user: null, session: null }, error: null });
+    mockSyncEntitlementsFromServer.mockResolvedValue({
+      userId: "user-abc",
+      plan: "free",
+      tier: "Free",
+      isPro: false,
+      isFounder: false,
+      features: { maxIndexedScreenshots: 250, maxAIScansPerMonth: 250, maxStorageMB: 1000 },
+    });
     mockSignInWithOAuth.mockResolvedValue({ data: { url: "https://accounts.google.com/o/oauth2/auth" }, error: null });
     window.history.replaceState({}, "", "/");
     mockOnAuthStateChange.mockReturnValue({
@@ -149,7 +158,7 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
     expect(popup.focus).toHaveBeenCalled();
   });
 
-  it("keeps email login and signup successful when profile or entitlement sync is temporarily unavailable", async () => {
+  it("keeps email login successful when entitlement sync is temporarily unavailable", async () => {
     const activeUser = {
       id: "user-auth-ok",
       email: "auth-ok@example.com",
@@ -158,6 +167,7 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
       user_metadata: { full_name: "Auth OK" },
     };
     mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockSyncEntitlementsFromServer.mockRejectedValueOnce(new Error("temporary entitlement API failure"));
     mockSignInWithPassword.mockResolvedValue({
       data: { session: { access_token: "token", user: activeUser } },
       error: null,
@@ -176,6 +186,36 @@ describe("AuthContext Lifecycle, Profile Schema & Deletion Safety", () => {
       expect(result.error).toBeUndefined();
     });
     expect(screen.getByTestId("user-id").textContent).toBe("user-auth-ok");
+  });
+
+  it("keeps email signup successful when entitlement sync is temporarily unavailable", async () => {
+    const newUser = {
+      id: "user-signup-ok",
+      email: "signup-ok@example.com",
+      created_at: "2026-01-01T00:00:00Z",
+      app_metadata: { provider: "email" },
+      user_metadata: { full_name: "Signup OK" },
+    };
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockSyncEntitlementsFromServer.mockRejectedValueOnce(new Error("temporary entitlement API failure"));
+    mockSignUp.mockResolvedValue({
+      data: { user: newUser, session: { access_token: "signup-token", user: newUser } },
+      error: null,
+    });
+
+    let latestCtx!: ReturnType<typeof useAuth>;
+    render(
+      <AuthProvider>
+        <Probe onReady={(ctx) => { latestCtx = ctx; }} />
+      </AuthProvider>
+    );
+    await waitFor(() => expect(latestCtx.loading).toBe(false));
+
+    await act(async () => {
+      const result = await latestCtx.signUpWithEmail("signup-ok@example.com", "correct-password");
+      expect(result.error).toBeUndefined();
+    });
+    expect(screen.getByTestId("user-id").textContent).toBe("user-signup-ok");
   });
 
   it("awaits PKCE code exchange before settling loading state and enters recovery mode cleanly", async () => {
