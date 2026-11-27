@@ -569,7 +569,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.location.origin.includes("snapfind.ai.studio");
       const canonicalOrigin = isProduction
         ? "https://snapfind.ai.studio"
-        : window.location.origin.replace(/\\/+$/, "");
+        : window.location.origin.replace(/\/+$/, "");
       const redirectTo = `${canonicalOrigin}/`;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
