@@ -50,13 +50,6 @@ vi.mock("../src/services/billing/SubscriptionManager", () => ({
     }),
     subscribe: () => () => {},
     syncEntitlementsFromServer: (...args: any[]) => mockSyncEntitlementsFromServer(...args),
-      userId: "user-abc",
-      plan: "free",
-      tier: "Free",
-      isPro: false,
-      isFounder: false,
-      features: { maxIndexedScreenshots: 250, maxAIScansPerMonth: 250, maxStorageMB: 1000 },
-    }),
     resetToFree: vi.fn(),
   },
 }));
